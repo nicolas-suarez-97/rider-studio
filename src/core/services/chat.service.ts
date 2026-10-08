@@ -1,0 +1,72 @@
+import { ChatMessage } from '../models/ChatConversation';
+import { ChatSessionSummary } from '../types/chat.types';
+import { AgentRole } from '../types/agent.types';
+import { RiderType } from '../types/rider.types';
+
+export interface SendMessageParams {
+  messages: Array<{ role?: string; content?: string; text?: string; sender?: string }>;
+  riderType: RiderType;
+  activeAgent: AgentRole;
+  sessionId?: string;
+  riderId?: string;
+}
+
+export interface IChatService {
+  getSessions(): Promise<ChatSessionSummary[]>;
+  getHistory(sessionId: string): Promise<ChatMessage[]>;
+  sendMessage(params: SendMessageParams): Promise<any>;
+}
+
+export class ChatService implements IChatService {
+  public async getSessions(): Promise<ChatSessionSummary[]> {
+    try {
+      const res = await fetch('/api/chat/sessions');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (Array.isArray(data.sessions)) {
+        return data.sessions.map((s: any, idx: number) => ({
+          id: s.id,
+          title: s.title || 'Consulta de Producción',
+          date: new Date(s.updated_at || s.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+          active: idx === 0,
+          riderId: s.rider_id
+        }));
+      }
+      return [];
+    } catch (err) {
+      console.warn('[ChatService.getSessions] Error:', err);
+      return [];
+    }
+  }
+
+  public async getHistory(sessionId: string): Promise<ChatMessage[]> {
+    try {
+      const res = await fetch(`/api/chat/history?sessionId=${sessionId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (Array.isArray(data.messages)) {
+        return data.messages.map((m: any) => ChatMessage.fromApi(m));
+      }
+      return [];
+    } catch (err) {
+      console.warn(`[ChatService.getHistory] Error for session ${sessionId}:`, err);
+      return [];
+    }
+  }
+
+  public async sendMessage(params: SendMessageParams): Promise<any> {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
+
+    if (!res.ok) {
+      throw new Error(`Chat API error: ${res.status}`);
+    }
+
+    return await res.json();
+  }
+}
+
+export const chatService = new ChatService();
