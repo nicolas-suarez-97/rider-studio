@@ -11,6 +11,7 @@ BEGIN
     -- 2. Tabla de Riders
     CREATE TABLE IF NOT EXISTS public.riders (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID, -- Opcional: Vinculación con auth.users(id) para multi-tenancy
         title VARCHAR(255) NOT NULL,
         artist_name VARCHAR(255) NOT NULL,
         rider_type VARCHAR(50) NOT NULL DEFAULT 'tecnico',
@@ -27,10 +28,12 @@ BEGIN
 
     CREATE INDEX IF NOT EXISTS idx_riders_updated_at ON public.riders (updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_riders_type ON public.riders (rider_type);
+    CREATE INDEX IF NOT EXISTS idx_riders_user_id ON public.riders (user_id);
 
     -- 3. Tabla de Sesiones de Chat
     CREATE TABLE IF NOT EXISTS public.chat_sessions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID, -- Opcional: Vinculación con auth.users(id)
         rider_id UUID REFERENCES public.riders(id) ON DELETE SET NULL,
         title VARCHAR(255) NOT NULL DEFAULT 'Consulta de Producción',
         active_agent VARCHAR(50) NOT NULL DEFAULT 'master',
@@ -40,6 +43,7 @@ BEGIN
 
     CREATE INDEX IF NOT EXISTS idx_chat_sessions_rider_id ON public.chat_sessions (rider_id);
     CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated_at ON public.chat_sessions (updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON public.chat_sessions (user_id);
 
     -- 4. Tabla de Mensajes de Chat
     CREATE TABLE IF NOT EXISTS public.chat_messages (
@@ -61,7 +65,8 @@ BEGIN
     ALTER TABLE public.chat_sessions ENABLE ROW LEVEL SECURITY;
     ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 
-    -- 6. Políticas de acceso público (Drop previas si existen y recrear)
+    -- 6. Políticas de acceso (Preparadas para Demo y listas para producción con auth.uid())
+    -- En producción con autenticación activa, reemplaza (true) por (auth.uid() = user_id OR user_id IS NULL)
     EXECUTE 'DROP POLICY IF EXISTS "Public Read Riders" ON public.riders';
     EXECUTE 'CREATE POLICY "Public Read Riders" ON public.riders FOR SELECT USING (true)';
     

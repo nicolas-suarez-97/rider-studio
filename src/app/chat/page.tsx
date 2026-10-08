@@ -1,306 +1,96 @@
-"use client";
+import { Suspense } from 'react';
+import { connection } from 'next/server';
+import { getChatSessions, getRiders, getChatMessages } from '@/lib/services/rider-storage';
+import { ChatSessionSummary, ChatMessageItem } from '@/core/types/chat.types';
+import { ChatClient } from '@/components/chat/ChatClient';
 
-import React, { useState, useEffect, Suspense, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Header } from '@/components/common/Header';
-import { Toast } from '@/components/common/Toast';
-import { ChatView } from '@/components/chat/ChatView';
-import { chatService } from '@/core/services/chat.service';
-import { AgentRole } from '@/core/types/agent.types';
-import { ChatMessageItem, ChatSessionSummary } from '@/core/types/chat.types';
-import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
-import { riderService } from '@/core/services/rider.service';
-import { Rider } from '@/core/models/Rider';
-import { RiderType } from '@/core/types/rider.types';
+interface PageProps {
+  searchParams: Promise<{
+    session?: string;
+    riderId?: string;
+    prompt?: string;
+  }>;
+}
 
-function ChatPageContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+async function ChatServer({ searchParams }: PageProps) {
+  await connection();
+  const { session: sessionIdParam, riderId: riderIdParam, prompt: promptParam } = await searchParams;
 
-  const sessionIdParam = searchParams.get('session');
-  const riderIdParam = searchParams.get('riderId');
-  const initialPromptParam = searchParams.get('prompt');
+  const [rawSessions, rawRiders] = await Promise.all([
+    getChatSessions(),
+    getRiders()
+  ]);
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
-  const [availableRiders, setAvailableRiders] = useState<Array<{ id: string; title: string; artist: string; type: string }>>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string>(sessionIdParam || '');
-  const [activeAgent, setActiveAgent] = useState<AgentRole>('master');
-  const [messages, setMessages] = useState<ChatMessageItem[]>([]);
-  const [isThinking, setIsAgentThinking] = useState(false);
-
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  }, []);
-
-  // Cargar lista de riders disponibles para vincular
-  useEffect(() => {
-    async function loadRiders() {
-      try {
-        const list = await riderService.getAll();
-        setAvailableRiders(list.map(r => ({
-          id: r.id,
-          title: r.title,
-          artist: r.artistName,
-          type: r.type
-        })));
-      } catch (err) {
-        console.warn('Error loading riders for chat:', err);
-      }
-    }
-    loadRiders();
-  }, []);
-
-  // Cargar lista de sesiones
-  const loadSessionsList = useCallback(async () => {
-    try {
-      const data = await chatService.getSessions();
-      setSessions(data);
-      return data;
-    } catch (err) {
-      console.warn('Error loading sessions:', err);
-      return [];
-    }
-  }, []);
-
-  useEffect(() => {
-    async function init() {
-      const data = await loadSessionsList();
-
-      // Si vino riderIdParam, buscar sesión existente de ese rider o crear una
-      if (riderIdParam) {
-        const matching = data.find(s => s.riderId === riderIdParam);
-        if (matching) {
-          setCurrentSessionId(matching.id);
-          router.replace(`/chat?session=${matching.id}`);
-          return;
-        } else {
-          // Crear nueva sesión vinculada al rider
-          const newSession = await chatService.createSession({
-            title: `Consulta de Producción`,
-            riderId: riderIdParam,
-            activeAgent: 'master'
-          });
-          setSessions(prev => [newSession, ...prev]);
-          setCurrentSessionId(newSession.id);
-          router.replace(`/chat?session=${newSession.id}`);
-          return;
+  const sessions: ChatSessionSummary[] = rawSessions.map((s, idx) => ({
+    id: s.id,
+    title: s.title || 'Consulta de Producción',
+    date: (s.updated_at || s.created_at)
+      ? new Date(s.updated_at || s.created_at).toLocaleDateString([], {
+          month: 'short',
+          day: 'numeric'
+        })
+      : '',
+    active: idx === 0,
+    riderId: s.rider_id || null,
+    riderInfo: s.riders
+      ? {
+          id: s.riders.id,
+          title: s.riders.title,
+          artistName: s.riders.artist_name,
+          riderType: s.riders.rider_type as 'tecnico' | 'hospitality' | 'seguridad'
         }
-      }
+      : null
+  }));
 
-      // Si no hay parámetro de sesión en la URL pero hay sesiones previas, usar la primera o la de localStorage
-      if (!sessionIdParam && data.length > 0) {
-        const stored = typeof window !== 'undefined' ? localStorage.getItem('raider_last_chat_session') : null;
-        const target = data.find(s => s.id === stored) || data[0];
-        setCurrentSessionId(target.id);
-        router.replace(`/chat?session=${target.id}`);
-      }
+  const availableRiders = rawRiders.map((r) => ({
+    id: r.id,
+    title: r.title,
+    artist: r.artist_name,
+    type: r.rider_type || 'tecnico'
+  }));
+
+  // Resolver sesión activa en el servidor
+  let activeSessionId = sessionIdParam || '';
+
+  if (!activeSessionId && riderIdParam) {
+    const matching = sessions.find((s) => s.riderId === riderIdParam);
+    if (matching) {
+      activeSessionId = matching.id;
     }
-    init();
-  }, [sessionIdParam, riderIdParam, router, loadSessionsList]);
+  }
 
-  // Cargar historial de la sesión activa
-  useEffect(() => {
-    let isMounted = true;
+  if (!activeSessionId && sessions.length > 0) {
+    activeSessionId = sessions[0].id;
+  }
 
-    async function loadHistory() {
-      if (!currentSessionId) return;
-
-      try {
-        const history = await chatService.getHistory(currentSessionId);
-        if (isMounted) {
-          setMessages(history);
-          try {
-            localStorage.setItem('raider_last_chat_session', currentSessionId);
-          } catch {}
-        }
-      } catch (err) {
-        console.warn(`Error loading history for ${currentSessionId}:`, err);
-      }
-    }
-
-    loadHistory();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentSessionId]);
-
-  // Si vino un prompt inicial desde la landing, enviarlo automáticamente
-  useEffect(() => {
-    if (initialPromptParam) {
-      handleSendMessage(decodeURIComponent(initialPromptParam));
-    }
-  }, [initialPromptParam]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleSelectSession = (sessionId: string) => {
-    setCurrentSessionId(sessionId);
-    router.replace(`/chat?session=${sessionId}`);
-    showToast('Cargando conversación...');
-  };
-
-  const handleNewSession = async () => {
-    try {
-      const newSession = await chatService.createSession({
-        title: 'Nueva Consulta',
-        activeAgent
-      });
-      setSessions(prev => [newSession, ...prev.filter(s => s.id !== newSession.id)]);
-      setCurrentSessionId(newSession.id);
-      setMessages([]);
-      router.replace(`/chat?session=${newSession.id}`);
-      showToast('✨ Nueva conversación creada');
-    } catch (err) {
-      console.error('Error creating new session', err);
-      showToast('⚠️ Error al crear nueva conversación');
-    }
-  };
-
-  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const ok = window.confirm('¿Seguro que deseas eliminar esta conversación?');
-    if (!ok) return;
-
-    const success = await chatService.deleteSession(sessionId);
-    if (success) {
-      const updated = sessions.filter(s => s.id !== sessionId);
-      setSessions(updated);
-      showToast('🗑️ Conversación eliminada');
-
-      // Si borramos la conversación actual, cambiar a la siguiente o crear una
-      if (currentSessionId === sessionId) {
-        if (updated.length > 0) {
-          handleSelectSession(updated[0].id);
-        } else {
-          handleNewSession();
-        }
-      }
-    } else {
-      showToast('⚠️ No se pudo eliminar la conversación');
-    }
-  };
-
-  const handleLinkRider = async (sessionId: string, riderId: string | null) => {
-    const success = await chatService.linkRider(sessionId, riderId);
-    if (success) {
-      await loadSessionsList();
-      showToast(riderId ? '🔗 Rider vinculado a la conversación' : 'Rider desvinculado');
-    } else {
-      showToast('⚠️ No se pudo actualizar el vínculo');
-    }
-  };
-
-  const handleCreateAndLinkRider = async (artistName: string, type: RiderType = 'tecnico'): Promise<string | null> => {
-    try {
-      const blank = Rider.createBlank(type);
-      const cleanArtist = artistName.trim() || 'Nuevo Artista / Banda';
-      blank.artistName = cleanArtist;
-      blank.title = `Rider ${type === 'tecnico' ? 'Técnico de Audio' : type === 'hospitality' ? 'de Hospitality' : 'de Seguridad'} - ${cleanArtist}`;
-
-      const saved = await riderService.save(blank);
-      if (saved && saved.id) {
-        if (currentSessionId) {
-          await chatService.linkRider(currentSessionId, saved.id);
-        }
-        await loadSessionsList();
-        const list = await riderService.getAll();
-        setAvailableRiders(list.map(r => ({ id: r.id, title: r.title, artist: r.artistName, type: r.type })));
-        showToast(`✨ Rider "${saved.artistName}" creado y vinculado`);
-        return saved.id;
-      }
-    } catch (err) {
-      console.error('Error creating rider from chat:', err);
-      showToast('⚠️ Error al crear el nuevo rider');
-    }
-    return null;
-  };
-
-  const handleSendMessage = async (text: string) => {
-    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const userMsg: ChatMessageItem = { sender: 'user', text, time: now };
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
-    setIsAgentThinking(true);
-
-    const activeSession = sessions.find(s => s.id === currentSessionId);
-
-    try {
-      const data = await chatService.sendMessage({
-        messages: updatedMessages.map(m => ({
-          role: m.sender === 'user' ? 'user' : 'assistant',
-          content: m.text
-        })),
-        riderType: activeSession?.riderInfo?.riderType || 'tecnico',
-        activeAgent,
-        sessionId: currentSessionId || undefined,
-        riderId: activeSession?.riderId || undefined
-      });
-
-      const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const aiMsg: ChatMessageItem = {
-        sender: 'ai',
-        text: data.message || 'Entendido. Procesando requerimiento.',
-        time: replyTime,
-        role: activeAgent,
-        roleName: data.roleName || AGENT_PROFILES[activeAgent].name,
-        roleAvatar: data.roleAvatar || '🧠'
-      };
-      setMessages(prev => [...prev, aiMsg]);
-
-      // Si el backend devolvió un sessionId que difiere del actual, sincronizar
-      if (data.sessionId && data.sessionId !== currentSessionId) {
-        setCurrentSessionId(data.sessionId);
-        router.replace(`/chat?session=${data.sessionId}`);
-      }
-
-      // Actualizar inmediatamente la lista de sesiones para reflejar el título actualizado
-      const refreshed = await chatService.getSessions();
-      setSessions(refreshed);
-    } catch (err) {
-      console.error(err);
-      const errTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: 'Error de comunicación con el agente. Por favor verifica tu conexión.',
-          time: errTime,
-          role: activeAgent,
-          roleName: AGENT_PROFILES[activeAgent].name
-        }
-      ]);
-    } finally {
-      setIsAgentThinking(false);
-    }
-  };
+  let messages: ChatMessageItem[] = [];
+  if (activeSessionId) {
+    const rawMessages = await getChatMessages(activeSessionId);
+    messages = rawMessages.map((m) => ({
+      id: m.id,
+      text: m.content || '',
+      sender: (m.role === 'user' ? 'user' : 'ai') as 'user' | 'ai',
+      time: m.created_at
+        ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : '',
+      role: (m.agent_role as 'master' | 'audio_foh' | 'hospitality' | 'security') || 'master',
+      roleName: m.role_name || 'Agente de Producción',
+      roleAvatar: m.role_avatar || '🧠'
+    }));
+  }
 
   return (
-    <div className="h-screen max-h-screen overflow-hidden bg-[#f8f9fa] text-zinc-900 flex flex-col font-sans select-none antialiased">
-      <Toast message={toastMessage} />
-      
-      <Header pageType="chat" />
-
-      <ChatView
-        sessions={sessions}
-        currentSessionId={currentSessionId}
-        onSelectSession={handleSelectSession}
-        onNewSession={handleNewSession}
-        onDeleteSession={handleDeleteSession}
-        activeAgent={activeAgent}
-        onSelectAgent={(role) => setActiveAgent(role)}
-        messages={messages}
-        isThinking={isThinking}
-        onSendMessage={handleSendMessage}
-        availableRiders={availableRiders}
-        onLinkRider={handleLinkRider}
-        onCreateRider={handleCreateAndLinkRider}
-      />
-    </div>
+    <ChatClient
+      initialSessions={sessions}
+      initialSessionId={activeSessionId}
+      initialMessages={messages}
+      initialAvailableRiders={availableRiders}
+      initialPrompt={promptParam ? decodeURIComponent(promptParam) : null}
+    />
   );
 }
 
-export default function ChatPage() {
+export default function ChatPage(props: PageProps) {
   return (
     <Suspense fallback={
       <div className="h-screen flex items-center justify-center bg-[#f8f9fa] text-slate-500 font-bold text-sm">
@@ -308,7 +98,7 @@ export default function ChatPage() {
         Cargando chat de producción...
       </div>
     }>
-      <ChatPageContent />
+      <ChatServer {...props} />
     </Suspense>
   );
 }

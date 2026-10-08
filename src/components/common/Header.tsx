@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { Icon } from './Icon';
 import { RiderType } from '@/core/types/rider.types';
@@ -20,6 +19,8 @@ interface HeaderProps {
   onExport?: () => void;
   onOpenStagePlot?: () => void;
   onShare?: () => void;
+  chatSessionId?: string | null;
+  riderId?: string | null;
 }
 
 export function Header({
@@ -34,20 +35,31 @@ export function Header({
   dbSyncStatus = 'idle',
   onExport,
   onOpenStagePlot,
-  onShare
+  chatSessionId,
+  riderId
 }: HeaderProps) {
-  const router = useRouter();
 
   return (
-    <header className="h-16 px-6 sm:px-10 flex items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md sticky top-0 z-40 shrink-0">
-      <div className="flex items-center gap-4">
+    <header className="h-16 px-3 sm:px-6 md:px-10 flex items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md sticky top-0 z-40 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+        {/* Back button móvil */}
+        {pageType !== 'landing' && (
+          <Link
+            href="/"
+            className="md:hidden w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 active:scale-95 transition-all"
+            title="Volver al inicio"
+          >
+            <Icon name="arrowLeft" className="w-4 h-4" />
+          </Link>
+        )}
+
         {/* Logo */}
         <Link 
           href="/"
-          className="flex items-center gap-2.5 group active:scale-95 transition-transform"
+          className="flex items-center gap-2 group active:scale-95 transition-transform shrink-0"
         >
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-violet-500/25 group-hover:scale-105 transition-transform shrink-0 ring-2 ring-white/80">
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-violet-500/25 group-hover:scale-105 transition-transform shrink-0 ring-2 ring-white/80">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 4.5H12.5C14.9853 4.5 17 6.51472 17 9C17 11.4853 14.9853 13.5 12.5 13.5H6V4.5Z" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M6 13.5V19.5" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"/>
               <path d="M12 13.5L17.5 19.5" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -55,18 +67,18 @@ export function Header({
             </svg>
           </div>
           <div className="flex flex-col leading-none">
-            <div className="flex items-center gap-1">
-              <span className="font-black text-lg tracking-tight text-slate-900">Rider</span>
-              <span className="font-black text-lg tracking-tight bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent font-bold">Studio</span>
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <span className="font-black text-base sm:text-lg tracking-tight text-slate-900">Rider</span>
+              <span className="font-black text-base sm:text-lg tracking-tight bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent font-bold">Studio</span>
               <span className="w-1.5 h-1.5 rounded-full bg-violet-600 ml-0.5 animate-pulse" />
             </div>
-            <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase mt-0.5">
+            <span className="hidden sm:block text-[9px] font-bold text-slate-400 tracking-wider uppercase mt-0.5">
               Stage & Production Intelligence
             </span>
           </div>
         </Link>
 
-        {/* Breadcrumb / Back button */}
+        {/* Breadcrumb / Back button Desktop */}
         {pageType !== 'landing' && (
           <div className="hidden md:flex items-center gap-2 ml-4 pl-4 border-l border-slate-200">
             <Link
@@ -83,8 +95,8 @@ export function Header({
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* Rider Type Selector Pills in Header (Workspace only) */}
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        {/* Rider Type Selector Pills in Header (Workspace desktop only) */}
         {pageType === 'workspace' && onSelectRiderType && (
           <div className="hidden lg:flex items-center bg-slate-100/80 p-1 rounded-full border border-slate-200/60 mr-2">
             {(['tecnico', 'hospitality', 'seguridad'] as RiderType[]).map((type) => {
@@ -117,14 +129,14 @@ export function Header({
         {/* Indicador de progreso del Rider (Workspace only) */}
         {pageType === 'workspace' && (
           <div className="hidden sm:flex items-center gap-2.5 bg-slate-100/80 px-3 py-1.5 rounded-full border border-slate-200/60 text-xs">
-            <div className="w-20 bg-slate-200 h-1.5 rounded-full overflow-hidden">
+            <div className="w-16 md:w-20 bg-slate-200 h-1.5 rounded-full overflow-hidden">
               <div 
                 className="bg-emerald-500 h-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <span className="font-bold text-slate-700">
-              {completedCount} de {totalCount} secciones
+            <span className="font-bold text-slate-700 whitespace-nowrap">
+              {completedCount} de {totalCount}
             </span>
           </div>
         )}
@@ -134,7 +146,7 @@ export function Header({
           <button
             onClick={onSaveRider}
             disabled={isSaving}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs ${
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs ${
               dbSyncStatus === 'saved'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
                 : dbSyncStatus === 'error'
@@ -146,12 +158,12 @@ export function Header({
             {isSaving ? (
               <>
                 <span className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                <span>Guardando...</span>
+                <span className="hidden sm:inline">Guardando...</span>
               </>
             ) : dbSyncStatus === 'saved' ? (
               <>
                 <Icon name="check" className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Guardado</span>
+                <span className="hidden sm:inline">Guardado</span>
               </>
             ) : dbSyncStatus === 'error' ? (
               <>
@@ -160,7 +172,8 @@ export function Header({
             ) : (
               <>
                 <Icon name="database" className="w-3.5 h-3.5 text-violet-600" />
-                <span>Guardar Raider</span>
+                <span className="hidden sm:inline">Guardar Raider</span>
+                <span className="sm:hidden">Guardar</span>
               </>
             )}
           </button>
@@ -169,8 +182,9 @@ export function Header({
         {/* Botón Acceso Rápido al Chat */}
         {pageType === 'workspace' && (
           <Link
-            href="/chat"
+            href={chatSessionId ? `/chat?session=${chatSessionId}` : riderId ? `/chat?riderId=${riderId}` : '/chat'}
             className="hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200/60 hover:bg-violet-100 transition-all active:scale-95"
+            title="Abrir asistente de chat completo"
           >
             <Icon name="messageSquare" className="w-3.5 h-3.5" />
             <span>Chat IA</span>
@@ -179,7 +193,7 @@ export function Header({
 
         {/* Acciones principales de Workspace */}
         {pageType === 'workspace' && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             {onOpenStagePlot && (
               <button 
                 onClick={onOpenStagePlot}
@@ -193,17 +207,18 @@ export function Header({
             {onExport && (
               <button 
                 onClick={onExport}
-                className="bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1.5 active:scale-95"
+                className="bg-violet-600 hover:bg-violet-700 text-white px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1.5 active:scale-95"
               >
                 <Icon name="download" className="w-3.5 h-3.5" />
-                <span>Exportar PDF</span>
+                <span className="hidden sm:inline">Exportar PDF</span>
+                <span className="sm:hidden">PDF</span>
               </button>
             )}
           </div>
         )}
 
         {/* User Avatar */}
-        <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center border-2 border-white shadow-xs">
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-[11px] sm:text-xs flex items-center justify-center border-2 border-white shadow-xs shrink-0">
           NS
         </div>
       </div>

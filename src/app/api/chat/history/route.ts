@@ -4,6 +4,7 @@ import {
   getOrCreateChatSession,
   saveChatMessage
 } from '@/lib/services/rider-storage';
+import { SaveChatMessageSchema } from '@/lib/validations/chat.schema';
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const messages = await getChatMessages(sessionId);
     return NextResponse.json({ messages });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API Chat History GET Error]', error);
     return NextResponse.json({ error: 'Error al obtener mensajes' }, { status: 500 });
   }
@@ -24,26 +25,31 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { sessionId, role, agentRole, roleName, roleAvatar, content, actions } = body;
+    const rawBody = await req.json().catch(() => ({}));
+    const parsed = SaveChatMessageSchema.safeParse(rawBody);
 
-    if (!content) {
-      return NextResponse.json({ error: 'El contenido del mensaje es requerido' }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Datos de mensaje inválidos', details: parsed.error.format() },
+        { status: 400 }
+      );
     }
+
+    const { sessionId, role, agentRole, roleName, roleAvatar, content, actions } = parsed.data;
 
     const session = await getOrCreateChatSession(sessionId);
     const saved = await saveChatMessage({
       sessionId: session.id,
       role: role || 'user',
-      agentRole,
-      roleName,
-      roleAvatar,
+      agentRole: agentRole || null,
+      roleName: roleName || null,
+      roleAvatar: roleAvatar || null,
       content,
-      actions: actions || []
+      actions: (actions || []) as unknown as Parameters<typeof saveChatMessage>[0]['actions']
     });
 
     return NextResponse.json({ message: saved, sessionId: session.id, success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API Chat History POST Error]', error);
     return NextResponse.json({ error: 'Error al guardar mensaje' }, { status: 500 });
   }

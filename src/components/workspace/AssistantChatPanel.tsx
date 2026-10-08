@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'motion/react';
 import { Icon } from '../common/Icon';
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
@@ -18,6 +17,8 @@ interface AssistantChatPanelProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   rider?: Rider;
+  sessionId?: string | null;
+  sessionTitle?: string | null;
 }
 
 export function AssistantChatPanel({
@@ -28,7 +29,9 @@ export function AssistantChatPanel({
   onSendMessage,
   isCollapsed,
   onToggleCollapse,
-  rider
+  rider,
+  sessionId,
+  sessionTitle
 }: AssistantChatPanelProps) {
   const [inputText, setInputText] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -54,9 +57,10 @@ export function AssistantChatPanel({
   const profile = AGENT_PROFILES[activeAgent];
   const info = AGENT_INFO[activeAgent];
 
+  // En escritorio, si está colapsado muestra una tira delgada. En móvil no se colapsa (se cambia con pestañas).
   if (isCollapsed) {
     return (
-      <div className="w-14 border-l border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col items-center py-4 justify-between shrink-0 select-none">
+      <div className="hidden xl:flex w-14 border-l border-slate-200/80 bg-white/70 backdrop-blur-md flex-col items-center py-4 justify-between shrink-0 select-none">
         <button
           onClick={onToggleCollapse}
           className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer"
@@ -78,10 +82,10 @@ export function AssistantChatPanel({
   }
 
   return (
-    <aside className="w-96 border-l border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 select-none">
+    <aside className="w-full xl:w-96 xl:border-l border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden select-none">
       {/* Header del Copilot */}
-      <div className="p-4 border-b border-slate-200/60">
-        <div className="flex items-center justify-between mb-3">
+      <div className="p-3.5 sm:p-4 border-b border-slate-200/60 shrink-0">
+        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
           <div className="flex items-center gap-2">
             <span className="text-base">{info.icon}</span>
             <div>
@@ -95,29 +99,29 @@ export function AssistantChatPanel({
           </div>
           <button
             onClick={onToggleCollapse}
-            className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
+            className="hidden xl:flex p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
             title="Colapsar asistente"
           >
             <Icon name="panelRightClose" className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Indicador de vinculación con el Rider actual */}
+        {/* Indicador de vinculación con el Rider actual y Conversación */}
         {rider && (
           <div className="mb-2.5 px-3 py-2 bg-violet-50/90 border border-violet-200/70 rounded-2xl flex items-center justify-between gap-2 shadow-2xs">
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-xs shrink-0">🎸</span>
               <div className="truncate">
                 <span className="block text-[9px] font-black uppercase text-violet-600 leading-none">
-                  Vinculado a este Rider
+                  {sessionId ? 'Conversación & Rider Vinculados' : 'Vinculado a este Rider'}
                 </span>
                 <span className="block text-xs font-bold text-slate-800 truncate leading-tight mt-0.5">
-                  {rider.artistName}
+                  {sessionTitle ? `${rider.artistName} · ${sessionTitle}` : rider.artistName}
                 </span>
               </div>
             </div>
             <Link
-              href={rider.id ? `/chat?riderId=${rider.id}` : '/chat'}
+              href={sessionId ? `/chat?session=${sessionId}` : rider.id ? `/chat?riderId=${rider.id}` : '/chat'}
               className="text-[10px] font-bold text-violet-700 hover:text-violet-900 bg-white hover:bg-violet-100 px-2.5 py-1 rounded-xl border border-violet-200/60 transition-colors shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
               title="Abrir esta conversación en pantalla completa"
             >
@@ -158,21 +162,21 @@ export function AssistantChatPanel({
       </div>
 
       {/* Flujo de Mensajes */}
-      <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-3.5">
+      <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5 overscroll-contain">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-400">
-            <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-xl">
+          <div className="h-full flex flex-col items-center justify-center text-center p-4 sm:p-6 space-y-3 text-slate-400">
+            <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-xl shadow-xs">
               {info.icon}
             </div>
             <div>
               <h4 className="text-xs font-black text-slate-700">
                 {profile.name}
               </h4>
-              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed max-w-xs mx-auto">
                 {profile.desc}
               </p>
             </div>
-            <div className="w-full pt-2 space-y-1.5 text-left">
+            <div className="w-full pt-2 space-y-1.5 text-left max-w-sm mx-auto">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                 Sugerencias rápidas:
               </span>
@@ -206,7 +210,7 @@ export function AssistantChatPanel({
                   className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
                     isAi
                       ? 'bg-white border border-slate-200/80 text-slate-800 shadow-xs'
-                      : 'bg-violet-600 text-white font-medium'
+                      : 'bg-violet-600 text-white font-medium shadow-xs'
                   }`}
                 >
                   {isAi && m.roleName && (
@@ -234,15 +238,15 @@ export function AssistantChatPanel({
         )}
       </div>
 
-      {/* Input de Chat */}
-      <form onSubmit={handleSubmit} className="p-3 border-t border-slate-200/60 bg-white/50">
+      {/* Input de Chat con padding inferior para no solapar la barra de navegación móvil */}
+      <form onSubmit={handleSubmit} className="p-3 border-t border-slate-200/60 bg-white/50 shrink-0 pb-20 xl:pb-3">
         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-1.5 focus-within:border-violet-500 focus-within:bg-white transition-all">
           <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder={`Consulta a ${profile.name}...`}
-            className="flex-1 bg-transparent text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 outline-none font-medium"
+            className="flex-1 bg-transparent text-base sm:text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 outline-none font-medium"
             disabled={isThinking}
           />
           <button

@@ -81,7 +81,7 @@ export function RecentChatsCard({
                     <button
                       type="button"
                       onClick={(e) => onDeleteConversation(c.id, e)}
-                      className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all cursor-pointer"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all cursor-pointer"
                       title="Eliminar conversación"
                     >
                       <Icon name="trash" className="w-3.5 h-3.5" />

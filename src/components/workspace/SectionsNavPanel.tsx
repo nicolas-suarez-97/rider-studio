@@ -1,9 +1,9 @@
 "use client";
 
 import React from 'react';
-import { motion, Reorder } from 'motion/react';
+import { Reorder } from 'motion/react';
 import { Icon } from '../common/Icon';
-import { SectionItem } from '@/core/types/rider.types';
+import { SectionItem, RiderType } from '@/core/types/rider.types';
 
 interface SectionsNavPanelProps {
   docHeaderTitle: string;
@@ -19,6 +19,11 @@ interface SectionsNavPanelProps {
   onOpenAddSection: () => void;
   onResetBlank: () => void;
   progressPercent: number;
+  onSaveRider?: () => void;
+  isSaving?: boolean;
+  dbSyncStatus?: 'idle' | 'saving' | 'saved' | 'error';
+  riderType?: RiderType;
+  onSelectRiderType?: (type: RiderType) => void;
 }
 
 export function SectionsNavPanel({
@@ -34,42 +39,76 @@ export function SectionsNavPanel({
   onToggleComplete,
   onOpenAddSection,
   onResetBlank,
-  progressPercent
+  progressPercent,
+  onSaveRider,
+  isSaving = false,
+  dbSyncStatus = 'idle',
+  riderType = 'tecnico',
+  onSelectRiderType
 }: SectionsNavPanelProps) {
   return (
-    <aside className="w-80 border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 select-none">
+    <aside className="w-full xl:w-80 xl:border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden">
+      {/* Selector de Plantilla de Rider (especialmente útil en móviles donde el Header colapsa opciones) */}
+      {onSelectRiderType && (
+        <div className="xl:hidden p-3 border-b border-slate-200/60 bg-slate-50/50">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 px-1">
+            Plantilla Activa:
+          </span>
+          <div className="grid grid-cols-3 gap-1.5 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/60">
+            {(['tecnico', 'hospitality', 'seguridad'] as RiderType[]).map((t) => {
+              const active = riderType === t;
+              const titles = { tecnico: 'Técnico', hospitality: 'Hospitality', seguridad: 'Seguridad' };
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => onSelectRiderType(t)}
+                  className={`py-1.5 text-xs font-bold rounded-xl transition-all text-center cursor-pointer ${
+                    active
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {titles[t]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Header del Outline */}
-      <div className="p-4 border-b border-slate-200/60">
-        <div className="flex items-center justify-between mb-3">
+      <div className="p-3.5 sm:p-4 border-b border-slate-200/60 shrink-0">
+        <div className="flex items-center justify-between mb-2.5">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Índice de Secciones
           </span>
-          <span className="text-[11px] font-extrabold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full border border-violet-100">
+          <span className="text-[11px] font-extrabold text-violet-600 bg-violet-50 px-2.5 py-0.5 rounded-full border border-violet-100">
             {progressPercent}% Completado
           </span>
         </div>
 
-        {/* Artista y Temporada Editables */}
-        <div className="space-y-1 bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/60">
+        {/* Artista y Temporada Editables (fuente >= 16px en móvil para evitar zoom involuntario en iOS) */}
+        <div className="space-y-1 bg-slate-50/80 p-2 sm:p-2.5 rounded-2xl border border-slate-200/60">
           <input
             type="text"
             value={docHeaderTitle}
             onChange={(e) => setDocHeaderTitle(e.target.value)}
-            className="w-full bg-transparent text-sm font-black text-slate-800 outline-none hover:bg-white focus:bg-white px-2 py-1 rounded-xl transition-all"
+            className="w-full bg-transparent text-base sm:text-sm font-black text-slate-800 outline-none hover:bg-white focus:bg-white px-2.5 py-1 rounded-xl transition-all"
             placeholder="Nombre del Artista / Banda"
           />
           <input
             type="text"
             value={docHeaderSeason}
             onChange={(e) => setDocHeaderSeason(e.target.value)}
-            className="w-full bg-transparent text-xs font-semibold text-slate-400 outline-none hover:bg-white focus:bg-white px-2 py-1 rounded-xl transition-all"
+            className="w-full bg-transparent text-sm sm:text-xs font-semibold text-slate-400 outline-none hover:bg-white focus:bg-white px-2.5 py-1 rounded-xl transition-all"
             placeholder="Temporada o Gira"
           />
         </div>
       </div>
 
       {/* Lista de Secciones Reordenables */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+      <div className="flex-1 overflow-y-auto p-3 space-y-1 overscroll-contain">
         <Reorder.Group 
           axis="y" 
           values={sections} 
@@ -86,23 +125,26 @@ export function SectionsNavPanel({
                 value={section}
                 className={`group relative p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 ${
                   isActive
-                    ? 'bg-violet-50/70 border-violet-200 shadow-xs'
+                    ? 'bg-violet-50/70 border-violet-200 shadow-xs ring-1 ring-violet-200/60'
                     : 'bg-white hover:bg-slate-50/80 border-slate-200/70'
                 }`}
                 onClick={() => onSelectSection(section.id)}
               >
-                {/* Drag Handle Icon */}
-                <div className="text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing">
+                {/* Drag Handle con touch-none para permitir scroll natural en móvil */}
+                <div 
+                  className="text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing touch-none p-1 shrink-0"
+                  title="Arrastrar para reordenar"
+                >
                   <Icon name="grip" className="w-3.5 h-3.5" />
                 </div>
 
                 {/* Número y Título */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-slate-400">
+                    <span className="text-[10px] font-black text-slate-400 shrink-0">
                       {section.num}
                     </span>
-                    <h4 className="text-xs font-bold text-slate-800 truncate">
+                    <h4 className="text-xs sm:text-xs font-bold text-slate-800 truncate">
                       {section.title}
                     </h4>
                   </div>
@@ -111,18 +153,18 @@ export function SectionsNavPanel({
                   </p>
                 </div>
 
-                {/* Botón de Completado */}
+                {/* Botón de Completado táctil (mínimo 32px para dedos) */}
                 <button
                   type="button"
                   onClick={(e) => onToggleComplete(section.id, e)}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                  className={`w-8 h-8 sm:w-6 sm:h-6 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
                     isCompleted
-                      ? 'bg-emerald-500 text-white'
+                      ? 'bg-emerald-500 text-white shadow-xs'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-400'
                   }`}
                   title={isCompleted ? 'Marcado como completo' : 'Marcar como completado'}
                 >
-                  <Icon name="check" className="w-3.5 h-3.5" />
+                  <Icon name="check" className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                 </button>
               </Reorder.Item>
             );
@@ -131,10 +173,39 @@ export function SectionsNavPanel({
       </div>
 
       {/* Acciones Inferiores del Panel */}
-      <div className="p-3 border-t border-slate-200/60 bg-white/50 space-y-2">
+      <div className="p-3 border-t border-slate-200/60 bg-white/50 space-y-2 shrink-0 pb-20 xl:pb-3">
+        {onSaveRider && (
+          <button
+            onClick={onSaveRider}
+            disabled={isSaving}
+            className={`w-full py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer shadow-sm disabled:opacity-60 ${
+              dbSyncStatus === 'saved'
+                ? 'bg-emerald-600 text-white shadow-emerald-500/20'
+                : 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/20'
+            }`}
+          >
+            {isSaving ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Guardando...</span>
+              </>
+            ) : dbSyncStatus === 'saved' ? (
+              <>
+                <Icon name="check" className="w-3.5 h-3.5" />
+                <span>Rider Guardado</span>
+              </>
+            ) : (
+              <>
+                <Icon name="database" className="w-3.5 h-3.5" />
+                <span>Guardar Rider</span>
+              </>
+            )}
+          </button>
+        )}
+
         <button
           onClick={onOpenAddSection}
-          className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+          className="w-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
         >
           <Icon name="plus" className="w-3.5 h-3.5" />
           <span>Añadir Nueva Sección</span>

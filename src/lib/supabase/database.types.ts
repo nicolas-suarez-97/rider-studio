@@ -12,6 +12,7 @@ export interface Database {
       riders: {
         Row: {
           id: string;
+          user_id?: string | null;
           title: string;
           artist_name: string;
           rider_type: string;
@@ -27,6 +28,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id?: string | null;
           title: string;
           artist_name: string;
           rider_type?: string;
@@ -42,6 +44,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string | null;
           title?: string;
           artist_name?: string;
           rider_type?: string;
@@ -55,10 +58,12 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       chat_sessions: {
         Row: {
           id: string;
+          user_id?: string | null;
           rider_id: string | null;
           title: string;
           active_agent: string;
@@ -67,6 +72,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id?: string | null;
           rider_id?: string | null;
           title?: string;
           active_agent?: string;
@@ -75,12 +81,22 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string | null;
           rider_id?: string | null;
           title?: string;
           active_agent?: string;
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_rider_id_fkey";
+            columns: ["rider_id"];
+            isOneToOne: false;
+            referencedRelation: "riders";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       chat_messages: {
         Row: {
@@ -116,7 +132,20 @@ export interface Database {
           actions?: Json;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: false;
+            referencedRelation: "chat_sessions";
+            referencedColumns: ["id"];
+          }
+        ];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }

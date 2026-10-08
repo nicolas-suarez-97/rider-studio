@@ -1,6 +1,6 @@
 import { ChatMessage } from '../models/ChatConversation';
 import { ChatSessionSummary } from '../types/chat.types';
-import { AgentRole } from '../types/agent.types';
+import { AgentRole, AgentResponse } from '../types/agent.types';
 import { RiderType } from '../types/rider.types';
 
 export interface SendMessageParams {
@@ -15,9 +15,23 @@ export interface IChatService {
   getSessions(): Promise<ChatSessionSummary[]>;
   createSession(params?: { title?: string; riderId?: string; activeAgent?: string }): Promise<ChatSessionSummary>;
   getHistory(sessionId: string): Promise<ChatMessage[]>;
-  sendMessage(params: SendMessageParams): Promise<any>;
+  sendMessage(params: SendMessageParams): Promise<AgentResponse>;
   deleteSession(sessionId: string): Promise<boolean>;
   linkRider(sessionId: string, riderId: string | null): Promise<boolean>;
+}
+
+interface RawSessionResponse {
+  id: string;
+  title?: string;
+  updated_at?: string;
+  created_at?: string;
+  rider_id?: string | null;
+  riders?: {
+    id: string;
+    title: string;
+    artist_name: string;
+    rider_type: RiderType;
+  } | null;
 }
 
 export class ChatService implements IChatService {
@@ -27,10 +41,10 @@ export class ChatService implements IChatService {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (Array.isArray(data.sessions)) {
-        return data.sessions.map((s: any, idx: number) => ({
+        return (data.sessions as RawSessionResponse[]).map((s, idx: number) => ({
           id: s.id,
           title: s.title || 'Consulta de Producción',
-          date: new Date(s.updated_at || s.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+          date: new Date(s.updated_at || s.created_at || '').toLocaleDateString([], { month: 'short', day: 'numeric' }),
           active: idx === 0,
           riderId: s.rider_id || null,
           riderInfo: s.riders ? {
@@ -71,11 +85,11 @@ export class ChatService implements IChatService {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const s = data.session;
+      const s: RawSessionResponse = data.session;
       return {
         id: s.id,
         title: s.title || 'Nueva Consulta de Producción',
-        date: new Date(s.updated_at || s.created_at || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+        date: new Date(s.updated_at || s.created_at || new Date().toISOString()).toLocaleDateString([], { month: 'short', day: 'numeric' }),
         active: true,
         riderId: s.rider_id || null,
         riderInfo: s.riders ? {
@@ -104,7 +118,7 @@ export class ChatService implements IChatService {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (Array.isArray(data.messages)) {
-        return data.messages.map((m: any) => ChatMessage.fromApi(m));
+        return (data.messages as Parameters<typeof ChatMessage.fromApi>[0][]).map((m) => ChatMessage.fromApi(m));
       }
       return [];
     } catch (err) {
@@ -113,7 +127,7 @@ export class ChatService implements IChatService {
     }
   }
 
-  public async sendMessage(params: SendMessageParams): Promise<any> {
+  public async sendMessage(params: SendMessageParams): Promise<AgentResponse> {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

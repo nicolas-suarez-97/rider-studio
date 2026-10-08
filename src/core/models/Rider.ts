@@ -51,7 +51,7 @@ export class Rider {
     );
     this.completedSectionIds = params.completedSectionIds || [];
     this.linkedSessions = params.linkedSessions || [];
-    this.updatedAt = params.updatedAt || new Date().toISOString();
+    this.updatedAt = params.updatedAt || '';
   }
 
   /**
@@ -84,37 +84,58 @@ export class Rider {
   /**
    * Crea una instancia de dominio desde un registro de base de datos
    */
-  public static fromDatabase(row: any): Rider {
+  public static fromDatabase(row: {
+    id?: string;
+    title?: string;
+    artist_name?: string;
+    rider_type?: string;
+    venue_name?: string | null;
+    version?: string;
+    status?: string;
+    channels?: unknown;
+    sections?: unknown;
+    metadata?: unknown;
+    chat_sessions?: Array<{
+      id: string;
+      title: string;
+      updated_at?: string;
+      active_agent?: string;
+    }>;
+    created_at?: string;
+    updated_at?: string;
+  }): Rider {
     const rType: RiderType = (row.rider_type as RiderType) || 'tecnico';
-    const channels = Array.isArray(row.channels) ? row.channels : [];
+    const channels = Array.isArray(row.channels) ? (row.channels as ChannelData[]) : [];
     const sections = Array.isArray(row.sections) && row.sections.length > 0
-      ? row.sections
+      ? (row.sections as SectionItem[])
       : RIDER_DATA[rType]?.sections || [];
 
     const linkedSessions: LinkedChatSession[] = Array.isArray(row.chat_sessions)
-      ? row.chat_sessions.map((cs: any) => ({
+      ? row.chat_sessions.map((cs) => ({
           id: cs.id,
           title: cs.title,
           updatedAt: cs.updated_at
         }))
       : [];
 
+    const meta = row.metadata as { season?: string; completedSectionIds?: string[] } | undefined;
+
     return new Rider({
       id: row.id,
       title: row.title || RIDER_DATA[rType]?.title || 'Rider',
       artistName: row.artist_name || '',
       type: rType,
-      season: row.metadata?.season || '',
+      season: meta?.season || '',
       venue: row.venue_name || '',
       version: row.version || 'v1.0',
       status: row.status === 'completed' ? 'completed' : 'in_progress',
       sections,
       channels,
-      completedSectionIds: Array.isArray(row.metadata?.completedSectionIds)
-        ? row.metadata.completedSectionIds
+      completedSectionIds: Array.isArray(meta?.completedSectionIds)
+        ? meta.completedSectionIds
         : [],
       linkedSessions,
-      updatedAt: row.updated_at || row.created_at || new Date().toISOString()
+      updatedAt: row.updated_at || row.created_at || ''
     });
   }
 
@@ -190,14 +211,14 @@ export class Rider {
    */
   public toDatabasePayload(): object {
     return {
-      id: this.id && !this.id.startsWith('r-') ? this.id : undefined,
-      title: this.title,
-      artist_name: this.artistName.trim() || 'Rider sin título',
+      id: this.id && !this.id.startsWith('r-') && !this.id.startsWith('custom-') ? this.id : undefined,
+      title: this.title || 'Rider de Producción',
+      artist_name: this.artistName?.trim() || 'Nuevo Artista / Banda',
       rider_type: this.type,
       venue_name: this.venue ? this.venue.trim() : null,
-      version: this.version,
-      status: this.status,
-      channels: this.channels.map(c => c.toJSON()),
+      version: this.version || 'v1.0',
+      status: this.status || 'in_progress',
+      channels: this.channels.map(c => (typeof c?.toJSON === 'function' ? c.toJSON() : c)),
       sections: this.sections,
       metadata: {
         season: this.season,

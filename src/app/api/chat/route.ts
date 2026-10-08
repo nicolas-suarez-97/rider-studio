@@ -1,33 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  AgentRole,
   SYSTEM_PROMPTS,
   AGENT_PROFILES,
   generateExpertAgentResponse
 } from '@/lib/agents/rider-agent';
+import { AgentResponse } from '@/core/types/agent.types';
 import {
   getOrCreateChatSession,
   saveChatMessage
 } from '@/lib/services/rider-storage';
+import { SendChatMessageSchema } from '@/lib/validations/chat.schema';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const rawBody = await req.json().catch(() => null);
+    const parsed = SendChatMessageSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Datos de mensaje inválidos', details: parsed.error.format() },
+        { status: 400 }
+      );
+    }
+
     const {
-      messages = [],
-      riderType = 'tecnico',
-      activeAgent = 'master',
+      messages,
+      riderType,
+      activeAgent,
       sessionId,
       riderId
-    }: {
-      messages: { role: string; content?: string; text?: string }[];
-      riderType: 'tecnico' | 'hospitality' | 'seguridad';
-      activeAgent: AgentRole;
-      sessionId?: string;
-      riderId?: string;
-    } = body;
+    } = parsed.data;
 
-    const lastMessage = messages[messages.length - 1]?.content || messages[messages.length - 1]?.text || '';
+    const lastMsgObj = messages[messages.length - 1];
+    const lastMessage = lastMsgObj?.content || lastMsgObj?.text || '';
     const systemPrompt = SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master;
     const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
 
@@ -55,7 +60,7 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.AI_GATEWAY_API_KEY;
     const baseUrl = process.env.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1';
 
-    let finalResponse: any = null;
+    let finalResponse: AgentResponse | null = null;
 
     // 3. Intentar llamar a Vercel AI Gateway si hay API key configurada
     if (apiKey) {
@@ -70,8 +75,8 @@ export async function POST(req: NextRequest) {
             model: 'openai/gpt-4o-mini',
             messages: [
               { role: 'system', content: `${systemPrompt}\n\nContexto actual: El usuario está editando un Rider de tipo: "${riderType}".` },
-              ...messages.map((m: any) => ({
-                role: m.role === 'ai' ? 'assistant' : m.role === 'user' ? 'user' : 'user',
+              ...messages.map((m) => ({
+                role: m.role === 'ai' ? 'assistant' : 'user',
                 content: m.content || m.text || ''
               }))
             ],
@@ -81,7 +86,9 @@ export async function POST(req: NextRequest) {
         });
 
         if (response.ok) {
-          const data = await response.json();
+          const data = (await response.json()) as {
+            choices?: Array<{ message?: { content?: string } }>;
+          };
           const replyText = data.choices?.[0]?.message?.content || 'Entendido.';
 
           finalResponse = {
@@ -123,13 +130,13 @@ export async function POST(req: NextRequest) {
         roleName: finalResponse.roleName,
         roleAvatar: finalResponse.roleAvatar,
         content: finalResponse.message,
-        actions: finalResponse.actions || []
+        actions: (finalResponse.actions || []) as unknown as Parameters<typeof saveChatMessage>[0]['actions']
       }).catch(err => console.warn('[Error saving assistant message]', err));
     }
 
     return NextResponse.json(finalResponse);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API Chat Error]', error);
     return NextResponse.json(
       { error: 'Error interno al procesar el mensaje con el agente de IA' },

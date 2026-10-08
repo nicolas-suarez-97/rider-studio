@@ -16,7 +16,7 @@ export class RiderService implements IRiderService {
       if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
       const data = await res.json();
       if (Array.isArray(data.riders)) {
-        return data.riders.map((r: any) => Rider.fromDatabase(r));
+        return data.riders.map((r: Parameters<typeof Rider.fromDatabase>[0]) => Rider.fromDatabase(r));
       }
       return [];
     } catch (err) {

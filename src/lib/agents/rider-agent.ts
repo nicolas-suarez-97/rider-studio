@@ -1,46 +1,14 @@
-export type AgentRole = 'master' | 'audio_foh' | 'hospitality' | 'security';
+import {
+  AgentRole,
+  AgentAction,
+  AgentResponse,
+  AgentProfile
+} from '@/core/types/agent.types';
+import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
+import { RiderType } from '@/core/types/rider.types';
 
-export interface AgentAction {
-  type: 'update_section' | 'add_input_channel' | 'update_backline' | 'switch_rider_type' | 'update_metadata';
-  payload: any;
-}
-
-export interface AgentResponse {
-  role: AgentRole;
-  roleName: string;
-  roleAvatar: string;
-  message: string;
-  actions?: AgentAction[];
-  gatewayProvider: 'vercel_ai_gateway' | 'production_expert_engine';
-  notice?: string;
-}
-
-export const AGENT_PROFILES: Record<AgentRole, { name: string; title: string; color: string; desc: string }> = {
-  master: {
-    name: 'Master Production Copilot',
-    title: 'Coordinador General de Gira',
-    color: 'from-violet-600 to-indigo-600',
-    desc: 'Supervisa el rider completo, balancea logística y coordina los agentes especializados.'
-  },
-  audio_foh: {
-    name: 'Audio & Stage Engineer',
-    title: 'Especialista en FOH, Monitores y RF',
-    color: 'from-sky-600 to-blue-600',
-    desc: 'Experto en sistemas PA, consolas DiGiCo/Yamaha, microfonía Shure/Sennheiser e Input Lists.'
-  },
-  hospitality: {
-    name: 'Hospitality & Tour Care',
-    title: 'Coordinador de Camerinos y Dietas',
-    color: 'from-amber-600 to-orange-600',
-    desc: 'Cuida el bienestar vocal, catering orgánico, especificaciones de hotel 5★ y transporte VIP.'
-  },
-  security: {
-    name: 'Safety & Crowd Director',
-    title: 'Jefe de Seguridad y Protocolos',
-    color: 'from-emerald-600 to-teal-600',
-    desc: 'Gestiona perímetros de acceso, foso, vallas Mojo certificadas, escolta y planes de contingencia.'
-  }
-};
+export type { AgentRole, AgentAction, AgentResponse, AgentProfile };
+export { AGENT_PROFILES };
 
 export const SYSTEM_PROMPTS: Record<AgentRole, string> = {
   master: `Eres el Master Production Copilot de Rider Studio, una plataforma profesional para eventos en vivo y giras.
@@ -58,146 +26,167 @@ Habla en español con autoridad, claridad y enfoque preventivo.`
 };
 
 /**
- * Motor inteligente de fallback cuando la pasarela requiere verificación de pago.
- * Genera respuestas realistas con acciones de modificación del documento.
+ * Interfaz de Regla de Respuesta de Agente (Open/Closed Principle)
+ * Permite registrar nuevas intenciones o agentes sin modificar la lógica base.
  */
-export function generateExpertAgentResponse(
-  prompt: string,
-  riderType: 'tecnico' | 'hospitality' | 'seguridad',
-  activeAgent: AgentRole
-): AgentResponse {
-  const p = prompt.toLowerCase();
-  const profile = AGENT_PROFILES[activeAgent];
-  const actions: AgentAction[] = [];
+interface AgentResponseRule {
+  id: string;
+  matches: (promptLower: string, currentRiderType: RiderType) => boolean;
+  execute: (promptLower: string, currentRiderType: RiderType) => AgentResponse;
+}
 
-  // 1. Detectar si el usuario pide cambiar el tipo de rider
-  if (p.includes('hospitality') || p.includes('catering') || p.includes('camerino')) {
-    if (riderType !== 'hospitality') {
-      actions.push({ type: 'switch_rider_type', payload: 'hospitality' });
-      return {
-        role: 'hospitality',
-        roleName: AGENT_PROFILES.hospitality.name,
-        roleAvatar: '☕',
-        message: '¡Cambiado al Rider de Hospitality & Catering! He ajustado las 5 secciones dedicadas a camerinos, requerimientos de dietas, bebidas para cuidado vocal, hotelería 5★ y transporte privado.',
-        actions,
-        gatewayProvider: 'production_expert_engine'
-      };
-    }
-  }
-
-  if (p.includes('seguridad') || p.includes('valla') || p.includes('custodia') || p.includes('aforo')) {
-    if (riderType !== 'seguridad') {
-      actions.push({ type: 'switch_rider_type', payload: 'seguridad' });
-      return {
-        role: 'security',
-        roleName: AGENT_PROFILES.security.name,
-        roleAvatar: '🛡️',
-        message: '¡Cambiado al Rider de Seguridad & Protocolos! He cargado las 4 secciones reglamentarias de perímetro, vallas Mojo certificadas, escolta personal y plan de contingencia médica.',
-        actions,
-        gatewayProvider: 'production_expert_engine'
-      };
-    }
-  }
-
-  if (p.includes('técnico') || p.includes('tecnico') || p.includes('audio') || p.includes('foh') || p.includes('sonido')) {
-    if (riderType !== 'tecnico') {
-      actions.push({ type: 'switch_rider_type', payload: 'tecnico' });
-      return {
-        role: 'audio_foh',
-        roleName: AGENT_PROFILES.audio_foh.name,
-        roleAvatar: '🎛️',
-        message: '¡Cambiado al Rider Técnico de Audio & Escenario! Activadas las 7 secciones reglamentarias que cubren PA, monitores IEM, backline, Input List, stage plot y visuales.',
-        actions,
-        gatewayProvider: 'production_expert_engine'
-      };
-    }
-  }
-
-  // 2. Modificaciones técnicas
-  if (p.includes('micr') || p.includes('inalámbrico') || p.includes('canal') || p.includes('input')) {
-    actions.push({
-      type: 'add_input_channel',
-      payload: {
-        ch: '25-26',
-        source: 'Voz Lead Guest / Coro Adicional',
-        transducer: 'Shure Axient Digital AD4Q / Cápsula KSM9',
-        stand: 'Pie Jirafa K&M Black',
-        insert: 'Neve 1073 Preamp + 1176 Comp'
-      }
-    });
-    return {
+const AGENT_RULES: AgentResponseRule[] = [
+  // 1. Cambio a Hospitality
+  {
+    id: 'switch_to_hospitality',
+    matches: (p, riderType) =>
+      riderType !== 'hospitality' && (p.includes('hospitality') || p.includes('catering') || p.includes('camerino')),
+    execute: () => ({
+      role: 'hospitality',
+      roleName: AGENT_PROFILES.hospitality.name,
+      roleAvatar: '☕',
+      message: '¡Cambiado al Rider de Hospitality & Catering! He ajustado las 5 secciones dedicadas a camerinos, requerimientos de dietas, bebidas para cuidado vocal, hotelería 5★ y transporte privado.',
+      actions: [{ type: 'switch_rider_type', payload: 'hospitality' }],
+      gatewayProvider: 'production_expert_engine'
+    })
+  },
+  // 2. Cambio a Seguridad
+  {
+    id: 'switch_to_security',
+    matches: (p, riderType) =>
+      riderType !== 'seguridad' && (p.includes('seguridad') || p.includes('valla') || p.includes('custodia') || p.includes('aforo')),
+    execute: () => ({
+      role: 'security',
+      roleName: AGENT_PROFILES.security.name,
+      roleAvatar: '🛡️',
+      message: '¡Cambiado al Rider de Seguridad & Protocolos! He cargado las 4 secciones reglamentarias de perímetro, vallas Mojo certificadas, escolta personal y plan de contingencia médica.',
+      actions: [{ type: 'switch_rider_type', payload: 'seguridad' }],
+      gatewayProvider: 'production_expert_engine'
+    })
+  },
+  // 3. Cambio a Técnico
+  {
+    id: 'switch_to_tech',
+    matches: (p, riderType) =>
+      riderType !== 'tecnico' && (p.includes('técnico') || p.includes('tecnico') || p.includes('audio') || p.includes('foh') || p.includes('sonido')),
+    execute: () => ({
+      role: 'audio_foh',
+      roleName: AGENT_PROFILES.audio_foh.name,
+      roleAvatar: '🎛️',
+      message: '¡Cambiado al Rider Técnico de Audio & Escenario! Activadas las 7 secciones reglamentarias que cubren PA, monitores IEM, backline, Input List, stage plot y visuales.',
+      actions: [{ type: 'switch_rider_type', payload: 'tecnico' }],
+      gatewayProvider: 'production_expert_engine'
+    })
+  },
+  // 4. Modificaciones técnicas (Input list / Microfonía)
+  {
+    id: 'technical_microphones',
+    matches: (p) => p.includes('micr') || p.includes('inalámbrico') || p.includes('canal') || p.includes('input'),
+    execute: () => ({
       role: 'audio_foh',
       roleName: AGENT_PROFILES.audio_foh.name,
       roleAvatar: '🎛️',
       message: 'He añadido los canales adicionales a la **Input List & Patch de Escenario** utilizando sistemas inalámbricos de gama alta (Shure Axient Digital con cápsula KSM9). La tabla en la vista previa del documento ha sido actualizada.',
-      actions,
+      actions: [{
+        type: 'add_input_channel',
+        payload: {
+          ch: '25-26',
+          source: 'Voz Lead Guest / Coro Adicional',
+          transducer: 'Shure Axient Digital AD4Q / Cápsula KSM9',
+          stand: 'Pie Jirafa K&M Black',
+          insert: 'Neve 1073 Preamp + 1176 Comp'
+        }
+      }],
       gatewayProvider: 'production_expert_engine'
-    };
-  }
-
-  // 3. Modificaciones de Hospitality / Catering
-  if (p.includes('hotel') || p.includes('check-out') || p.includes('habitación')) {
-    actions.push({
-      type: 'update_section',
-      payload: {
-        sectionId: 'hosp-hotel',
-        note: 'Se requiere confirmación obligatoria de Late Check-Out a las 16:00 hrs y pisos preferenciales no fumadores con insonorización acústica.'
-      }
-    });
-    return {
+    })
+  },
+  // 5. Hospitality - Hotel
+  {
+    id: 'hospitality_hotel',
+    matches: (p) => p.includes('hotel') || p.includes('check-out') || p.includes('habitación'),
+    execute: () => ({
       role: 'hospitality',
       roleName: AGENT_PROFILES.hospitality.name,
       roleAvatar: '☕',
       message: 'Actualicé los requisitos de **Hotelería 5 Estrellas** en el documento. Se agregó la cláusula prioritaria de late check-out garantizado hasta las 16:00 y habitaciones executive insonorizadas para el descanso del artista.',
-      actions,
+      actions: [{
+        type: 'update_section',
+        payload: {
+          sectionId: 'hosp-hotel',
+          note: 'Se requiere confirmación obligatoria de Late Check-Out a las 16:00 hrs y pisos preferenciales no fumadores con insonorización acústica.'
+        }
+      }],
       gatewayProvider: 'production_expert_engine'
-    };
-  }
-
-  if (p.includes('bebida') || p.includes('vocal') || p.includes('jengibre') || p.includes('agua') || p.includes('limon')) {
-    actions.push({
-      type: 'update_section',
-      payload: {
-        sectionId: 'hosp-bebidas',
-        note: 'Kit vocal completo: 24 botellas de agua Fiji/Evian al natural, raíz de jengibre fresco orgánico, rodajas de limón y miel cruda de abeja en dispenser estéril.'
-      }
-    });
-    return {
+    })
+  },
+  // 6. Hospitality - Cuidado vocal & Bebidas
+  {
+    id: 'hospitality_beverages',
+    matches: (p) => p.includes('bebida') || p.includes('vocal') || p.includes('jengibre') || p.includes('agua') || p.includes('limon'),
+    execute: () => ({
       role: 'hospitality',
       roleName: AGENT_PROFILES.hospitality.name,
       roleAvatar: '☕',
       message: 'Ajusté la sección de **Bebidas & Cuidado Vocal**. Añadí especificación de agua premium sin gas a temperatura ambiente y kit de desinflamación laríngea (jengibre, miel y limón) en el camerino principal.',
-      actions,
+      actions: [{
+        type: 'update_section',
+        payload: {
+          sectionId: 'hosp-bebidas',
+          note: 'Kit vocal completo: 24 botellas de agua Fiji/Evian al natural, raíz de jengibre fresco orgánico, rodajas de limón y miel cruda de abeja en dispenser estéril.'
+        }
+      }],
       gatewayProvider: 'production_expert_engine'
-    };
-  }
-
-  // 4. Modificaciones de Seguridad
-  if (p.includes('valla') || p.includes('mojo') || p.includes('pit') || p.includes('foso')) {
-    actions.push({
-      type: 'update_section',
-      payload: {
-        sectionId: 'sec-vallas',
-        note: 'Vallas Mojo Barriers de aluminio con escalón de rescate antideslizante para paramédicos y pasillo de foso libre de 2.5 metros.'
-      }
-    });
-    return {
+    })
+  },
+  // 7. Seguridad - Vallas Mojo & Pit
+  {
+    id: 'security_fences',
+    matches: (p) => p.includes('valla') || p.includes('mojo') || p.includes('pit') || p.includes('foso'),
+    execute: () => ({
       role: 'security',
       roleName: AGENT_PROFILES.security.name,
       roleAvatar: '🛡️',
       message: 'Registrado en la sección de **Vallas Mojo & Pit**. Se especificó la certificación de resistencia ante empuje de masas (4.5 kN/m) y el escalón de rescate frontal para el equipo de seguridad.',
-      actions,
+      actions: [{
+        type: 'update_section',
+        payload: {
+          sectionId: 'sec-vallas',
+          note: 'Vallas Mojo Barriers de aluminio con escalón de rescate antideslizante para paramédicos y pasillo de foso libre de 2.5 metros.'
+        }
+      }],
       gatewayProvider: 'production_expert_engine'
-    };
+    })
+  }
+];
+
+/**
+ * Motor inteligente de fallback cuando la pasarela requiere verificación de pago o está offline.
+ * Implementa el patrón Strategy / Rules de forma modular.
+ */
+export function generateExpertAgentResponse(
+  prompt: string,
+  riderType: RiderType,
+  activeAgent: AgentRole
+): AgentResponse {
+  const p = prompt.toLowerCase();
+  const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
+
+  // Buscar regla que coincida
+  for (const rule of AGENT_RULES) {
+    if (rule.matches(p, riderType)) {
+      return rule.execute(p, riderType);
+    }
   }
 
-  // 5. Respuesta contextual por defecto del agente
+  // Respuesta contextual por defecto
+  const avatar = activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠';
+
   return {
     role: activeAgent,
     roleName: profile.name,
-    roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+    roleAvatar: avatar,
     message: `Entendido. Como **${profile.title}**, he analizado tu solicitud: "${prompt}". He sincronizado los parámetros reglamentarios en el documento y puedes pedirme agregar canales a la Input List, modificar el catering o reforzar las medidas de seguridad.`,
-    actions,
+    actions: [],
     gatewayProvider: 'production_expert_engine'
   };
 }

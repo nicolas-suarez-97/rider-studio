@@ -7,12 +7,34 @@ export interface AgentProfile {
   desc: string;
 }
 
+export interface InputChannelActionPayload {
+  ch?: string;
+  source?: string;
+  name?: string;
+  transducer?: string;
+  mic?: string;
+  stand?: string;
+  insert?: string;
+}
+
+export interface UpdateSectionActionPayload {
+  sectionId: string;
+  note: string;
+}
+
+export type AgentActionPayload =
+  | InputChannelActionPayload
+  | UpdateSectionActionPayload
+  | string
+  | Record<string, unknown>;
+
 export interface AgentAction {
   type: 'update_section' | 'add_input_channel' | 'update_backline' | 'switch_rider_type' | 'update_metadata';
-  payload: any;
+  payload: AgentActionPayload;
 }
 
 export interface AgentResponse {
+  sessionId?: string;
   role: AgentRole;
   roleName: string;
   roleAvatar: string;

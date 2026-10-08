@@ -41,12 +41,12 @@ export function SavedRidersGrid({
         </div>
 
         {/* Filtros de Estado */}
-        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-full border border-slate-200/60 text-xs">
+        <div className="w-full sm:w-auto flex items-center justify-center sm:justify-start gap-1 bg-slate-100/90 p-1 rounded-full border border-slate-200/60 text-xs">
           {(['all', 'in_progress', 'completed'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-initial px-3 py-1 rounded-full font-bold transition-all cursor-pointer text-center ${
                 filter === f
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -90,7 +90,7 @@ export function SavedRidersGrid({
               <div
                 key={rider.id}
                 onClick={() => onOpenRider(rider)}
-                className="group bg-white rounded-3xl p-5 border border-slate-200/80 hover:border-violet-300 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4 relative"
+                className="group bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 hover:border-violet-300 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-3.5 sm:space-y-4 relative"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
@@ -100,7 +100,7 @@ export function SavedRidersGrid({
                     <button
                       type="button"
                       onClick={(e) => onDeleteRider(rider.id, e)}
-                      className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 p-1.5 rounded-xl transition-all cursor-pointer"
+                      className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 active:bg-rose-100 p-2 sm:p-1.5 rounded-xl transition-all cursor-pointer"
                       title="Eliminar de la base de datos"
                     >
                       <Icon name="trash" className="w-3.5 h-3.5" />

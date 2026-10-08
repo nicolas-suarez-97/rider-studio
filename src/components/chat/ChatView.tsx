@@ -46,6 +46,9 @@ export function ChatView({
   const [newRiderType, setNewRiderType] = useState<RiderType>('tecnico');
   const [isSubmittingRider, setIsSubmittingRider] = useState(false);
 
+  // Drawer de conversaciones en móvil
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeSession = sessions.find(s => s.id === currentSessionId);
 
@@ -82,178 +85,231 @@ export function ChatView({
   const profile = AGENT_PROFILES[activeAgent];
   const info = AGENT_INFO[activeAgent];
 
-  return (
-    <div className="flex-1 flex overflow-hidden">
-      {/* Sidebar de Conversaciones y Agentes */}
-      <aside className="w-80 border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 select-none">
-        <div className="p-4 border-b border-slate-200/60 flex items-center justify-between">
-          <div>
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-              Conversaciones
-            </h3>
-            <p className="text-[10px] text-slate-400">
-              Historial de consultas ({sessions.length})
-            </p>
-          </div>
+  // Componente reutilizable para el contenido de la barra lateral (Desktop & Mobile Drawer)
+  const renderSidebarContent = (isMobile = false) => (
+    <>
+      <div className="p-3.5 sm:p-4 border-b border-slate-200/60 flex items-center justify-between shrink-0">
+        <div>
+          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+            Conversaciones
+          </h3>
+          <p className="text-[10px] text-slate-400">
+            Historial de consultas ({sessions.length})
+          </p>
+        </div>
+        <div className="flex items-center gap-1">
           <button
-            onClick={onNewSession}
+            onClick={() => {
+              onNewSession();
+              if (isMobile) setIsMobileSidebarOpen(false);
+            }}
             className="text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-xs"
             title="Iniciar nueva consulta"
           >
             <Icon name="plus" className="w-3.5 h-3.5" />
             <span>Nuevo</span>
           </button>
-        </div>
-
-        {/* Lista de Sesiones */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-          {sessions.length === 0 ? (
-            <div className="text-center py-8 text-xs text-slate-400 space-y-2">
-              <p>No hay conversaciones activas.</p>
-              <button
-                onClick={onNewSession}
-                className="text-xs font-bold text-violet-600 hover:underline cursor-pointer"
-              >
-                + Iniciar primera conversación
-              </button>
-            </div>
-          ) : (
-            sessions.map((s) => {
-              const isActive = s.id === currentSessionId;
-              return (
-                <div
-                  key={s.id}
-                  onClick={() => onSelectSession(s.id)}
-                  className={`group p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                    isActive
-                      ? 'bg-violet-50/90 border-violet-200 shadow-xs ring-1 ring-violet-200/50'
-                      : 'bg-white hover:bg-slate-50 border-slate-200/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                      isActive ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500 group-hover:bg-violet-50 group-hover:text-violet-600'
-                    }`}>
-                      <Icon name="messageSquare" className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="truncate">
-                      <span className="block text-xs font-bold text-slate-800 truncate">
-                        {s.title}
-                      </span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[10px] text-slate-400">
-                          {s.date}
-                        </span>
-                        {s.riderInfo && (
-                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 border border-violet-200/60 truncate max-w-[120px]">
-                            🎸 {s.riderInfo.artistName}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Acciones: Borrar y Estado */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => onDeleteSession(s.id, e)}
-                      className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all cursor-pointer"
-                      title="Eliminar conversación"
-                    >
-                      <Icon name="trash" className="w-3.5 h-3.5" />
-                    </button>
-                    {isActive && (
-                      <span className="w-2 h-2 rounded-full bg-violet-600 shrink-0" />
-                    )}
-                  </div>
-                </div>
-              );
-            })
+          {isMobile && (
+            <button
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold ml-1"
+            >
+              ✕
+            </button>
           )}
         </div>
+      </div>
 
-        {/* Especialistas de Producción */}
-        <div className="p-3 border-t border-slate-200/60 bg-white/50 space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">
-            Agente Especializado Activo:
-          </span>
-          <div className="grid grid-cols-2 gap-1.5">
-            {(['master', 'audio_foh', 'hospitality', 'security'] as AgentRole[]).map((role) => {
-              const active = activeAgent === role;
-              const avatars: Record<AgentRole, string> = {
-                master: '🧠 Master',
-                audio_foh: '🎛️ Audio',
-                hospitality: '☕ Hosp.',
-                security: '🛡️ Seg.'
-              };
-
-              return (
-                <button
-                  key={role}
-                  onClick={() => onSelectAgent(role)}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${
-                    active
-                      ? 'bg-violet-600 text-white shadow-xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  {avatars[role]}
-                </button>
-              );
-            })}
-          </div>
-          <div className="pt-2">
-            <Link
-              href="/workspace"
-              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+      {/* Lista de Sesiones */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-1.5 overscroll-contain">
+        {sessions.length === 0 ? (
+          <div className="text-center py-8 text-xs text-slate-400 space-y-2">
+            <p>No hay conversaciones activas.</p>
+            <button
+              onClick={() => {
+                onNewSession();
+                if (isMobile) setIsMobileSidebarOpen(false);
+              }}
+              className="text-xs font-bold text-violet-600 hover:underline cursor-pointer"
             >
-              <span>Abrir en Workspace 3 Paneles</span>
-              <span>→</span>
-            </Link>
+              + Iniciar primera conversación
+            </button>
           </div>
+        ) : (
+          sessions.map((s) => {
+            const isActive = s.id === currentSessionId;
+            return (
+              <div
+                key={s.id}
+                onClick={() => {
+                  onSelectSession(s.id);
+                  if (isMobile) setIsMobileSidebarOpen(false);
+                }}
+                className={`group p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                  isActive
+                    ? 'bg-violet-50/90 border-violet-200 shadow-xs ring-1 ring-violet-200/50'
+                    : 'bg-white hover:bg-slate-50 border-slate-200/60'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                    isActive ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500 group-hover:bg-violet-50 group-hover:text-violet-600'
+                  }`}>
+                    <Icon name="messageSquare" className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="truncate">
+                    <span className="block text-xs font-bold text-slate-800 truncate">
+                      {s.title}
+                    </span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-slate-400">
+                        {s.date}
+                      </span>
+                      {s.riderInfo && (
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 border border-violet-200/60 truncate max-w-[120px]">
+                          🎸 {s.riderInfo.artistName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Acciones: Borrar (visible en touch móvil) y Estado */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => onDeleteSession(s.id, e)}
+                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all cursor-pointer"
+                    title="Eliminar conversación"
+                  >
+                    <Icon name="trash" className="w-3.5 h-3.5" />
+                  </button>
+                  {isActive && (
+                    <span className="w-2 h-2 rounded-full bg-violet-600 shrink-0" />
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Especialistas de Producción */}
+      <div className="p-3 border-t border-slate-200/60 bg-white/50 space-y-2 shrink-0">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">
+          Agente Especializado Activo:
+        </span>
+        <div className="grid grid-cols-2 gap-1.5">
+          {(['master', 'audio_foh', 'hospitality', 'security'] as AgentRole[]).map((role) => {
+            const active = activeAgent === role;
+            const avatars: Record<AgentRole, string> = {
+              master: '🧠 Master',
+              audio_foh: '🎛️ Audio',
+              hospitality: '☕ Hosp.',
+              security: '🛡️ Seg.'
+            };
+
+            return (
+              <button
+                key={role}
+                onClick={() => {
+                  onSelectAgent(role);
+                  if (isMobile) setIsMobileSidebarOpen(false);
+                }}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${
+                  active
+                    ? 'bg-violet-600 text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                }`}
+              >
+                {avatars[role]}
+              </button>
+            );
+          })}
         </div>
+        <div className="pt-2">
+          <Link
+            href="/workspace"
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+          >
+            <span>Abrir en Workspace 3 Paneles</span>
+            <span>→</span>
+          </Link>
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex-1 flex overflow-hidden relative">
+      {/* 1. Sidebar Desktop (visible en pantallas >= 768px) */}
+      <aside className="hidden md:flex w-80 border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex-col shrink-0 select-none">
+        {renderSidebarContent(false)}
       </aside>
 
+      {/* 2. Drawer Móvil Deslizable (pantallas < 768px) */}
+      {isMobileSidebarOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+          <aside className="relative w-4/5 max-w-xs h-full bg-white shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
+            {renderSidebarContent(true)}
+          </aside>
+        </div>
+      )}
+
       {/* Flujo de Conversación Principal */}
-      <main className="flex-1 flex flex-col bg-[#f8f9fa] overflow-hidden">
-        {/* Banner del Agente & Rider Vinculado */}
-        <div className="h-14 px-4 sm:px-6 border-b border-slate-200/60 bg-white flex items-center justify-between shrink-0 gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+      <main className="flex-1 flex flex-col bg-[#f8f9fa] overflow-hidden min-w-0">
+        {/* Banner del Agente & Rider Vinculado adaptado a móviles */}
+        <div className="h-14 px-3 sm:px-6 border-b border-slate-200/60 bg-white flex items-center justify-between shrink-0 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Botón para abrir el historial de conversaciones en móvil */}
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 active:scale-95 transition-all"
+              title="Abrir historial de conversaciones"
+            >
+              <Icon name="list" className="w-4 h-4" />
+            </button>
+
             <span className="text-xl shrink-0">{info.icon}</span>
             <div className="min-w-0">
-              <h2 className="text-sm font-extrabold text-slate-900 leading-tight truncate">
+              <h2 className="text-xs sm:text-sm font-extrabold text-slate-900 leading-tight truncate">
                 {profile.name}
               </h2>
-              <p className="text-[11px] text-slate-400 font-medium truncate">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">
                 {profile.title}
               </p>
             </div>
           </div>
 
           {/* Vínculo con Rider */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="relative">
               {activeSession?.riderInfo ? (
-                <div className="flex items-center gap-2 bg-violet-50/90 border border-violet-200/80 rounded-2xl px-3 py-1.5 shadow-2xs">
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-violet-50/90 border border-violet-200/80 rounded-2xl px-2 sm:px-3 py-1 sm:py-1.5 shadow-2xs">
                   <div className="w-5 h-5 rounded-lg bg-violet-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
                     🎸
                   </div>
                   <div className="text-left min-w-0">
-                    <span className="block text-[9px] font-black uppercase tracking-wider text-violet-600 leading-tight">
+                    <span className="hidden sm:block text-[9px] font-black uppercase tracking-wider text-violet-600 leading-tight">
                       Rider Vinculado
                     </span>
-                    <span className="block text-xs font-bold text-slate-800 leading-tight truncate max-w-[130px] sm:max-w-[180px]">
+                    <span className="block text-xs font-bold text-slate-800 leading-tight truncate max-w-[80px] xs:max-w-[120px] sm:max-w-[180px]">
                       {activeSession.riderInfo.artistName}
                     </span>
                   </div>
                   <Link
-                    href={`/workspace?id=${activeSession.riderInfo.id}`}
-                    className="ml-1 text-[11px] font-bold text-violet-700 hover:text-violet-900 bg-white hover:bg-violet-100 px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 shadow-xs border border-violet-200/60 shrink-0"
+                    href={`/workspace?id=${activeSession.riderInfo.id}${currentSessionId ? `&session=${currentSessionId}` : ''}`}
+                    className="ml-0.5 sm:ml-1 text-[10px] sm:text-[11px] font-bold text-violet-700 hover:text-violet-900 bg-white hover:bg-violet-100 px-1.5 sm:px-2 py-0.5 rounded-lg transition-all flex items-center gap-0.5 shadow-xs border border-violet-200/60 shrink-0"
                     title="Abrir este rider en Workspace 3 Paneles"
                   >
-                    <span>Workspace</span>
-                    <span className="text-[10px]">↗</span>
+                    <span className="hidden sm:inline">Workspace</span>
+                    <span className="sm:hidden">Doc</span>
+                    <span className="text-[9px]">↗</span>
                   </Link>
                   {onLinkRider && (
                     <button
@@ -269,18 +325,18 @@ export function ChatView({
                 onLinkRider && (
                   <button
                     onClick={() => setShowLinkMenu(!showLinkMenu)}
-                    className="text-xs font-bold text-slate-600 hover:text-violet-700 bg-slate-100/80 hover:bg-violet-50 border border-slate-200/80 px-3 py-1.5 rounded-2xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    className="text-xs font-bold text-slate-600 hover:text-violet-700 bg-slate-100/80 hover:bg-violet-50 border border-slate-200/80 px-2.5 sm:px-3 py-1.5 rounded-2xl transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shadow-xs"
                   >
                     <Icon name="link" className="w-3.5 h-3.5 text-violet-600" />
-                    <span>Vincular a Rider</span>
+                    <span className="hidden xs:inline">Vincular</span>
                     <span className="text-[10px] text-slate-400">▾</span>
                   </button>
                 )
               )}
 
-              {/* Menu desplegable de vinculación */}
+              {/* Menu desplegable de vinculación responsivo (no se sale en pantallas estrechas) */}
               {showLinkMenu && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-3xl shadow-2xl border border-slate-200/90 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 bg-white rounded-3xl shadow-2xl border border-slate-200/90 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150 max-h-[85vh] overflow-y-auto">
                   {/* Encabezado del Popover */}
                   <div className="px-1 pb-2 border-b border-slate-100 flex items-center justify-between mb-2.5">
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
@@ -324,7 +380,7 @@ export function ChatView({
                           value={newRiderName}
                           onChange={(e) => setNewRiderName(e.target.value)}
                           placeholder="ej. Carlos Vives, SoundWave..."
-                          className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-300"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-base sm:text-xs text-slate-800 outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-300"
                         />
                       </div>
 
@@ -367,22 +423,12 @@ export function ChatView({
                         ) : (
                           <>
                             <Icon name="plus" className="w-3 h-3" />
-                            <span>Crear y Vincular a este Chat</span>
+                            <span>Crear y Vincular</span>
                           </>
                         )}
                       </button>
-
-                      <div className="pt-1 text-center">
-                        <Link
-                          href={`/workspace?type=${newRiderType}`}
-                          className="text-[10px] text-violet-600 hover:underline font-semibold"
-                        >
-                          O abrir en el Workspace 3 paneles →
-                        </Link>
-                      </div>
                     </form>
                   ) : (
-                    /* Botón SIEMPRE DISPONIBLE para Crear Nuevo Rider */
                     <div className="mb-2.5">
                       <button
                         type="button"
@@ -465,15 +511,15 @@ export function ChatView({
           </div>
         </div>
 
-        {/* Mensajes */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 max-w-4xl w-full mx-auto">
+        {/* Mensajes con padding responsivo */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-3.5 sm:space-y-4 max-w-4xl w-full mx-auto overscroll-contain">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4 text-slate-400">
-              <div className="w-16 h-16 rounded-3xl bg-violet-50 text-violet-600 flex items-center justify-center text-3xl shadow-xs">
+            <div className="h-full flex flex-col items-center justify-center text-center p-4 sm:p-8 space-y-3 sm:space-y-4 text-slate-400">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-violet-50 text-violet-600 flex items-center justify-center text-2xl sm:text-3xl shadow-xs">
                 {info.icon}
               </div>
               <div className="max-w-md">
-                <h3 className="text-base font-black text-slate-800">
+                <h3 className="text-sm sm:text-base font-black text-slate-800">
                   {profile.name}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -481,8 +527,8 @@ export function ChatView({
                 </p>
               </div>
 
-              <div className="w-full max-w-lg pt-4 space-y-2 text-left">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="w-full max-w-lg pt-3 space-y-2 text-left">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                   Preguntas Frecuentes Sugeridas:
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -491,7 +537,7 @@ export function ChatView({
                       key={idx}
                       type="button"
                       onClick={() => onSendMessage(faq)}
-                      className="text-left text-xs p-3 rounded-2xl bg-white hover:bg-violet-50/80 text-slate-700 hover:text-violet-900 border border-slate-200/70 hover:border-violet-200 transition-all shadow-xs cursor-pointer"
+                      className="text-left text-xs p-2.5 sm:p-3 rounded-2xl bg-white hover:bg-violet-50/80 text-slate-700 hover:text-violet-900 border border-slate-200/70 hover:border-violet-200 transition-all shadow-xs cursor-pointer active:scale-98"
                     >
                       &quot;{faq}&quot;
                     </button>
@@ -506,27 +552,27 @@ export function ChatView({
               return (
                 <div
                   key={idx}
-                  className={`flex gap-3 ${isAi ? 'items-start' : 'items-end flex-row-reverse'}`}
+                  className={`flex gap-2 sm:gap-3 ${isAi ? 'items-start' : 'items-end flex-row-reverse'}`}
                 >
                   {isAi && (
-                    <div className="w-8 h-8 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center text-sm shrink-0 border border-violet-200/50">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center text-xs sm:text-sm shrink-0 border border-violet-200/50">
                       {m.roleAvatar || info.icon}
                     </div>
                   )}
                   <div
-                    className={`max-w-[80%] rounded-3xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
+                    className={`max-w-[88%] sm:max-w-[80%] rounded-2xl sm:rounded-3xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm leading-relaxed ${
                       isAi
                         ? 'bg-white border border-slate-200/80 text-slate-800 shadow-xs'
                         : 'bg-violet-600 text-white font-medium shadow-md shadow-violet-500/10'
                     }`}
                   >
                     {isAi && m.roleName && (
-                      <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                      <span className="block text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
                         {m.roleName}
                       </span>
                     )}
                     <p className="whitespace-pre-line">{m.text}</p>
-                    <span className={`block text-[10px] mt-1.5 text-right ${isAi ? 'text-slate-400' : 'text-violet-200'}`}>
+                    <span className={`block text-[9px] sm:text-[10px] mt-1 text-right ${isAi ? 'text-slate-400' : 'text-violet-200'}`}>
                       {m.time}
                     </span>
                   </div>
@@ -545,23 +591,23 @@ export function ChatView({
           )}
         </div>
 
-        {/* Input Bar */}
-        <div className="p-4 bg-white/80 border-t border-slate-200/60">
-          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-2 focus-within:border-violet-500 focus-within:bg-white transition-all shadow-xs">
+        {/* Input Bar con safe-area inferior */}
+        <div className="p-3 sm:p-4 bg-white/90 backdrop-blur-md border-t border-slate-200/60 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-1.5 sm:p-2 focus-within:border-violet-500 focus-within:bg-white transition-all shadow-xs">
             <input
               type="text"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               placeholder={`Escribe a ${profile.name}...`}
-              className="flex-1 bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 px-3 py-1 outline-none font-medium"
+              className="flex-1 bg-transparent text-base sm:text-sm text-slate-800 placeholder-slate-400 px-2 sm:px-3 py-1 outline-none font-medium"
               disabled={isThinking}
             />
             <button
               type="submit"
               disabled={!inputVal.trim() || isThinking}
-              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
             >
-              <span>Enviar</span>
+              <span className="hidden xs:inline">Enviar</span>
               <Icon name="send" className="w-3.5 h-3.5" />
             </button>
           </form>

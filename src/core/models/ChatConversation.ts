@@ -5,18 +5,31 @@ export class ChatMessage implements ChatMessageItem {
   constructor(
     public text: string,
     public sender: 'ai' | 'user' = 'user',
-    public time: string = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    public time: string = '',
     public role?: AgentRole,
     public roleName?: string,
     public roleAvatar?: string,
     public id?: string
   ) {}
 
-  public static fromApi(data: any): ChatMessage {
+  public static fromApi(data: {
+    content?: string;
+    text?: string;
+    role?: string;
+    created_at?: string;
+    agent_role?: AgentRole;
+    role_name?: string;
+    role_avatar?: string;
+    id?: string;
+  }): ChatMessage {
+    const formattedTime = data.created_at
+      ? new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '';
+
     return new ChatMessage(
       data.content || data.text || '',
       (data.role === 'user' ? 'user' : 'ai') as 'user' | 'ai',
-      new Date(data.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      formattedTime,
       data.agent_role || 'master',
       data.role_name || 'Agente de Producción',
       data.role_avatar || '🧠',
@@ -46,7 +59,7 @@ export class ChatSession {
     this.riderId = params.riderId;
     this.activeAgent = params.activeAgent || 'master';
     this.messages = params.messages || [];
-    this.updatedAt = params.updatedAt || new Date().toISOString();
+    this.updatedAt = params.updatedAt || '';
   }
 
   public addMessage(message: ChatMessage): void {
