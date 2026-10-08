@@ -81,6 +81,7 @@ async function ChatServer({ searchParams }: PageProps) {
 
   return (
     <ChatClient
+      key={activeSessionId || 'chat-root'}
       initialSessions={sessions}
       initialSessionId={activeSessionId}
       initialMessages={messages}

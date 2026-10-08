@@ -38,6 +38,12 @@ export function ChatClient({
   const [messages, setMessages] = useState<ChatMessageItem[]>(initialMessages);
   const [isThinking, setIsAgentThinking] = useState(false);
 
+  const [prevInitialSessions, setPrevInitialSessions] = useState(initialSessions);
+  if (initialSessions !== prevInitialSessions) {
+    setPrevInitialSessions(initialSessions);
+    setSessions(initialSessions);
+  }
+
   const isFirstMount = useRef(true);
   const hasTriggeredInitialPrompt = useRef(false);
 
@@ -55,6 +61,43 @@ export function ChatClient({
       console.warn('Error loading sessions:', err);
       return [];
     }
+  }, []);
+
+  // Refrescar sesiones y riders cuando la ventana vuelve a ser visible
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function syncOnFocus() {
+      try {
+        const [sessList, riderList] = await Promise.all([
+          chatService.getSessions(),
+          riderService.getAll()
+        ]);
+        if (!isCancelled) {
+          if (Array.isArray(sessList)) setSessions(sessList);
+          if (Array.isArray(riderList)) {
+            setAvailableRiders(riderList.map(r => ({ id: r.id, title: r.title, artist: r.artistName, type: r.type })));
+          }
+        }
+      } catch (e) {
+        console.warn('[ChatClient] Error syncing on focus:', e);
+      }
+    }
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        syncOnFocus();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, []);
 
   const handleSendMessage = useCallback(async (text: string) => {

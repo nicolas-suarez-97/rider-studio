@@ -37,7 +37,7 @@ interface RawSessionResponse {
 export class ChatService implements IChatService {
   public async getSessions(): Promise<ChatSessionSummary[]> {
     try {
-      const res = await fetch('/api/chat/sessions');
+      const res = await fetch('/api/chat/sessions', { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (Array.isArray(data.sessions)) {
@@ -114,7 +114,7 @@ export class ChatService implements IChatService {
 
   public async getHistory(sessionId: string): Promise<ChatMessage[]> {
     try {
-      const res = await fetch(`/api/chat/history?sessionId=${sessionId}`);
+      const res = await fetch(`/api/chat/history?sessionId=${sessionId}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (Array.isArray(data.messages)) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/common/Header';
 import { Toast } from '@/components/common/Toast';
@@ -23,6 +23,59 @@ export function LandingClient({ initialRiders, initialConversations }: LandingCl
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [savedRiders, setSavedRiders] = useState<SavedRiderSummary[]>(initialRiders);
   const [conversations, setConversations] = useState<ChatSessionSummary[]>(initialConversations);
+
+  const [prevRiders, setPrevRiders] = useState(initialRiders);
+  const [prevConvs, setPrevConvs] = useState(initialConversations);
+
+  // Sincronizar estado durante el render si cambiaron las props
+  if (initialRiders !== prevRiders) {
+    setPrevRiders(initialRiders);
+    setSavedRiders(initialRiders);
+  }
+
+  if (initialConversations !== prevConvs) {
+    setPrevConvs(initialConversations);
+    setConversations(initialConversations);
+  }
+
+  // Recargar datos en caliente cuando la ventana vuelve a ser visible
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function fetchFreshData() {
+      try {
+        const [riders, sess] = await Promise.all([
+          riderService.getAll(),
+          chatService.getSessions()
+        ]);
+        if (!isCancelled) {
+          if (Array.isArray(riders)) {
+            setSavedRiders(riders.map(r => r.toSummary()));
+          }
+          if (Array.isArray(sess)) {
+            setConversations(sess);
+          }
+        }
+      } catch (err) {
+        console.warn('[LandingClient] Error refrescando datos:', err);
+      }
+    }
+
+    const handleSync = () => {
+      if (document.visibilityState === 'visible') {
+        fetchFreshData();
+      }
+    };
+
+    window.addEventListener('focus', handleSync);
+    document.addEventListener('visibilitychange', handleSync);
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener('focus', handleSync);
+      document.removeEventListener('visibilitychange', handleSync);
+    };
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);

@@ -84,6 +84,7 @@ async function WorkspaceServer({ searchParams }: PageProps) {
 
   return (
     <WorkspaceClient
+      key={initialRiderData?.id || `${targetType}-${resolvedSessionId || 'new'}`}
       initialRiderData={initialRiderData!}
       initialSessionId={resolvedSessionId}
       initialSessionTitle={resolvedSessionTitle}

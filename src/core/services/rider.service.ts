@@ -12,7 +12,7 @@ export class RiderService implements IRiderService {
 
   public async getAll(): Promise<Rider[]> {
     try {
-      const res = await fetch(this.baseUrl);
+      const res = await fetch(this.baseUrl, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
       const data = await res.json();
       if (Array.isArray(data.riders)) {
@@ -27,7 +27,7 @@ export class RiderService implements IRiderService {
 
   public async getById(id: string): Promise<Rider | null> {
     try {
-      const res = await fetch(`${this.baseUrl}?id=${id}`);
+      const res = await fetch(`${this.baseUrl}?id=${id}`, { cache: 'no-store' });
       if (!res.ok) {
         if (res.status === 404) return null;
         throw new Error(`HTTP error: ${res.status}`);

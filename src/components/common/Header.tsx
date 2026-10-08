@@ -47,6 +47,7 @@ export function Header({
         {/* Logo de Marca */}
         <Link 
           href="/"
+          prefetch={false}
           className="flex items-center gap-2 group active:scale-95 transition-transform shrink-0"
         >
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-violet-500/25 group-hover:scale-105 transition-transform shrink-0 ring-2 ring-white/80">
@@ -74,6 +75,7 @@ export function Header({
           <nav className="flex items-center gap-1 sm:gap-2 mr-0.5 sm:mr-1" aria-label="Navegación principal">
             <Link
               href="/workspace?type=tecnico"
+              prefetch={false}
               className={`text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-full transition-all active:scale-95 shrink-0 ${
                 pageType === 'workspace'
                   ? 'bg-violet-50 text-violet-700 font-bold border border-violet-200/60'
@@ -84,6 +86,7 @@ export function Header({
             </Link>
             <Link
               href="/chat"
+              prefetch={false}
               className={`text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-full transition-all active:scale-95 shrink-0 ${
                 pageType === 'chat'
                   ? 'bg-violet-50 text-violet-700 font-bold border border-violet-200/60'
@@ -95,6 +98,7 @@ export function Header({
             </Link>
             <Link
               href="/workspace?type=tecnico"
+              prefetch={false}
               className="bg-violet-600 hover:bg-violet-700 text-white px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1 sm:gap-1.5 active:scale-95 shrink-0"
             >
               <Icon name="plus" className="w-3.5 h-3.5" />
@@ -119,6 +123,7 @@ export function Header({
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link
               href="/"
+              prefetch={false}
               className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 font-medium px-2 py-1 rounded-lg hover:bg-slate-100 transition-all active:scale-95"
               title="Volver al inicio"
             >
@@ -220,6 +225,7 @@ export function Header({
             {/* Acceso al Chat IA del Rider */}
             <Link
               href={chatSessionId ? `/chat?session=${chatSessionId}` : riderId ? `/chat?riderId=${riderId}` : '/chat'}
+              prefetch={false}
               className="hidden lg:flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200/60 hover:bg-violet-100 transition-all active:scale-95"
               title="Abrir asistente de chat para este rider"
             >
@@ -250,6 +256,7 @@ export function Header({
           <div className="flex items-center gap-2 text-slate-500">
             <Link
               href="/"
+              prefetch={false}
               className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 font-medium px-2 py-0.5 rounded-md hover:bg-slate-100 transition-all active:scale-95"
               title="Volver al inicio"
             >
@@ -265,6 +272,7 @@ export function Header({
           <div className="flex items-center gap-2">
             <Link
               href="/workspace?type=tecnico"
+              prefetch={false}
               className="text-violet-600 hover:text-violet-800 font-bold text-xs flex items-center gap-1 hover:underline"
             >
               <span>Ir al Workspace</span>
