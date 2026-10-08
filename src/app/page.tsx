@@ -309,46 +309,11 @@ interface SavedRider {
   totalSections: number;
   status: 'completed' | 'in_progress';
   lastEdited: string;
+  channels?: any[];
+  sections?: any[];
 }
 
-const INITIAL_SAVED_RIDERS: SavedRider[] = [
-  {
-    id: 'r-1',
-    title: 'Rider Técnico FOH & Escenario',
-    artist: 'The Sound Wave',
-    tour: 'World Tour 2026',
-    type: 'tecnico',
-    progress: 100,
-    sectionsCompleted: 7,
-    totalSections: 7,
-    status: 'completed',
-    lastEdited: 'Hace 2 horas'
-  },
-  {
-    id: 'r-2',
-    title: 'Hospitality & Dietas Especiales',
-    artist: 'Luna Rosa & Cuarteto',
-    tour: 'Gira Acústica Teatros',
-    type: 'hospitality',
-    progress: 60,
-    sectionsCompleted: 3,
-    totalSections: 5,
-    status: 'in_progress',
-    lastEdited: 'Ayer, 18:30'
-  },
-  {
-    id: 'r-3',
-    title: 'Plan de Seguridad & Foso Pit',
-    artist: 'Festival Arena Central',
-    tour: 'Edición Primavera',
-    type: 'seguridad',
-    progress: 100,
-    sectionsCompleted: 4,
-    totalSections: 4,
-    status: 'completed',
-    lastEdited: 'Hace 3 días'
-  }
-];
+const INITIAL_SAVED_RIDERS: SavedRider[] = [];
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('landing');
@@ -394,12 +359,8 @@ export default function App() {
   // Modal para editar sección completa
   const [editingSection, setEditingSection] = useState<SectionItem | null>(null);
 
-  // Conversaciones en el chat
-  const [conversations, setConversations] = useState<{ id: string; title: string; date: string; active: boolean }[]>([
-    { id: 'c-1', title: 'Rider Técnico The Sound Wave', date: 'Hoy', active: true },
-    { id: 'c-2', title: 'Consultas de Hospitality Gira 2026', date: 'Ayer', active: false },
-    { id: 'c-3', title: 'Ajuste de Vallas & Seguridad Foso', date: 'Hace 3 días', active: false }
-  ]);
+  // Conversaciones en el chat (cargadas desde Supabase)
+  const [conversations, setConversations] = useState<{ id: string; title: string; date: string; active: boolean }[]>([]);
   const [activeChatTab, setActiveChatTab] = useState<'conversations' | 'riders'>('conversations');
 
   // Chat state & AI Agents
@@ -427,8 +388,8 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Supabase Database Sync & Session State
-  const [currentSessionId, setCurrentSessionId] = useState<string>('c-1');
-  const [currentRiderId, setCurrentRiderId] = useState<string>('r-1');
+  const [currentSessionId, setCurrentSessionId] = useState<string>('');
+  const [currentRiderId, setCurrentRiderId] = useState<string>('');
   const [isSavingToDb, setIsSavingToDb] = useState(false);
   const [dbSyncStatus, setDbSyncStatus] = useState<'idle' | 'saved' | 'saving' | 'error'>('idle');
 
@@ -439,37 +400,60 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Cargar riders guardados desde la base de datos al montar el componente
+  // Cargar riders y conversaciones reales desde la base de datos de Supabase
   useEffect(() => {
-    async function fetchDatabaseRiders() {
+    async function loadDatabaseData() {
+      // 1. Cargar Riders reales
       try {
         const res = await fetch('/api/riders');
         if (res.ok) {
           const data = await res.json();
-          if (data.riders && data.riders.length > 0) {
+          if (data.riders && Array.isArray(data.riders)) {
             const formatted: SavedRider[] = data.riders.map((r: any) => ({
               id: r.id,
               title: r.title,
               artist: r.artist_name,
-              tour: r.metadata?.season || 'Tour 2026',
+              tour: r.metadata?.season || 'Temporada 2026',
               type: (r.rider_type as RiderType) || 'tecnico',
               progress: 100,
               sectionsCompleted: Array.isArray(r.sections) && r.sections.length > 0 ? r.sections.length : 6,
               totalSections: Array.isArray(r.sections) && r.sections.length > 0 ? r.sections.length : 6,
               status: (r.status === 'completed' ? 'completed' : 'in_progress') as any,
-              lastEdited: new Date(r.updated_at || r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              lastEdited: new Date(r.updated_at || r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              channels: r.channels || [],
+              sections: r.sections || []
             }));
-            setSavedRiders(prev => {
-              const ids = new Set(formatted.map(f => f.id));
-              return [...formatted, ...prev.filter(p => !ids.has(p.id))];
-            });
+            setSavedRiders(formatted);
           }
         }
       } catch (err) {
-        console.warn('Could not pre-fetch riders', err);
+        console.warn('Could not load riders from DB', err);
+      }
+
+      // 2. Cargar Sesiones de Chat reales
+      try {
+        const resSessions = await fetch('/api/chat/sessions');
+        if (resSessions.ok) {
+          const sData = await resSessions.json();
+          if (sData.sessions && Array.isArray(sData.sessions)) {
+            const formattedSessions = sData.sessions.map((s: any, idx: number) => ({
+              id: s.id,
+              title: s.title || 'Consulta de Producción',
+              date: new Date(s.updated_at || s.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+              active: idx === 0
+            }));
+            setConversations(formattedSessions);
+            if (formattedSessions.length > 0) {
+              setCurrentSessionId(formattedSessions[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load chat sessions from DB', err);
       }
     }
-    fetchDatabaseRiders();
+
+    loadDatabaseData();
   }, []);
 
   const saveCurrentRiderToDatabase = async () => {
@@ -539,7 +523,19 @@ export default function App() {
   };
 
   const handleOpenHistoryRider = (rider: SavedRider) => {
+    setCurrentRiderId(rider.id);
+    setDocHeaderTitle(rider.artist);
+    setDocHeaderSeason(rider.tour);
     handleSelectRiderType(rider.type);
+    if (rider.channels && Array.isArray(rider.channels) && rider.channels.length > 0) {
+      setInputListChannels(rider.channels.map((c: any) => ({
+        id: c.id || `ch-${c.num || Math.random()}`,
+        ch: c.num || c.ch || '01',
+        name: c.source || c.name || 'Canal',
+        mic: c.mic || 'Shure SM58',
+        stand: c.stand || 'Standard'
+      })));
+    }
     showToast(`Cargando rider de "${rider.artist}"...`);
     navigateTo('workspace', 'forward');
   };
@@ -849,14 +845,34 @@ export default function App() {
     showToast('Nueva conversación creada');
   };
 
-  const handleSelectConversation = (convId: string) => {
+  const handleSelectConversation = async (convId: string) => {
     setConversations(prev => prev.map(c => ({ ...c, active: c.id === convId })));
+    setCurrentSessionId(convId);
     const target = conversations.find(c => c.id === convId);
     showToast(`Cargando chat: "${target?.title || 'Conversación'}"`);
+    try {
+      const res = await fetch(`/api/chat/history?sessionId=${convId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+          const formatted = data.messages.map((m: any) => ({
+            sender: (m.role === 'user' ? 'user' : 'ai') as 'user' | 'ai',
+            text: m.content,
+            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            role: m.agent_role || 'master',
+            roleName: m.role_name || 'Agente de Producción',
+            roleAvatar: m.role_avatar || '🧠'
+          }));
+          setMessages(formatted);
+        }
+      }
+    } catch (err) {
+      console.warn('Error loading conversation history', err);
+    }
   };
 
   const handleOpenConversationFromLanding = (convId: string) => {
-    setConversations(prev => prev.map(c => ({ ...c, active: c.id === convId })));
+    handleSelectConversation(convId);
     navigateTo('chat_prompt', 'forward');
   };
 
@@ -1155,29 +1171,35 @@ export default function App() {
 
                 {/* Grid o lista horizontal de chats */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                  {conversations.map((conv) => (
-                    <motion.button
-                      key={conv.id}
-                      onClick={() => handleOpenConversationFromLanding(conv.id)}
-                      whileHover={{ scale: 1.02, y: -2 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="text-left p-3 rounded-2xl bg-slate-50/70 hover:bg-zinc-100/50 border border-slate-100 hover:border-zinc-200 transition-all flex items-center gap-3 group cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-white border border-slate-100 group-hover:border-zinc-200 text-slate-500 group-hover:text-zinc-900 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-all">
-                        <Icon name="messageSquare" className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-800 group-hover:text-violet-900 truncate">
-                          {conv.title}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium mt-0.5">
-                          <span>{conv.date}</span>
-                          <span>•</span>
-                          <span className="text-zinc-900 font-bold group-hover:underline">Reanudar ↗</span>
+                  {conversations.length === 0 ? (
+                    <div className="col-span-full py-6 text-center text-slate-400 text-xs bg-slate-50/60 rounded-2xl border border-dashed border-slate-200">
+                      No hay conversaciones guardadas en la base de datos aún. ¡Inicia una en el chat!
+                    </div>
+                  ) : (
+                    conversations.map((conv) => (
+                      <motion.button
+                        key={conv.id}
+                        onClick={() => handleOpenConversationFromLanding(conv.id)}
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="text-left p-3 rounded-2xl bg-slate-50/70 hover:bg-zinc-100/50 border border-slate-100 hover:border-zinc-200 transition-all flex items-center gap-3 group cursor-pointer"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-white border border-slate-100 group-hover:border-zinc-200 text-slate-500 group-hover:text-zinc-900 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-all">
+                          <Icon name="messageSquare" className="w-3.5 h-3.5" />
                         </div>
-                      </div>
-                    </motion.button>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 group-hover:text-violet-900 truncate">
+                            {conv.title}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium mt-0.5">
+                            <span>{conv.date}</span>
+                            <span>•</span>
+                            <span className="text-zinc-900 font-bold group-hover:underline">Reanudar ↗</span>
+                          </div>
+                        </div>
+                      </motion.button>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -1234,13 +1256,18 @@ export default function App() {
 
               {/* Grid de Tarjetas de Riders (Estilo Imagen 5) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {savedRiders
-                  .filter(r => {
-                    if (historyFilter === 'in_progress') return r.status === 'in_progress';
-                    if (historyFilter === 'completed') return r.status === 'completed';
-                    return true;
-                  })
-                  .map((rider) => {
+                {savedRiders.length === 0 ? (
+                  <div className="col-span-full py-12 text-center text-slate-400 text-sm bg-white/70 rounded-3xl border border-dashed border-slate-200">
+                    No tienes riders guardados en la base de datos aún. Crea o guarda uno desde el Workspace.
+                  </div>
+                ) : (
+                  savedRiders
+                    .filter(r => {
+                      if (historyFilter === 'in_progress') return r.status === 'in_progress';
+                      if (historyFilter === 'completed') return r.status === 'completed';
+                      return true;
+                    })
+                    .map((rider) => {
                     const typeDef = RIDER_DATA[rider.type];
                     return (
                       <motion.div
@@ -1318,7 +1345,8 @@ export default function App() {
                         </div>
                       </motion.div>
                     );
-                  })}
+                  })
+                )}
               </div>
             </div>
 
@@ -1412,37 +1440,48 @@ export default function App() {
                   {/* Vista 1: Conversaciones */}
                   {activeChatTab === 'conversations' && (
                     <div className="space-y-1.5">
-                      {conversations.map((conv) => (
-                        <motion.button
-                          layout
-                          key={conv.id}
-                          onClick={() => handleSelectConversation(conv.id)}
-                          whileHover={{ scale: 1.015 }}
-                          whileTap={{ scale: 0.985 }}
-                          className={`w-full text-left p-3 rounded-2xl transition-colors flex items-center gap-3 border ${
-                            conv.active
-                              ? 'bg-violet-50/80 border-zinc-200 shadow-xs text-zinc-900 font-extrabold font-bold'
-                              : 'bg-slate-50/60 hover:bg-slate-50 border-slate-100 text-slate-700'
-                          }`}
-                        >
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                            conv.active ? 'bg-zinc-900 text-white shadow-xs' : 'bg-white text-slate-500 shadow-2xs'
-                          }`}>
-                            <Icon name="messageSquare" className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold truncate">{conv.title}</p>
-                            <span className="text-[10px] text-slate-400 font-medium block mt-0.5">{conv.date}</span>
-                          </div>
-                        </motion.button>
-                      ))}
+                      {conversations.length === 0 ? (
+                        <div className="py-8 px-2 text-center text-slate-400 text-xs bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                          Sin conversaciones en la base de datos
+                        </div>
+                      ) : (
+                        conversations.map((conv) => (
+                          <motion.button
+                            layout
+                            key={conv.id}
+                            onClick={() => handleSelectConversation(conv.id)}
+                            whileHover={{ scale: 1.015 }}
+                            whileTap={{ scale: 0.985 }}
+                            className={`w-full text-left p-3 rounded-2xl transition-colors flex items-center gap-3 border ${
+                              conv.active
+                                ? 'bg-violet-50/80 border-zinc-200 shadow-xs text-zinc-900 font-extrabold font-bold'
+                                : 'bg-slate-50/60 hover:bg-slate-50 border-slate-100 text-slate-700'
+                            }`}
+                          >
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                              conv.active ? 'bg-zinc-900 text-white shadow-xs' : 'bg-white text-slate-500 shadow-2xs'
+                            }`}>
+                              <Icon name="messageSquare" className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold truncate">{conv.title}</p>
+                              <span className="text-[10px] text-slate-400 font-medium block mt-0.5">{conv.date}</span>
+                            </div>
+                          </motion.button>
+                        ))
+                      )}
                     </div>
                   )}
 
                   {/* Vista 2: Riders en Progreso / Completados */}
                   {activeChatTab === 'riders' && (
                     <div className="space-y-2">
-                      {savedRiders.map((rider) => {
+                      {savedRiders.length === 0 ? (
+                        <div className="py-8 px-2 text-center text-slate-400 text-xs bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                          Sin riders en la base de datos
+                        </div>
+                      ) : (
+                        savedRiders.map((rider) => {
                         const typeDef = RIDER_DATA[rider.type];
                         return (
                           <motion.div
@@ -1473,8 +1512,9 @@ export default function App() {
                             </div>
                           </motion.div>
                         );
-                      })}
-                    </div>
+                      })
+                    )}
+                  </div>
                   )}
                 </div>
               </div>

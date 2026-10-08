@@ -5,33 +5,8 @@ export type DbRider = Database['public']['Tables']['riders']['Row'];
 export type DbChatSession = Database['public']['Tables']['chat_sessions']['Row'];
 export type DbChatMessage = Database['public']['Tables']['chat_messages']['Row'];
 
-// In-memory fallback cache when Supabase credentials are not yet configured
-let memoryRiders: DbRider[] = [
-  {
-    id: 'a1b2c3d4-e5f6-7890-abcd-111111111111',
-    title: 'Rider Técnico de Audio & Escenario',
-    artist_name: 'SoundWave Live Band',
-    rider_type: 'tecnico',
-    venue_name: 'Movistar Arena',
-    event_date: '2026-11-20',
-    version: 'v1.0',
-    status: 'draft',
-    channels: [
-      { id: 'ch-1', num: '01', source: 'Kick Drum In', mic: 'Shure Beta 91A', stand: 'Boundary', phantom: false, notes: 'Compresor VCA rápido' },
-      { id: 'ch-2', num: '02', source: 'Kick Drum Out', mic: 'Audix D6 / Beta 52A', stand: 'Short Boom', phantom: false, notes: 'Cuerpo subgrave 50Hz' },
-      { id: 'ch-3', num: '03', source: 'Snare Top', mic: 'Shure SM57', stand: 'Short Boom', phantom: false, notes: 'Cápsula calibrada' },
-      { id: 'ch-4', num: '04', source: 'Snare Bottom', mic: 'Sennheiser e604', stand: 'Clip Rim', phantom: false, notes: 'Invertir polaridad 180°' },
-      { id: 'ch-5', num: '05', source: 'Hi-Hat', mic: 'AKG C451 B', stand: 'Boom', phantom: true, notes: 'HPF @ 350Hz' },
-      { id: 'ch-6', num: '06', source: 'Bass DI', mic: 'Radial J48', stand: 'Direct Box', phantom: true, notes: 'Línea limpia pre-amp' },
-      { id: 'ch-7', num: '07', source: 'Lead Vocal', mic: 'Shure KSM9 / SM58', stand: 'Tall Boom', phantom: true, notes: 'Voz principal centro' }
-    ],
-    sections: [],
-    metadata: {},
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-];
-
+// In-memory fallback cache - empty by default (no hardcoded data)
+let memoryRiders: DbRider[] = [];
 let memorySessions: Record<string, DbChatSession> = {};
 let memoryMessages: Record<string, DbChatMessage[]> = {};
 
@@ -47,7 +22,7 @@ export async function getRiders(): Promise<DbRider[]> {
         .select('*')
         .order('updated_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         return data as DbRider[];
       }
     }
@@ -137,6 +112,45 @@ export async function saveRider(rider: {
     memoryRiders.unshift(record);
   }
   return record;
+}
+
+/**
+ * Eliminar un rider por ID
+ */
+export async function deleteRider(id: string): Promise<boolean> {
+  if (isSupabaseServerConfigured()) {
+    const supabase = await createServerSupabaseClient();
+    if (supabase) {
+      const { error } = await supabase
+        .from('riders')
+        .delete()
+        .eq('id', id);
+
+      if (!error) return true;
+    }
+  }
+  memoryRiders = memoryRiders.filter(r => r.id !== id);
+  return true;
+}
+
+/**
+ * Obtener todas las sesiones de chat
+ */
+export async function getChatSessions(): Promise<DbChatSession[]> {
+  if (isSupabaseServerConfigured()) {
+    const supabase = await createServerSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (!error && data) {
+        return data as DbChatSession[];
+      }
+    }
+  }
+  return Object.values(memorySessions);
 }
 
 /**
