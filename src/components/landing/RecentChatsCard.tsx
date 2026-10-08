@@ -63,9 +63,16 @@ export function RecentChatsCard({
                     <span className="block text-xs font-bold text-slate-700 truncate group-hover:text-slate-900">
                       {c.title}
                     </span>
-                    <span className="block text-[10px] text-slate-400">
-                      {c.date}
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-slate-400">
+                        {c.date}
+                      </span>
+                      {c.riderInfo && (
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 border border-violet-200/60 truncate max-w-[110px]">
+                          🎸 {c.riderInfo.artistName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

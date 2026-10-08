@@ -17,6 +17,7 @@ export interface IChatService {
   getHistory(sessionId: string): Promise<ChatMessage[]>;
   sendMessage(params: SendMessageParams): Promise<any>;
   deleteSession(sessionId: string): Promise<boolean>;
+  linkRider(sessionId: string, riderId: string | null): Promise<boolean>;
 }
 
 export class ChatService implements IChatService {
@@ -31,13 +32,33 @@ export class ChatService implements IChatService {
           title: s.title || 'Consulta de Producción',
           date: new Date(s.updated_at || s.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
           active: idx === 0,
-          riderId: s.rider_id
+          riderId: s.rider_id || null,
+          riderInfo: s.riders ? {
+            id: s.riders.id,
+            title: s.riders.title,
+            artistName: s.riders.artist_name,
+            riderType: s.riders.rider_type
+          } : null
         }));
       }
       return [];
     } catch (err) {
       console.warn('[ChatService.getSessions] Error:', err);
       return [];
+    }
+  }
+
+  public async linkRider(sessionId: string, riderId: string | null): Promise<boolean> {
+    try {
+      const res = await fetch('/api/chat/sessions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sessionId, riderId })
+      });
+      return res.ok;
+    } catch (err) {
+      console.error(`[ChatService.linkRider] Error for ${sessionId}:`, err);
+      return false;
     }
   }
 
@@ -56,7 +77,13 @@ export class ChatService implements IChatService {
         title: s.title || 'Nueva Consulta de Producción',
         date: new Date(s.updated_at || s.created_at || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' }),
         active: true,
-        riderId: s.rider_id
+        riderId: s.rider_id || null,
+        riderInfo: s.riders ? {
+          id: s.riders.id,
+          title: s.riders.title,
+          artistName: s.riders.artist_name,
+          riderType: s.riders.rider_type
+        } : null
       };
     } catch (err) {
       console.error('[ChatService.createSession] Error:', err);

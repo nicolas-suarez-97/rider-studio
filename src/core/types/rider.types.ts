@@ -27,6 +27,12 @@ export interface ChannelData {
   stand: string;
 }
 
+export interface LinkedChatSession {
+  id: string;
+  title: string;
+  updatedAt?: string;
+}
+
 export interface SavedRiderSummary {
   id: string;
   title: string;
@@ -40,4 +46,5 @@ export interface SavedRiderSummary {
   lastEdited: string;
   channels?: ChannelData[];
   sections?: SectionItem[];
+  linkedSessions?: LinkedChatSession[];
 }

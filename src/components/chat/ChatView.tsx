@@ -18,6 +18,8 @@ interface ChatViewProps {
   messages: ChatMessageItem[];
   isThinking: boolean;
   onSendMessage: (text: string) => void;
+  availableRiders?: Array<{ id: string; title: string; artist: string; type: string }>;
+  onLinkRider?: (sessionId: string, riderId: string | null) => void;
 }
 
 export function ChatView({
@@ -30,10 +32,15 @@ export function ChatView({
   onSelectAgent,
   messages,
   isThinking,
-  onSendMessage
+  onSendMessage,
+  availableRiders,
+  onLinkRider
 }: ChatViewProps) {
   const [inputVal, setInputVal] = useState('');
+  const [showLinkMenu, setShowLinkMenu] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const activeSession = sessions.find(s => s.id === currentSessionId);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -109,9 +116,16 @@ export function ChatView({
                       <span className="block text-xs font-bold text-slate-800 truncate">
                         {s.title}
                       </span>
-                      <span className="block text-[10px] text-slate-400">
-                        {s.date}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-slate-400">
+                          {s.date}
+                        </span>
+                        {s.riderInfo && (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 border border-violet-200/60 truncate max-w-[120px]">
+                            🎸 {s.riderInfo.artistName}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -179,22 +193,135 @@ export function ChatView({
 
       {/* Flujo de Conversación Principal */}
       <main className="flex-1 flex flex-col bg-[#f8f9fa] overflow-hidden">
-        {/* Banner del Agente */}
-        <div className="h-14 px-6 border-b border-slate-200/60 bg-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">{info.icon}</span>
-            <div>
-              <h2 className="text-sm font-extrabold text-slate-900 leading-tight">
+        {/* Banner del Agente & Rider Vinculado */}
+        <div className="h-14 px-4 sm:px-6 border-b border-slate-200/60 bg-white flex items-center justify-between shrink-0 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-xl shrink-0">{info.icon}</span>
+            <div className="min-w-0">
+              <h2 className="text-sm font-extrabold text-slate-900 leading-tight truncate">
                 {profile.name}
               </h2>
-              <p className="text-[11px] text-slate-400 font-medium">
+              <p className="text-[11px] text-slate-400 font-medium truncate">
                 {profile.title}
               </p>
             </div>
           </div>
-          <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-            En línea
-          </span>
+
+          {/* Vínculo con Rider */}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              {activeSession?.riderInfo ? (
+                <div className="flex items-center gap-2 bg-violet-50/90 border border-violet-200/80 rounded-2xl px-3 py-1.5 shadow-2xs">
+                  <div className="w-5 h-5 rounded-lg bg-violet-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                    🎸
+                  </div>
+                  <div className="text-left min-w-0">
+                    <span className="block text-[9px] font-black uppercase tracking-wider text-violet-600 leading-tight">
+                      Rider Vinculado
+                    </span>
+                    <span className="block text-xs font-bold text-slate-800 leading-tight truncate max-w-[130px] sm:max-w-[180px]">
+                      {activeSession.riderInfo.artistName}
+                    </span>
+                  </div>
+                  <Link
+                    href={`/workspace?id=${activeSession.riderInfo.id}`}
+                    className="ml-1 text-[11px] font-bold text-violet-700 hover:text-violet-900 bg-white hover:bg-violet-100 px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 shadow-xs border border-violet-200/60 shrink-0"
+                    title="Abrir este rider en Workspace 3 Paneles"
+                  >
+                    <span>Workspace</span>
+                    <span className="text-[10px]">↗</span>
+                  </Link>
+                  {onLinkRider && (
+                    <button
+                      onClick={() => setShowLinkMenu(!showLinkMenu)}
+                      className="p-1 hover:bg-violet-200/60 rounded-lg text-violet-600 transition-colors cursor-pointer shrink-0"
+                      title="Cambiar o desvincular rider"
+                    >
+                      <Icon name="moreVertical" className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                onLinkRider && (
+                  <button
+                    onClick={() => setShowLinkMenu(!showLinkMenu)}
+                    className="text-xs font-bold text-slate-600 hover:text-violet-700 bg-slate-100/80 hover:bg-violet-50 border border-slate-200/80 px-3 py-1.5 rounded-2xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Icon name="link" className="w-3.5 h-3.5 text-violet-600" />
+                    <span>Vincular a Rider</span>
+                    <span className="text-[10px] text-slate-400">▾</span>
+                  </button>
+                )
+              )}
+
+              {/* Menu desplegable de vinculación */}
+              {showLinkMenu && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200/80 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2 py-1.5 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Vincular Rider al Chat
+                    </span>
+                    <button
+                      onClick={() => setShowLinkMenu(false)}
+                      className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto py-1 space-y-1">
+                    {availableRiders && availableRiders.length > 0 ? (
+                      availableRiders.map((r) => {
+                        const isSelected = activeSession?.riderId === r.id;
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => {
+                              if (onLinkRider) onLinkRider(currentSessionId, r.id);
+                              setShowLinkMenu(false);
+                            }}
+                            className={`w-full text-left p-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                              isSelected
+                                ? 'bg-violet-50 text-violet-700 font-bold'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="truncate pr-2">
+                              <span className="block font-bold truncate">{r.artist}</span>
+                              <span className="block text-[10px] text-slate-400 truncate">{r.title}</span>
+                            </div>
+                            {isSelected && <span className="text-violet-600 font-bold">✓</span>}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="p-3 text-center text-xs text-slate-400">
+                        No hay riders guardados aún.
+                      </div>
+                    )}
+                  </div>
+
+                  {activeSession?.riderId && onLinkRider && (
+                    <div className="pt-1 border-t border-slate-100">
+                      <button
+                        onClick={() => {
+                          onLinkRider(currentSessionId, null);
+                          setShowLinkMenu(false);
+                        }}
+                        className="w-full text-left px-2 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Desvincular Rider de este Chat
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <span className="hidden sm:inline-flex text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              En línea
+            </span>
+          </div>
         </div>
 
         {/* Mensajes */}

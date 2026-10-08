@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getChatSessions, getOrCreateChatSession, deleteChatSession } from '@/lib/services/rider-storage';
+import { getChatSessions, getOrCreateChatSession, updateChatSession, deleteChatSession } from '@/lib/services/rider-storage';
 
 export async function GET() {
   try {
@@ -25,6 +25,26 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('[API Chat Sessions POST Error]', error);
     return NextResponse.json({ error: 'Error al crear la sesión de chat' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const { id, riderId, title, activeAgent } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID de sesión requerido' }, { status: 400 });
+    }
+
+    const updated = await updateChatSession(id, { riderId, title, activeAgent });
+    if (updated) {
+      return NextResponse.json({ success: true, session: updated });
+    }
+    return NextResponse.json({ error: 'No se encontró la sesión a actualizar' }, { status: 404 });
+  } catch (error: any) {
+    console.error('[API Chat Sessions PATCH Error]', error);
+    return NextResponse.json({ error: 'Error al actualizar la sesión' }, { status: 500 });
   }
 }
 

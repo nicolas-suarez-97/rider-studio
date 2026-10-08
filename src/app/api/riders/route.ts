@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRiders, saveRider, deleteRider } from '@/lib/services/rider-storage';
+import { getRiders, getRiderById, saveRider, deleteRider } from '@/lib/services/rider-storage';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (id) {
+      const rider = await getRiderById(id);
+      if (!rider) {
+        return NextResponse.json({ error: 'Rider no encontrado' }, { status: 404 });
+      }
+      return NextResponse.json({ rider });
+    }
+
     const riders = await getRiders();
     return NextResponse.json({ riders });
   } catch (error: any) {

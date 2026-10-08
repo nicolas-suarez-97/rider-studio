@@ -1,4 +1,12 @@
 import { AgentRole } from './agent.types';
+import { RiderType } from './rider.types';
+
+export interface LinkedRiderInfo {
+  id: string;
+  title: string;
+  artistName: string;
+  riderType: RiderType;
+}
 
 export interface ChatMessageItem {
   id?: string;
@@ -15,6 +23,7 @@ export interface ChatSessionSummary {
   title: string;
   date: string;
   active: boolean;
-  riderId?: string;
+  riderId?: string | null;
+  riderInfo?: LinkedRiderInfo | null;
   lastMessage?: string;
 }

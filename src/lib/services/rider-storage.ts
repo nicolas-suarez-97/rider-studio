@@ -13,17 +13,22 @@ let memoryMessages: Record<string, DbChatMessage[]> = {};
 /**
  * Obtener todos los riders
  */
-export async function getRiders(): Promise<DbRider[]> {
+export async function getRiders(): Promise<any[]> {
   if (isSupabaseServerConfigured()) {
     const supabase = await createServerSupabaseClient();
     if (supabase) {
       const { data, error } = await supabase
         .from('riders')
-        .select('*')
+        .select('*, chat_sessions(id, title, active_agent, updated_at)')
         .order('updated_at', { ascending: false });
 
       if (!error && data) {
-        return data as DbRider[];
+        return (data as any[]).map(r => ({
+          ...r,
+          chat_sessions: Array.isArray(r.chat_sessions)
+            ? r.chat_sessions.filter((cs: any) => cs.active_agent !== 'archived')
+            : []
+        }));
       }
     }
   }
@@ -33,18 +38,23 @@ export async function getRiders(): Promise<DbRider[]> {
 /**
  * Obtener un rider por ID
  */
-export async function getRiderById(id: string): Promise<DbRider | null> {
+export async function getRiderById(id: string): Promise<any | null> {
   if (isSupabaseServerConfigured()) {
     const supabase = await createServerSupabaseClient();
     if (supabase) {
       const { data, error } = await supabase
         .from('riders')
-        .select('*')
+        .select('*, chat_sessions(id, title, active_agent, updated_at)')
         .eq('id', id)
         .single();
 
       if (!error && data) {
-        return data as DbRider;
+        return {
+          ...(data as Record<string, any>),
+          chat_sessions: Array.isArray((data as any).chat_sessions)
+            ? (data as any).chat_sessions.filter((cs: any) => cs.active_agent !== 'archived')
+            : []
+        };
       }
     }
   }
@@ -134,28 +144,84 @@ export async function deleteRider(id: string): Promise<boolean> {
 }
 
 /**
- * Obtener todas las sesiones de chat
+ * Obtener todas las sesiones de chat (con riders asociados)
  */
-export async function getChatSessions(): Promise<DbChatSession[]> {
+export async function getChatSessions(): Promise<any[]> {
   if (isSupabaseServerConfigured()) {
     const supabase = await createServerSupabaseClient();
     if (supabase) {
       const { data, error } = await supabase
         .from('chat_sessions')
-        .select('*')
+        .select('*, riders(id, title, artist_name, rider_type)')
+        .neq('active_agent', 'archived')
         .order('updated_at', { ascending: false });
 
       if (!error && data) {
-        return data as DbChatSession[];
+        return data as any[];
       }
     }
   }
-  return Object.values(memorySessions);
+  return Object.values(memorySessions).filter(s => s.active_agent !== 'archived');
 }
 
 function isValidUuid(id?: string | null): boolean {
   if (!id) return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+/**
+ * Actualizar una sesión de chat (vincular/desvincular rider, cambiar título, etc.)
+ */
+export async function updateChatSession(
+  id: string,
+  updates: {
+    riderId?: string | null;
+    title?: string;
+    activeAgent?: string;
+  }
+): Promise<any | null> {
+  const now = new Date().toISOString();
+  const updatePayload: Record<string, any> = { updated_at: now };
+
+  if (updates.riderId !== undefined) {
+    updatePayload.rider_id = isValidUuid(updates.riderId) ? updates.riderId : null;
+  }
+  if (updates.title !== undefined) {
+    updatePayload.title = updates.title;
+  }
+  if (updates.activeAgent !== undefined) {
+    updatePayload.active_agent = updates.activeAgent;
+  }
+
+  if (isSupabaseServerConfigured() && isValidUuid(id)) {
+    const supabase = await createServerSupabaseClient();
+    if (supabase) {
+      const { data, error } = await (supabase
+        .from('chat_sessions') as any)
+        .update(updatePayload)
+        .eq('id', id)
+        .select('*, riders(id, title, artist_name, rider_type)')
+        .single();
+
+      if (!error && data) {
+        return data;
+      }
+      if (error) {
+        console.warn('[Supabase update chat_session error]', error);
+      }
+    }
+  }
+
+  if (memorySessions[id]) {
+    memorySessions[id] = {
+      ...memorySessions[id],
+      ...updatePayload,
+      updated_at: now
+    };
+    return memorySessions[id];
+  }
+
+  return null;
 }
 
 /**
@@ -182,8 +248,13 @@ export async function getOrCreateChatSession(
           .single();
         if (data) {
           const sessionData = data as DbChatSession;
+          const updatePayload: any = { updated_at: now };
+          if (riderId && isValidUuid(riderId) && sessionData.rider_id !== riderId) {
+            updatePayload.rider_id = riderId;
+            sessionData.rider_id = riderId;
+          }
           await (supabase.from('chat_sessions') as any)
-            .update({ updated_at: now })
+            .update(updatePayload)
             .eq('id', validProvidedId);
           return { ...sessionData, updated_at: now };
         }
@@ -213,6 +284,9 @@ export async function getOrCreateChatSession(
   }
 
   if (sessionId && memorySessions[sessionId]) {
+    if (riderId && isValidUuid(riderId)) {
+      memorySessions[sessionId].rider_id = riderId;
+    }
     return memorySessions[sessionId];
   }
 
@@ -229,20 +303,23 @@ export async function getOrCreateChatSession(
 }
 
 /**
- * Eliminar una sesión de chat y sus mensajes asociados
+ * Eliminar una sesión de chat y sus mensajes asociados.
+ * Utiliza eliminación de doble capa: marca como 'archived' (garantizado con política UPDATE)
+ * e intenta el borrado físico (DELETE) tanto de mensajes como de la sesión.
  */
 export async function deleteChatSession(id: string): Promise<boolean> {
   if (isSupabaseServerConfigured() && isValidUuid(id)) {
     const supabase = await createServerSupabaseClient();
     if (supabase) {
+      // 1. Marcar como archivado para exclusión inmediata en consultas
+      await (supabase.from('chat_sessions') as any).update({ active_agent: 'archived' }).eq('id', id);
+
+      // 2. Intentar hard delete de mensajes y sesión
       await supabase.from('chat_messages').delete().eq('session_id', id);
       const { error } = await supabase.from('chat_sessions').delete().eq('id', id);
-      if (!error) {
-        delete memorySessions[id];
-        delete memoryMessages[id];
-        return true;
+      if (error) {
+        console.warn('[Supabase delete chat_session notice]', error);
       }
-      console.warn('[Supabase delete chat_session error]', error);
     }
   }
   delete memorySessions[id];

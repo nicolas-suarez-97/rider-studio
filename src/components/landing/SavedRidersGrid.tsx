@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Icon } from '../common/Icon';
 import { SavedRiderSummary, RiderType } from '@/core/types/rider.types';
 
@@ -128,6 +129,35 @@ export function SavedRidersGrid({
                   <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
                     <span>{rider.sectionsCompleted} de {rider.totalSections} secciones</span>
                     <span>{rider.lastEdited}</span>
+                  </div>
+
+                  {/* Vínculo de Chat */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                    {rider.linkedSessions && rider.linkedSessions.length > 0 ? (
+                      <Link
+                        href={`/chat?session=${rider.linkedSessions[0].id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[11px] font-bold text-violet-700 hover:text-violet-900 bg-violet-50 hover:bg-violet-100 px-2.5 py-1 rounded-xl transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                        title="Ver conversación asociada"
+                      >
+                        <Icon name="messageSquare" className="w-3 h-3" />
+                        <span>{rider.linkedSessions.length} chat{rider.linkedSessions.length > 1 ? 's' : ''}</span>
+                        <span className="text-[10px]">↗</span>
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/chat?riderId=${rider.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[11px] font-bold text-slate-400 hover:text-violet-600 hover:bg-violet-50 px-2 py-1 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                        title="Iniciar nueva consulta sobre este rider"
+                      >
+                        <Icon name="plus" className="w-3 h-3" />
+                        <span>Iniciar Chat</span>
+                      </Link>
+                    )}
+                    <span className="text-violet-600 group-hover:translate-x-0.5 transition-transform font-bold text-xs flex items-center gap-0.5">
+                      Editar <span>→</span>
+                    </span>
                   </div>
                 </div>
               </div>

@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { Icon } from '../common/Icon';
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
+import { Rider } from '@/core/models/Rider';
 import { AGENT_PROFILES, AGENT_INFO, SAMPLE_FAQS } from '@/core/constants/agent-profiles';
 
 interface AssistantChatPanelProps {
@@ -15,6 +17,7 @@ interface AssistantChatPanelProps {
   onSendMessage: (text: string) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  rider?: Rider;
 }
 
 export function AssistantChatPanel({
@@ -24,7 +27,8 @@ export function AssistantChatPanel({
   isThinking,
   onSendMessage,
   isCollapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  rider
 }: AssistantChatPanelProps) {
   const [inputText, setInputText] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -97,6 +101,31 @@ export function AssistantChatPanel({
             <Icon name="panelRightClose" className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Indicador de vinculación con el Rider actual */}
+        {rider && (
+          <div className="mb-2.5 px-3 py-2 bg-violet-50/90 border border-violet-200/70 rounded-2xl flex items-center justify-between gap-2 shadow-2xs">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs shrink-0">🎸</span>
+              <div className="truncate">
+                <span className="block text-[9px] font-black uppercase text-violet-600 leading-none">
+                  Vinculado a este Rider
+                </span>
+                <span className="block text-xs font-bold text-slate-800 truncate leading-tight mt-0.5">
+                  {rider.artistName}
+                </span>
+              </div>
+            </div>
+            <Link
+              href={rider.id ? `/chat?riderId=${rider.id}` : '/chat'}
+              className="text-[10px] font-bold text-violet-700 hover:text-violet-900 bg-white hover:bg-violet-100 px-2.5 py-1 rounded-xl border border-violet-200/60 transition-colors shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
+              title="Abrir esta conversación en pantalla completa"
+            >
+              <span>Chat Completo</span>
+              <span>↗</span>
+            </Link>
+          </div>
+        )}
 
         {/* Selector de Agentes Especializados */}
         <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/60">

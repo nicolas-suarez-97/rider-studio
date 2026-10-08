@@ -84,6 +84,10 @@ export default function HomePage() {
     const success = await chatService.deleteSession(convId);
     if (success) {
       setConversations(prev => prev.filter(c => c.id !== convId));
+      setSavedRiders(prev => prev.map(r => ({
+        ...r,
+        linkedSessions: r.linkedSessions?.filter(s => s.id !== convId)
+      })));
       showToast('🗑️ Conversación eliminada');
     } else {
       showToast('⚠️ No se pudo eliminar la conversación');

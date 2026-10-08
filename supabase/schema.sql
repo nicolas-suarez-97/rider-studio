@@ -83,11 +83,17 @@ BEGIN
     EXECUTE 'DROP POLICY IF EXISTS "Public Update Sessions" ON public.chat_sessions';
     EXECUTE 'CREATE POLICY "Public Update Sessions" ON public.chat_sessions FOR UPDATE USING (true)';
 
+    EXECUTE 'DROP POLICY IF EXISTS "Public Delete Sessions" ON public.chat_sessions';
+    EXECUTE 'CREATE POLICY "Public Delete Sessions" ON public.chat_sessions FOR DELETE USING (true)';
+
     EXECUTE 'DROP POLICY IF EXISTS "Public Read Messages" ON public.chat_messages';
     EXECUTE 'CREATE POLICY "Public Read Messages" ON public.chat_messages FOR SELECT USING (true)';
     
     EXECUTE 'DROP POLICY IF EXISTS "Public Insert Messages" ON public.chat_messages';
     EXECUTE 'CREATE POLICY "Public Insert Messages" ON public.chat_messages FOR INSERT WITH CHECK (true)';
+
+    EXECUTE 'DROP POLICY IF EXISTS "Public Delete Messages" ON public.chat_messages';
+    EXECUTE 'CREATE POLICY "Public Delete Messages" ON public.chat_messages FOR DELETE USING (true)';
 
     -- 7. Datos iniciales de prueba (Seed Rider)
     INSERT INTO public.riders (id, title, artist_name, rider_type, version, status, channels, sections)

@@ -369,6 +369,7 @@ function WorkspaceContent() {
           onSendMessage={handleSendMessage}
           isCollapsed={isChatCollapsed}
           onToggleCollapse={() => setIsChatCollapsed(prev => !prev)}
+          rider={rider}
         />
       </div>
 

@@ -9,16 +9,19 @@ import { chatService } from '@/core/services/chat.service';
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem, ChatSessionSummary } from '@/core/types/chat.types';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
+import { riderService } from '@/core/services/rider.service';
 
 function ChatPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const sessionIdParam = searchParams.get('session');
+  const riderIdParam = searchParams.get('riderId');
   const initialPromptParam = searchParams.get('prompt');
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
+  const [availableRiders, setAvailableRiders] = useState<Array<{ id: string; title: string; artist: string; type: string }>>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>(sessionIdParam || '');
   const [activeAgent, setActiveAgent] = useState<AgentRole>('master');
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
@@ -27,6 +30,24 @@ function ChatPageContent() {
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  }, []);
+
+  // Cargar lista de riders disponibles para vincular
+  useEffect(() => {
+    async function loadRiders() {
+      try {
+        const list = await riderService.getAll();
+        setAvailableRiders(list.map(r => ({
+          id: r.id,
+          title: r.title,
+          artist: r.artistName,
+          type: r.type
+        })));
+      } catch (err) {
+        console.warn('Error loading riders for chat:', err);
+      }
+    }
+    loadRiders();
   }, []);
 
   // Cargar lista de sesiones
@@ -45,6 +66,27 @@ function ChatPageContent() {
     async function init() {
       const data = await loadSessionsList();
 
+      // Si vino riderIdParam, buscar sesión existente de ese rider o crear una
+      if (riderIdParam) {
+        const matching = data.find(s => s.riderId === riderIdParam);
+        if (matching) {
+          setCurrentSessionId(matching.id);
+          router.replace(`/chat?session=${matching.id}`);
+          return;
+        } else {
+          // Crear nueva sesión vinculada al rider
+          const newSession = await chatService.createSession({
+            title: `Consulta de Producción`,
+            riderId: riderIdParam,
+            activeAgent: 'master'
+          });
+          setSessions(prev => [newSession, ...prev]);
+          setCurrentSessionId(newSession.id);
+          router.replace(`/chat?session=${newSession.id}`);
+          return;
+        }
+      }
+
       // Si no hay parámetro de sesión en la URL pero hay sesiones previas, usar la primera o la de localStorage
       if (!sessionIdParam && data.length > 0) {
         const stored = typeof window !== 'undefined' ? localStorage.getItem('raider_last_chat_session') : null;
@@ -54,7 +96,7 @@ function ChatPageContent() {
       }
     }
     init();
-  }, [sessionIdParam, router, loadSessionsList]);
+  }, [sessionIdParam, riderIdParam, router, loadSessionsList]);
 
   // Cargar historial de la sesión activa
   useEffect(() => {
@@ -137,6 +179,16 @@ function ChatPageContent() {
     }
   };
 
+  const handleLinkRider = async (sessionId: string, riderId: string | null) => {
+    const success = await chatService.linkRider(sessionId, riderId);
+    if (success) {
+      await loadSessionsList();
+      showToast(riderId ? '🔗 Rider vinculado a la conversación' : 'Rider desvinculado');
+    } else {
+      showToast('⚠️ No se pudo actualizar el vínculo');
+    }
+  };
+
   const handleSendMessage = async (text: string) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg: ChatMessageItem = { sender: 'user', text, time: now };
@@ -144,15 +196,18 @@ function ChatPageContent() {
     setMessages(updatedMessages);
     setIsAgentThinking(true);
 
+    const activeSession = sessions.find(s => s.id === currentSessionId);
+
     try {
       const data = await chatService.sendMessage({
         messages: updatedMessages.map(m => ({
           role: m.sender === 'user' ? 'user' : 'assistant',
           content: m.text
         })),
-        riderType: 'tecnico',
+        riderType: activeSession?.riderInfo?.riderType || 'tecnico',
         activeAgent,
-        sessionId: currentSessionId || undefined
+        sessionId: currentSessionId || undefined,
+        riderId: activeSession?.riderId || undefined
       });
 
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -210,6 +265,8 @@ function ChatPageContent() {
         messages={messages}
         isThinking={isThinking}
         onSendMessage={handleSendMessage}
+        availableRiders={availableRiders}
+        onLinkRider={handleLinkRider}
       />
     </div>
   );

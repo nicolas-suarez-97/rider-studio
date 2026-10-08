@@ -1,4 +1,4 @@
-import { RiderType, SectionItem, ChannelData, SavedRiderSummary } from '../types/rider.types';
+import { RiderType, SectionItem, ChannelData, SavedRiderSummary, LinkedChatSession } from '../types/rider.types';
 import { RIDER_DATA } from '../constants/rider-templates';
 import { ChannelInput } from './ChannelInput';
 
@@ -14,6 +14,7 @@ export class Rider {
   public sections: SectionItem[];
   public channels: ChannelInput[];
   public completedSectionIds: string[];
+  public linkedSessions: LinkedChatSession[];
   public updatedAt: string;
 
   constructor(params: {
@@ -28,6 +29,7 @@ export class Rider {
     sections?: SectionItem[];
     channels?: (ChannelData | ChannelInput)[];
     completedSectionIds?: string[];
+    linkedSessions?: LinkedChatSession[];
     updatedAt?: string;
   }) {
     this.type = params.type || 'tecnico';
@@ -48,6 +50,7 @@ export class Rider {
       c instanceof ChannelInput ? c : ChannelInput.fromData(c, idx)
     );
     this.completedSectionIds = params.completedSectionIds || [];
+    this.linkedSessions = params.linkedSessions || [];
     this.updatedAt = params.updatedAt || new Date().toISOString();
   }
 
@@ -87,6 +90,14 @@ export class Rider {
       ? row.sections
       : RIDER_DATA[rType]?.sections || [];
 
+    const linkedSessions: LinkedChatSession[] = Array.isArray(row.chat_sessions)
+      ? row.chat_sessions.map((cs: any) => ({
+          id: cs.id,
+          title: cs.title,
+          updatedAt: cs.updated_at
+        }))
+      : [];
+
     return new Rider({
       id: row.id,
       title: row.title || RIDER_DATA[rType]?.title || 'Rider',
@@ -101,6 +112,7 @@ export class Rider {
       completedSectionIds: Array.isArray(row.metadata?.completedSectionIds)
         ? row.metadata.completedSectionIds
         : [],
+      linkedSessions,
       updatedAt: row.updated_at || row.created_at || new Date().toISOString()
     });
   }
@@ -206,7 +218,8 @@ export class Rider {
       status: this.status,
       lastEdited: new Date(this.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       channels: this.channels.map(c => c.toJSON()),
-      sections: this.sections
+      sections: this.sections,
+      linkedSessions: this.linkedSessions
     };
   }
 }
