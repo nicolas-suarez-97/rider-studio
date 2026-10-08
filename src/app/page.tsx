@@ -343,8 +343,8 @@ export default function App() {
   // Estado de edición interactiva del Document Preview
   const [isEditMode, setIsEditMode] = useState(true);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
-  const [docHeaderTitle, setDocHeaderTitle] = useState('THE SOUND WAVE & GUEST ARTISTS');
-  const [docHeaderSeason, setDocHeaderSeason] = useState('Temporada 2026 - Conciertos en Vivo');
+  const [docHeaderTitle, setDocHeaderTitle] = useState('Nuevo Artista / Banda');
+  const [docHeaderSeason, setDocHeaderSeason] = useState('Temporada 2026');
 
   // Input list dinámico e interactivo para la sección 05 (Técnico)
   const [inputListChannels, setInputListChannels] = useState<Array<{ id: string; ch: string; name: string; mic: string; stand: string }>>([
@@ -538,6 +538,27 @@ export default function App() {
     }
     showToast(`Cargando rider de "${rider.artist}"...`);
     navigateTo('workspace', 'forward');
+  };
+
+  const handleDeleteRider = async (riderId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (typeof window !== 'undefined' && !window.confirm('¿Seguro que deseas eliminar este rider de la base de datos?')) return;
+    try {
+      const res = await fetch(`/api/riders?id=${riderId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSavedRiders(prev => prev.filter(r => r.id !== riderId));
+        if (currentRiderId === riderId) {
+          setCurrentRiderId('');
+          setDocHeaderTitle('Nuevo Artista / Banda');
+        }
+        showToast('🗑️ Rider eliminado de la base de datos');
+      } else {
+        showToast('⚠️ No se pudo eliminar el rider');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('⚠️ Error al eliminar el rider');
+    }
   };
 
   // Switch rider type, reset active section y cambiar agente activo sugerido
@@ -1285,17 +1306,27 @@ export default function App() {
                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${typeDef.badgeColor}`}>
                               {typeDef.badge}
                             </span>
-                            {rider.status === 'completed' ? (
-                              <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                <Icon name="check" className="w-3 h-3 text-emerald-600" />
-                                <span>Finalizado</span>
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                <span>En Progreso</span>
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5">
+                              {rider.status === 'completed' ? (
+                                <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                  <Icon name="check" className="w-3 h-3 text-emerald-600" />
+                                  <span>Finalizado</span>
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                  <span>En Progreso</span>
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteRider(rider.id, e)}
+                                className="p-1 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                title="Eliminar rider de la base de datos"
+                              >
+                                <Icon name="trash" className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
 
                           {/* Título y Artista */}
@@ -1496,9 +1527,19 @@ export default function App() {
                               <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${typeDef.badgeColor}`}>
                                 {typeDef.badge}
                               </span>
-                              <span className={`text-[10px] font-black ${rider.status === 'completed' ? 'text-emerald-600' : 'text-violet-600'}`}>
-                                {rider.progress}%
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-[10px] font-black ${rider.status === 'completed' ? 'text-emerald-600' : 'text-violet-600'}`}>
+                                  {rider.progress}%
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteRider(rider.id, e)}
+                                  className="p-0.5 text-slate-300 hover:text-rose-600 rounded transition-colors"
+                                  title="Eliminar rider de la base de datos"
+                                >
+                                  <Icon name="trash" className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
 
                             <p className="text-xs font-bold text-slate-900 truncate">{rider.artist}</p>

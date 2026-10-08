@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRiders, saveRider } from '@/lib/services/rider-storage';
+import { getRiders, saveRider, deleteRider } from '@/lib/services/rider-storage';
 
 export async function GET() {
   try {
@@ -26,5 +26,21 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('[API Riders POST Error]', error);
     return NextResponse.json({ error: 'Error al guardar el rider' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'ID es requerido' }, { status: 400 });
+    }
+
+    await deleteRider(id);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('[API Riders DELETE Error]', error);
+    return NextResponse.json({ error: 'Error al eliminar el rider' }, { status: 500 });
   }
 }
