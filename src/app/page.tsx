@@ -650,14 +650,11 @@ export default function App() {
   const callAgentChat = async (userText: string, currentHistory?: Array<{ sender: 'ai' | 'user'; text: string; time: string; role?: AgentRole; roleName?: string; roleAvatar?: string }>) => {
     setIsAgentThinking(true);
     try {
-      const historyToUse = currentHistory || messages;
-      const apiMessages = [
-        ...historyToUse.map(m => ({
-          role: m.sender === 'ai' ? 'assistant' : 'user',
-          content: m.text
-        })),
-        { role: 'user', content: userText }
-      ];
+      const historyToUse = currentHistory || [...messages, { sender: 'user', text: userText, time: '' }];
+      const apiMessages = historyToUse.map(m => ({
+        role: m.sender === 'ai' ? 'assistant' : 'user',
+        content: m.text
+      }));
 
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -809,6 +806,15 @@ export default function App() {
     setMessages(updatedMessages);
     setChatInput('');
     callAgentChat(userText, updatedMessages);
+  };
+
+  const handleSendPromptDirectly = (promptText: string) => {
+    if (isAgentThinking) return;
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMsg = { sender: 'user' as const, text: promptText, time: now };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    callAgentChat(promptText, updatedMessages);
   };
 
   const scrollToSection = (secId: string) => {
@@ -1507,26 +1513,20 @@ export default function App() {
               {/* Chips de Preguntas Sugeridas */}
               <div className="shrink-0 px-6 py-2.5 border-t border-slate-100 flex flex-wrap items-center gap-2 bg-slate-50/50">
                 <button 
-                  onClick={() => {
-                    setChatInput('Es un formato acústico de 3 músicos');
-                  }}
-                  className="text-xs bg-white hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/70 px-3 py-1.5 rounded-full transition-all shadow-2xs active:scale-95"
+                  onClick={() => handleSendPromptDirectly('Es un formato acústico de 3 músicos')}
+                  className="text-xs bg-white hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/70 px-3 py-1.5 rounded-full transition-all shadow-2xs active:scale-95 cursor-pointer"
                 >
                   + Formato acústico (3 músicos)
                 </button>
                 <button 
-                  onClick={() => {
-                    setChatInput('Banda completa de rock con batería y 2 amplis');
-                  }}
-                  className="text-xs bg-white hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/70 px-3 py-1.5 rounded-full transition-all shadow-2xs active:scale-95"
+                  onClick={() => handleSendPromptDirectly('Banda completa de rock con batería y 2 amplis')}
+                  className="text-xs bg-white hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/70 px-3 py-1.5 rounded-full transition-all shadow-2xs active:scale-95 cursor-pointer"
                 >
                   + Banda completa de rock
                 </button>
                 <button 
-                  onClick={() => {
-                    setChatInput('Agrega requerimiento de 4 máquinas de chispa fría y CO2');
-                  }}
-                  className="text-xs bg-white hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/70 px-3 py-1.5 rounded-full transition-all shadow-2xs active:scale-95"
+                  onClick={() => handleSendPromptDirectly('Agrega requerimiento de 4 máquinas de chispa fría y CO2')}
+                  className="text-xs bg-white hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/70 px-3 py-1.5 rounded-full transition-all shadow-2xs active:scale-95 cursor-pointer"
                 >
                   + Efectos y Pirotecnia
                 </button>
@@ -2646,18 +2646,14 @@ export default function App() {
                 {/* Chips de Preguntas Sugeridas */}
                 <div className="shrink-0 pt-2 pb-1 flex flex-wrap gap-1.5">
                   <button 
-                    onClick={() => {
-                      setChatInput('Agrega 2 micrófonos inalámbricos adicionales a la Input List');
-                    }}
-                    className="text-[10px] bg-slate-50 hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/60 px-2.5 py-1 rounded-full transition-all text-left truncate max-w-full"
+                    onClick={() => handleSendPromptDirectly('Agrega 2 micrófonos inalámbricos adicionales a la Input List')}
+                    className="text-[10px] bg-slate-50 hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/60 px-2.5 py-1 rounded-full transition-all text-left truncate max-w-full cursor-pointer active:scale-95"
                   >
                     + Agregar micrófono inalámbrico
                   </button>
                   <button 
-                    onClick={() => {
-                      setChatInput('Cambia el hotel a categoría Boutique y confirma late check-out');
-                    }}
-                    className="text-[10px] bg-slate-50 hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/60 px-2.5 py-1 rounded-full transition-all text-left truncate max-w-full"
+                    onClick={() => handleSendPromptDirectly('Cambia el hotel a categoría Boutique y confirma late check-out')}
+                    className="text-[10px] bg-slate-50 hover:bg-zinc-100 text-slate-600 hover:text-zinc-800 border border-slate-200/60 px-2.5 py-1 rounded-full transition-all text-left truncate max-w-full cursor-pointer active:scale-95"
                   >
                     + Ajustar hotelería
                   </button>
