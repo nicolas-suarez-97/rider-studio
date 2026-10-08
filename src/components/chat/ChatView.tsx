@@ -12,6 +12,7 @@ interface ChatViewProps {
   currentSessionId: string;
   onSelectSession: (sessionId: string) => void;
   onNewSession: () => void;
+  onDeleteSession: (sessionId: string, e: React.MouseEvent) => void;
   activeAgent: AgentRole;
   onSelectAgent: (role: AgentRole) => void;
   messages: ChatMessageItem[];
@@ -22,8 +23,9 @@ interface ChatViewProps {
 export function ChatView({
   sessions,
   currentSessionId,
-  onSelectSession,
   onNewSession,
+  onSelectSession,
+  onDeleteSession,
   activeAgent,
   onSelectAgent,
   messages,
@@ -59,23 +61,30 @@ export function ChatView({
               Conversaciones
             </h3>
             <p className="text-[10px] text-slate-400">
-              Historial de consultas y riders
+              Historial de consultas ({sessions.length})
             </p>
           </div>
           <button
             onClick={onNewSession}
-            className="text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 p-2 rounded-xl transition-all cursor-pointer"
-            title="Nueva consulta"
+            className="text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-xs"
+            title="Iniciar nueva consulta"
           >
-            <Icon name="plus" className="w-4 h-4" />
+            <Icon name="plus" className="w-3.5 h-3.5" />
+            <span>Nuevo</span>
           </button>
         </div>
 
         {/* Lista de Sesiones */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
           {sessions.length === 0 ? (
-            <div className="text-center py-6 text-xs text-slate-400">
-              No hay conversaciones activas.
+            <div className="text-center py-8 text-xs text-slate-400 space-y-2">
+              <p>No hay conversaciones activas.</p>
+              <button
+                onClick={onNewSession}
+                className="text-xs font-bold text-violet-600 hover:underline cursor-pointer"
+              >
+                + Iniciar primera conversación
+              </button>
             </div>
           ) : (
             sessions.map((s) => {
@@ -84,14 +93,16 @@ export function ChatView({
                 <div
                   key={s.id}
                   onClick={() => onSelectSession(s.id)}
-                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                  className={`group p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
                     isActive
-                      ? 'bg-violet-50/80 border-violet-200 shadow-xs'
+                      ? 'bg-violet-50/90 border-violet-200 shadow-xs ring-1 ring-violet-200/50'
                       : 'bg-white hover:bg-slate-50 border-slate-200/60'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      isActive ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500 group-hover:bg-violet-50 group-hover:text-violet-600'
+                    }`}>
                       <Icon name="messageSquare" className="w-3.5 h-3.5" />
                     </div>
                     <div className="truncate">
@@ -103,9 +114,21 @@ export function ChatView({
                       </span>
                     </div>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-bold shrink-0">
-                    {isActive ? '•' : '→'}
-                  </span>
+
+                  {/* Acciones: Borrar y Estado */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => onDeleteSession(s.id, e)}
+                      className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all cursor-pointer"
+                      title="Eliminar conversación"
+                    >
+                      <Icon name="trash" className="w-3.5 h-3.5" />
+                    </button>
+                    {isActive && (
+                      <span className="w-2 h-2 rounded-full bg-violet-600 shrink-0" />
+                    )}
+                  </div>
                 </div>
               );
             })

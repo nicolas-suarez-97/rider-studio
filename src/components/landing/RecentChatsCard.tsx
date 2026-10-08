@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
 import { Icon } from '../common/Icon';
 import { ChatSessionSummary } from '@/core/types/chat.types';
 
@@ -9,12 +8,14 @@ interface RecentChatsCardProps {
   conversations: ChatSessionSummary[];
   onSelectConversation: (id: string) => void;
   onNewConversation: () => void;
+  onDeleteConversation?: (id: string, e: React.MouseEvent) => void;
 }
 
 export function RecentChatsCard({
   conversations,
   onSelectConversation,
-  onNewConversation
+  onNewConversation,
+  onDeleteConversation
 }: RecentChatsCardProps) {
   return (
     <div className="w-full pt-2">
@@ -29,13 +30,13 @@ export function RecentChatsCard({
                 Conversaciones y Consultas IA
               </h3>
               <p className="text-[10px] sm:text-xs text-slate-400 font-medium">
-                Retoma una conversación con los agentes de producción
+                Retoma una conversación con los agentes de producción ({conversations.length})
               </p>
             </div>
           </div>
           <button
             onClick={onNewConversation}
-            className="text-[11px] font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-full transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+            className="text-[11px] font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-full transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
           >
             <Icon name="plus" className="w-3 h-3" />
             <span>Nuevo Chat</span>
@@ -43,8 +44,8 @@ export function RecentChatsCard({
         </div>
 
         {conversations.length === 0 ? (
-          <div className="py-4 text-center text-xs text-slate-400 bg-slate-50/50 rounded-2xl border border-slate-100">
-            No hay conversaciones previas registradas. Escribe en la barra superior para iniciar una.
+          <div className="py-6 text-center text-xs text-slate-400 bg-slate-50/50 rounded-2xl border border-slate-100">
+            No hay conversaciones previas registradas. Escribe en la barra superior o pulsa &quot;Nuevo Chat&quot;.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
@@ -67,9 +68,22 @@ export function RecentChatsCard({
                     </span>
                   </div>
                 </div>
-                <span className="text-[10px] text-slate-400 group-hover:text-violet-600 font-bold shrink-0">
-                  Abrir →
-                </span>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  {onDeleteConversation && (
+                    <button
+                      type="button"
+                      onClick={(e) => onDeleteConversation(c.id, e)}
+                      className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all cursor-pointer"
+                      title="Eliminar conversación"
+                    >
+                      <Icon name="trash" className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <span className="text-[10px] text-slate-400 group-hover:text-violet-600 font-bold">
+                    →
+                  </span>
+                </div>
               </div>
             ))}
           </div>

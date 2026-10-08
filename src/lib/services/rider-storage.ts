@@ -153,6 +153,11 @@ export async function getChatSessions(): Promise<DbChatSession[]> {
   return Object.values(memorySessions);
 }
 
+function isValidUuid(id?: string | null): boolean {
+  if (!id) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
 /**
  * Obtener o crear una sesión de chat
  */
@@ -163,37 +168,47 @@ export async function getOrCreateChatSession(
   activeAgent?: string
 ): Promise<DbChatSession> {
   const now = new Date().toISOString();
-  const sid = sessionId || crypto.randomUUID();
+  const validProvidedId = isValidUuid(sessionId) ? sessionId : null;
+  const sid = validProvidedId || crypto.randomUUID();
 
   if (isSupabaseServerConfigured()) {
     const supabase = await createServerSupabaseClient();
     if (supabase) {
-      if (sessionId) {
+      if (validProvidedId) {
         const { data } = await supabase
           .from('chat_sessions')
           .select('*')
-          .eq('id', sessionId)
+          .eq('id', validProvidedId)
           .single();
-        if (data) return data as DbChatSession;
+        if (data) {
+          const sessionData = data as DbChatSession;
+          await (supabase.from('chat_sessions') as any)
+            .update({ updated_at: now })
+            .eq('id', validProvidedId);
+          return { ...sessionData, updated_at: now };
+        }
       }
 
       // Create new
       const newSession: any = {
         id: sid,
-        rider_id: riderId || null,
+        rider_id: isValidUuid(riderId) ? riderId : null,
         title: title || 'Consulta de Producción',
         active_agent: activeAgent || 'master',
         created_at: now,
         updated_at: now,
       };
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('chat_sessions')
         .insert(newSession)
         .select()
         .single();
 
-      if (data) return data as DbChatSession;
+      if (!error && data) return data as DbChatSession;
+      if (error) {
+        console.warn('[Supabase create chat_session error]', error);
+      }
     }
   }
 
@@ -212,6 +227,29 @@ export async function getOrCreateChatSession(
   memorySessions[sid] = sessionObj;
   return sessionObj;
 }
+
+/**
+ * Eliminar una sesión de chat y sus mensajes asociados
+ */
+export async function deleteChatSession(id: string): Promise<boolean> {
+  if (isSupabaseServerConfigured() && isValidUuid(id)) {
+    const supabase = await createServerSupabaseClient();
+    if (supabase) {
+      await supabase.from('chat_messages').delete().eq('session_id', id);
+      const { error } = await supabase.from('chat_sessions').delete().eq('id', id);
+      if (!error) {
+        delete memorySessions[id];
+        delete memoryMessages[id];
+        return true;
+      }
+      console.warn('[Supabase delete chat_session error]', error);
+    }
+  }
+  delete memorySessions[id];
+  delete memoryMessages[id];
+  return true;
+}
+
 
 /**
  * Guardar mensaje en el historial

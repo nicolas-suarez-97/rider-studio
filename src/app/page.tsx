@@ -76,6 +76,20 @@ export default function HomePage() {
     router.push('/chat');
   };
 
+  const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const ok = window.confirm('¿Seguro que deseas eliminar esta conversación?');
+    if (!ok) return;
+
+    const success = await chatService.deleteSession(convId);
+    if (success) {
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      showToast('🗑️ Conversación eliminada');
+    } else {
+      showToast('⚠️ No se pudo eliminar la conversación');
+    }
+  };
+
   const handleSubmitPrompt = (prompt: string) => {
     router.push(`/chat?prompt=${encodeURIComponent(prompt)}`);
   };
@@ -95,6 +109,7 @@ export default function HomePage() {
           conversations={conversations}
           onSelectConversation={handleSelectConversation}
           onNewConversation={handleNewConversation}
+          onDeleteConversation={handleDeleteConversation}
         />
 
         <SavedRidersGrid

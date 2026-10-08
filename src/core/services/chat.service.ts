@@ -13,8 +13,10 @@ export interface SendMessageParams {
 
 export interface IChatService {
   getSessions(): Promise<ChatSessionSummary[]>;
+  createSession(params?: { title?: string; riderId?: string; activeAgent?: string }): Promise<ChatSessionSummary>;
   getHistory(sessionId: string): Promise<ChatMessage[]>;
   sendMessage(params: SendMessageParams): Promise<any>;
+  deleteSession(sessionId: string): Promise<boolean>;
 }
 
 export class ChatService implements IChatService {
@@ -36,6 +38,36 @@ export class ChatService implements IChatService {
     } catch (err) {
       console.warn('[ChatService.getSessions] Error:', err);
       return [];
+    }
+  }
+
+  public async createSession(params?: { title?: string; riderId?: string; activeAgent?: string }): Promise<ChatSessionSummary> {
+    try {
+      const res = await fetch('/api/chat/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params || {})
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const s = data.session;
+      return {
+        id: s.id,
+        title: s.title || 'Nueva Consulta de Producción',
+        date: new Date(s.updated_at || s.created_at || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+        active: true,
+        riderId: s.rider_id
+      };
+    } catch (err) {
+      console.error('[ChatService.createSession] Error:', err);
+      const fallbackId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`;
+      return {
+        id: fallbackId,
+        title: params?.title || 'Nueva Consulta de Producción',
+        date: new Date().toLocaleDateString([], { month: 'short', day: 'numeric' }),
+        active: true,
+        riderId: params?.riderId
+      };
     }
   }
 
@@ -66,6 +98,18 @@ export class ChatService implements IChatService {
     }
 
     return await res.json();
+  }
+
+  public async deleteSession(sessionId: string): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/chat/sessions?id=${sessionId}`, {
+        method: 'DELETE'
+      });
+      return res.ok;
+    } catch (err) {
+      console.error(`[ChatService.deleteSession] Error for ${sessionId}:`, err);
+      return false;
+    }
   }
 }
 

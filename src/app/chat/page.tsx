@@ -30,25 +30,31 @@ function ChatPageContent() {
   }, []);
 
   // Cargar lista de sesiones
-  useEffect(() => {
-    async function loadSessions() {
-      try {
-        const data = await chatService.getSessions();
-        setSessions(data);
+  const loadSessionsList = useCallback(async () => {
+    try {
+      const data = await chatService.getSessions();
+      setSessions(data);
+      return data;
+    } catch (err) {
+      console.warn('Error loading sessions:', err);
+      return [];
+    }
+  }, []);
 
-        // Si no hay parámetro de sesión en la URL pero hay sesiones previas, usar la primera o la de localStorage
-        if (!sessionIdParam && data.length > 0) {
-          const stored = typeof window !== 'undefined' ? localStorage.getItem('raider_last_chat_session') : null;
-          const target = data.find(s => s.id === stored) || data[0];
-          setCurrentSessionId(target.id);
-          router.replace(`/chat?session=${target.id}`);
-        }
-      } catch (err) {
-        console.warn('Error loading sessions:', err);
+  useEffect(() => {
+    async function init() {
+      const data = await loadSessionsList();
+
+      // Si no hay parámetro de sesión en la URL pero hay sesiones previas, usar la primera o la de localStorage
+      if (!sessionIdParam && data.length > 0) {
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('raider_last_chat_session') : null;
+        const target = data.find(s => s.id === stored) || data[0];
+        setCurrentSessionId(target.id);
+        router.replace(`/chat?session=${target.id}`);
       }
     }
-    loadSessions();
-  }, [sessionIdParam, router]);
+    init();
+  }, [sessionIdParam, router, loadSessionsList]);
 
   // Cargar historial de la sesión activa
   useEffect(() => {
@@ -90,12 +96,45 @@ function ChatPageContent() {
     showToast('Cargando conversación...');
   };
 
-  const handleNewSession = () => {
-    const newId = `session-${Date.now()}`;
-    setCurrentSessionId(newId);
-    setMessages([]);
-    router.replace(`/chat?session=${newId}`);
-    showToast('✨ Nueva conversación iniciada');
+  const handleNewSession = async () => {
+    try {
+      const newSession = await chatService.createSession({
+        title: 'Nueva Consulta',
+        activeAgent
+      });
+      setSessions(prev => [newSession, ...prev.filter(s => s.id !== newSession.id)]);
+      setCurrentSessionId(newSession.id);
+      setMessages([]);
+      router.replace(`/chat?session=${newSession.id}`);
+      showToast('✨ Nueva conversación creada');
+    } catch (err) {
+      console.error('Error creating new session', err);
+      showToast('⚠️ Error al crear nueva conversación');
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const ok = window.confirm('¿Seguro que deseas eliminar esta conversación?');
+    if (!ok) return;
+
+    const success = await chatService.deleteSession(sessionId);
+    if (success) {
+      const updated = sessions.filter(s => s.id !== sessionId);
+      setSessions(updated);
+      showToast('🗑️ Conversación eliminada');
+
+      // Si borramos la conversación actual, cambiar a la siguiente o crear una
+      if (currentSessionId === sessionId) {
+        if (updated.length > 0) {
+          handleSelectSession(updated[0].id);
+        } else {
+          handleNewSession();
+        }
+      }
+    } else {
+      showToast('⚠️ No se pudo eliminar la conversación');
+    }
   };
 
   const handleSendMessage = async (text: string) => {
@@ -127,11 +166,15 @@ function ChatPageContent() {
       };
       setMessages(prev => [...prev, aiMsg]);
 
-      // Refrescar sesiones si es nueva
-      if (!sessions.some(s => s.id === currentSessionId)) {
-        const refreshed = await chatService.getSessions();
-        setSessions(refreshed);
+      // Si el backend devolvió un sessionId que difiere del actual, sincronizar
+      if (data.sessionId && data.sessionId !== currentSessionId) {
+        setCurrentSessionId(data.sessionId);
+        router.replace(`/chat?session=${data.sessionId}`);
       }
+
+      // Actualizar inmediatamente la lista de sesiones para reflejar el título actualizado
+      const refreshed = await chatService.getSessions();
+      setSessions(refreshed);
     } catch (err) {
       console.error(err);
       const errTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -161,6 +204,7 @@ function ChatPageContent() {
         currentSessionId={currentSessionId}
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
+        onDeleteSession={handleDeleteSession}
         activeAgent={activeAgent}
         onSelectAgent={(role) => setActiveAgent(role)}
         messages={messages}

@@ -31,11 +31,15 @@ export async function POST(req: NextRequest) {
     const systemPrompt = SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master;
     const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
 
+    const sessionTitle = lastMessage
+      ? (lastMessage.length > 36 ? lastMessage.substring(0, 36) + '...' : lastMessage)
+      : `Rider ${riderType.toUpperCase()} - ${profile.name}`;
+
     // 1. Obtener o inicializar la sesión en la base de datos (Supabase)
     const session = await getOrCreateChatSession(
       sessionId,
       riderId,
-      `Rider ${riderType.toUpperCase()} - ${profile.name}`,
+      sessionTitle,
       activeAgent
     );
 
