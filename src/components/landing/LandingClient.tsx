@@ -84,12 +84,18 @@ export function LandingClient({ initialRiders, initialConversations }: LandingCl
   };
 
   return (
-    <div className="min-h-dvh bg-[#f8f9fa] text-zinc-900 flex flex-col font-sans antialiased pb-10">
+    <div className="min-h-dvh bg-[#f8f9fa] text-zinc-900 flex flex-col font-sans antialiased pb-12 relative overflow-hidden">
+      {/* Sutil halo de iluminación ambiental de escenario */}
+      <div 
+        className="absolute top-0 inset-x-0 h-[520px] bg-[radial-gradient(ellipse_70%_60%_at_50%_-15%,rgba(139,92,246,0.14),rgba(248,249,250,0))] pointer-events-none -z-0" 
+        aria-hidden="true"
+      />
+      
       <Toast message={toastMessage} />
       
       <Header pageType="landing" />
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-8">
+      <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-6 space-y-6 sm:space-y-8">
         <HeroSection onSubmitPrompt={handleSubmitPrompt} />
         
         <TemplatePills onSelectType={handleSelectType} />

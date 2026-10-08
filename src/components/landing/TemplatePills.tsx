@@ -8,46 +8,92 @@ interface TemplatePillsProps {
   onSelectType: (type: RiderType) => void;
 }
 
+const TEMPLATES: Array<{
+  type: RiderType;
+  title: string;
+  badge: string;
+  badgeColor: string;
+  desc: string;
+  icon: string;
+  iconBg: string;
+  hoverBorder: string;
+}> = [
+  {
+    type: 'tecnico',
+    title: 'Rider Técnico',
+    badge: 'Stage & Audio',
+    badgeColor: 'bg-violet-50 text-violet-700 border-violet-200/80',
+    desc: 'Stage plot 2D interactivo, input list de canales, microfonía y backline.',
+    icon: 'speaker',
+    iconBg: 'bg-violet-100 text-violet-700',
+    hoverBorder: 'hover:border-violet-300 hover:shadow-violet-500/10'
+  },
+  {
+    type: 'hospitality',
+    title: 'Rider Hospitality',
+    badge: 'Catering & Confort',
+    badgeColor: 'bg-sky-50 text-sky-700 border-sky-200/80',
+    desc: 'Camerinos, catering de gira, alérgenos, alojamiento y transporte.',
+    icon: 'coffee',
+    iconBg: 'bg-sky-100 text-sky-700',
+    hoverBorder: 'hover:border-sky-300 hover:shadow-sky-500/10'
+  },
+  {
+    type: 'seguridad',
+    title: 'Rider Seguridad',
+    badge: 'Protocolos & Aforo',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200/80',
+    desc: 'Aforos, plan de evacuación, contingencias médicas y personal de control.',
+    icon: 'shield',
+    iconBg: 'bg-amber-100 text-amber-700',
+    hoverBorder: 'hover:border-amber-300 hover:shadow-amber-500/10'
+  }
+];
+
 export function TemplatePills({ onSelectType }: TemplatePillsProps) {
   return (
-    <div className="flex flex-col items-center gap-2.5 sm:gap-3 w-full">
-      <span className="text-[11px] sm:text-xs font-semibold text-slate-400 tracking-wide uppercase text-center">
-        O salta directo al workspace con una plantilla:
-      </span>
+    <div className="w-full space-y-3 pt-1">
+      <div className="flex items-center justify-between px-1">
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          O salta directo al workspace con una plantilla
+        </span>
+        <span className="text-xs font-semibold text-slate-400 hidden sm:inline">
+          Selecciona un tipo para iniciar en blanco
+        </span>
+      </div>
 
-      <div className="w-full flex items-center justify-start sm:justify-center gap-2 sm:gap-4 overflow-x-auto py-1 px-1 sm:px-0 no-scrollbar overscroll-contain">
-        {/* 1. Hospitality */}
-        <button
-          onClick={() => onSelectType('hospitality')}
-          className="group bg-white/95 hover:bg-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full border border-slate-200/80 hover:border-sky-300 shadow-xs hover:shadow-md transition-all flex items-center gap-2 shrink-0 whitespace-nowrap active:scale-95 cursor-pointer"
-        >
-          <div className="w-6 h-6 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Icon name="coffee" className="w-3.5 h-3.5" />
-          </div>
-          <span className="text-xs sm:text-sm font-bold text-slate-800">Rider Hospitality</span>
-        </button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {TEMPLATES.map((tmpl) => (
+          <button
+            key={tmpl.type}
+            type="button"
+            onClick={() => onSelectType(tmpl.type)}
+            className={`group text-left bg-white/90 hover:bg-white p-4 rounded-2xl border border-slate-200/90 ${tmpl.hoverBorder} shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-3 active:scale-[0.99]`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className={`w-9 h-9 rounded-xl ${tmpl.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
+                <Icon name={tmpl.icon} className="w-4.5 h-4.5" />
+              </div>
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${tmpl.badgeColor}`}>
+                {tmpl.badge}
+              </span>
+            </div>
 
-        {/* 2. Técnico */}
-        <button
-          onClick={() => onSelectType('tecnico')}
-          className="group bg-white/95 hover:bg-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full border border-slate-200/80 hover:border-zinc-400 shadow-xs hover:shadow-md transition-all flex items-center gap-2 shrink-0 whitespace-nowrap active:scale-95 cursor-pointer"
-        >
-          <div className="w-6 h-6 rounded-full bg-violet-50 text-zinc-900 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Icon name="speaker" className="w-3.5 h-3.5" />
-          </div>
-          <span className="text-xs sm:text-sm font-bold text-slate-800">Rider Técnico</span>
-        </button>
-
-        {/* 3. Seguridad */}
-        <button
-          onClick={() => onSelectType('seguridad')}
-          className="group bg-white/95 hover:bg-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full border border-slate-200/80 hover:border-amber-300 shadow-xs hover:shadow-md transition-all flex items-center gap-2 shrink-0 whitespace-nowrap active:scale-95 cursor-pointer"
-        >
-          <div className="w-6 h-6 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Icon name="shield" className="w-3.5 h-3.5" />
-          </div>
-          <span className="text-xs sm:text-sm font-bold text-slate-800">Rider Seguridad</span>
-        </button>
+            <div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-slate-800 group-hover:text-violet-600 transition-colors">
+                  {tmpl.title}
+                </h3>
+                <span className="text-slate-400 group-hover:text-violet-600 group-hover:translate-x-1 transition-all text-xs font-bold">
+                  →
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1">
+                {tmpl.desc}
+              </p>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );
