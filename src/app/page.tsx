@@ -42,67 +42,67 @@ const RIDER_DATA: Record<RiderType, RiderDefinition> = {
         tag: 'Producción',
         tagColor: 'bg-slate-100 text-slate-700',
         iconName: 'users',
-        content: 'FOH Sound Engineer: Mateo Rincón (+57 300 123 4567 • foh@soundwave.com)\nStage Manager & Backline: Carla Mendoza (+57 310 987 6543 • stage@soundwave.com)\nDirección técnica de producción en sitio con canal de radio intercom dedicado.'
+        content: '• FOH Sound Engineer: [Nombre / Teléfono / Email]\n• Monitor Engineer: [Nombre / Teléfono / Email]\n• Stage Manager & Backline: [Nombre / Teléfono / Email]\n• Director Técnico / Road Manager: [Nombre / Teléfono / Email]\n• Radios / Intercom: Canal de producción asignado en sitio.'
       },
       {
         id: 'tech-pa',
         num: '02',
         title: 'Sistema de PA & Consola FOH',
-        subtitle: 'Cobertura estéreo 110 dB SPL continuos',
+        subtitle: 'Cobertura acústica y consola de sala',
         tag: 'Acústica',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'speaker',
-        content: 'El sistema PA debe proporcionar 110 dB SPL continuos en FOH (C-Weighted) limpios sin distorsión ni compresión audible.\nMarcas Aprobadas: L-Acoustics (K1 / K2), d&b audiotechnik (GSL / KSL) o Meyer Sound (Leo / Lyon).\nConsola FOH: DiGiCo Quantum 338 o Avid Venue S6L-24D con tarjeta Dante y 64 canales disponibles.'
+        content: '• Cobertura uniforme en todo el recinto (SPL continuo requerido en FOH).\n• Marcas y sistemas de PA preferidos (ej: L-Acoustics, d&b audiotechnik, Meyer Sound).\n• Consola FOH principal requerida y alternativas aceptadas.\n• Protocolo digital / Red: Dante, MADI, AES/EBU con cables redundantes.'
       },
       {
         id: 'tech-monitores',
         num: '03',
         title: 'Monitoreo & Sistema IEM',
-        subtitle: '6 Mezclas In-Ear estéreo + 2 Wedges',
+        subtitle: 'Mezclas In-Ear, Wedges & RF',
         tag: 'RF / Audio',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'headphones',
-        content: 'Mix 1-2 (Lead Vocal): Shure PSM 1000 en frecuencia limpia coordinada con Wireless Workbench.\nMix 3-4 (Guitarra/Coros): Shure PSM 1000 estéreo.\nMix 5-6 (Batería): Sistema cableado Shure P6HW + ButtKicker Concert en banqueta.\n2 Wedges de piso d&b M2 / L-Acoustics X15 HiQ para referencia frontal de emergencia.'
+        content: '• Mezclas estéreo In-Ear (IEM) requeridas y modelos de transmisores/receptores.\n• Cuñas de piso (Wedges) y Side-Fills de referencia.\n• Monitoreo de batería (Subwoofer / ButtKicker / IEM cableado).\n• Rango de frecuencias RF y coordinación de radiofrecuencia en sitio.'
       },
       {
         id: 'tech-backline',
         num: '04',
         title: 'Backline Requerido',
-        subtitle: 'Batería DW, Ampeg SVT & Fender Twin',
+        subtitle: 'Instrumentos, amplificadores & atriles',
         tag: 'Instrumentos',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'guitar',
-        content: '• Batería: DW Collector\'s Series o Yamaha Recording Custom (22" Kick, 10" Rack, 12" Rack, 16" Floor Tom, Snare 14x6.5").\n• Bajo: 1x Cabezal Ampeg SVT-CL Classic con gabinete Ampeg SVT-810E (8x10").\n• Guitarras: 1x Fender Twin Reverb \'65 Reissue + 1x Vox AC30 Handwired.\n• Teclados: 1x Nord Stage 3 88 teclas con atril pesado en tijera doble.'
+        content: '• Batería: Medidas de bombo, toms, redoblante, marca de parches y atriles.\n• Bajo: Cabezal y gabinete (ej: 8x10" / 4x10").\n• Guitarras: Amplificadores valvulares requeridos con footswitch.\n• Teclados: Modelos específicos, fuentes de poder y atriles reforzados.'
       },
       {
         id: 'tech-inputlist',
         num: '05',
         title: 'Input List & Patch de Escenario',
-        subtitle: '24 Canales, microfonía Shure/Sennheiser & DI',
+        subtitle: 'Canales, microfonía y cajas directas',
         tag: 'Canales',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'list',
-        content: 'Patch de 24 canales según tabla de escenario con snakes independientes y cajas directas activas Radial J48 / JDI. Microfonía dinámica y de condensador de primer nivel suministrada íntegramente por la producción local.'
+        content: 'Configura en la tabla interactiva inferior los canales de entrada, transductores (micrófonos dinámicos/condensador), cajas directas activas (DI) y phantom power (+48V).'
       },
       {
         id: 'tech-stageplot',
         num: '06',
         title: 'Stage Plot & Tomas de Corriente',
-        subtitle: 'Distribución espacial y tomas 110V/220V AC',
+        subtitle: 'Distribución en tarima y acometida AC',
         tag: 'Tarima',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'map',
-        content: 'Batería en tarima elevada (Riser 2x2m altura 40cm) centrada en el fondo. Bajo en Stage Left, Guitarra en Stage Right y Teclados en Stage Left fondo. Voz principal frontal centro con área libre de 3 metros. Cada estación requiere 4 tomas eléctricas 110V/220V aterrizadas y reguladas.'
+        content: '• Dimensiones mínimas de tarima (ancho x profundidad x altura).\n• Risers (tarimas elevadas con ruedas y freno) para batería o percusión.\n• Distribución espacial de los músicos (Stage Left, Center, Stage Right).\n• Puntos de corriente eléctrica regulada y aterrizada por posición (110V/220V).'
       },
       {
         id: 'tech-iluminacion',
         num: '07',
         title: 'Iluminación, Video & Efectos',
-        subtitle: 'Patch DMX, pantallas LED P3.9 & Hazers',
+        subtitle: 'Patch DMX, pantallas LED & FX',
         tag: 'Visuales',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'lightbulb',
-        content: 'Consola grandMA3 light o grandMA2 con universo Art-Net/sACN dedicado.\nLuminarias: 12x Robe Spiider, 8x Robe MegaPointe y 6x Martin Atomic 3000 LED.\nPantalla LED trasera P3.9mm de 8x4m con procesador NovaStar UHD. 2x Máquinas de niebla MDG Atmosphere base agua.'
+        content: '• Consola de control de luces requerida con universo Art-Net/sACN.\n• Tipos de luminarias mínimas (Spot, Beam, Wash, Strobes y cegadoras).\n• Pantalla LED de fondo (dimensiones mínimas, pitch P3.9 y procesador).\n• Máquinas de niebla o humo base agua para visualización de haces.'
       }
     ]
   },
@@ -116,51 +116,51 @@ const RIDER_DATA: Record<RiderType, RiderDefinition> = {
         id: 'hosp-camerinos',
         num: '01',
         title: 'Camerinos & Acondicionamiento',
-        subtitle: '1 Principal + 1 Banda con clima a 22°C',
+        subtitle: 'Camerino principal y camerinos de banda',
         tag: 'Confort',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'door',
-        content: 'Camerino Principal exclusivo para el artista con aire acondicionado fijo a 22°C, baño privado impecable, espejo de cuerpo entero con iluminación cálida de maquillaje, sofá para 4 personas y 6 toallas negras 100% algodón.\nCamerino Banda con capacidad para 10 personas, sillones cómodos, perchero con 20 ganchos y toallas limpias.'
+        content: '• Camerino Principal: Capacidad, baño privado, climatización (temperatura requerida), espejo de cuerpo entero con iluminación cálida de maquillaje y sofás.\n• Camerino de Músicos / Banda: Capacidad mínima, perchero con ganchos, toallas limpias y asientos cómodos.\n• Camerino de Crew / Producción: Mesa de trabajo con tomas eléctricas e internet de alta velocidad.'
       },
       {
         id: 'hosp-catering',
         num: '02',
         title: 'Catering, Comidas & Dietas',
-        subtitle: 'Almuerzo/Cena 14 pax (Opciones Vegan/Celia)',
+        subtitle: 'Almuerzo, cena y dietas especiales',
         tag: 'Alimentación',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'coffee',
-        content: 'Menú Caliente (14 pax): Proteínas magras (salmón fresco o pollo orgánico), arroz basmati y barra de ensaladas frescas.\nDietas Especiales: 3 platos estrictamente veganos y 2 menús certificados 100% libres de gluten (celiacos).'
+        content: '• Número total de raciones (PAX) para almuerzo y cena del equipo.\n• Menú Caliente: Opciones de proteína, carbohidratos saludables y barra de ensaladas.\n• Dietas Especiales: Especificar raciones veganas, vegetarianas, celíacas (sin gluten) o alergias severas.\n• Horarios de comida coordinados con la prueba de sonido (Soundcheck).'
       },
       {
         id: 'hosp-bebidas',
         num: '03',
         title: 'Hidratación, Café & Cuidados Vocales',
-        subtitle: 'Aguas Fiji, café espresso, jengibre/miel & vino',
+        subtitle: 'Bebidas, café, infusiones & tarima',
         tag: 'Barra',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'wine',
-        content: '• 24 Botellas de agua mineral sin gas a temperatura ambiente (Fiji o Evian).\n• 1 Cafetera de espresso de alta calidad con cápsulas y leche de avena/almendra.\n• Frasco de miel orgánica, raíz de jengibre fresca y limones cortados para el cuidado vocal.\n• 2 Botellas de vino tinto Ribera del Duero o Malbec Reserva.'
+        content: '• Agua mineral sin gas: Cantidad de botellas requeridas (temperatura ambiente y frías).\n• Estación de café: Cafetera espresso, café de grano, leche vegetal (avena/almendra) y endulzantes.\n• Cuidado vocal: Jengibre fresco, miel orgánica, limones cortados y té de hierbas.\n• Bebidas para escenario: Botellas pequeñas y toallas de mano para tarima.'
       },
       {
         id: 'hosp-hotel',
         num: '04',
         title: 'Hotelería & Alojamiento',
-        subtitle: 'Hotel 5 estrellas, 1 Master Suite + 6 Dobles',
+        subtitle: 'Hotel, suites y habitaciones dobles',
         tag: 'Hospedaje',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'hotel',
-        content: 'Hotel 5 estrellas o categoría Boutique Superior situado a menos de 25 minutos del venue.\nSe requiere 1 Master Suite para el artista con late check-out confirmado a las 16:00, más 6 habitaciones dobles estándar para músicos y equipo de producción.'
+        content: '• Categoría de hotel requerida (4 o 5 estrellas) ubicado a corta distancia del recinto.\n• Distribución: Suite o Junior Suite para artista principal + habitaciones individuales/dobles para banda y crew.\n• Condiciones: Desayuno incluido, Wi-Fi de alta velocidad, check-in temprano o late check-out confirmado.'
       },
       {
         id: 'hosp-transporte',
         num: '05',
         title: 'Transporte Local & Transfers',
-        subtitle: '2 Vans Mercedes Sprinter con chofer 24/7',
+        subtitle: 'Vehículos con chofer y logística',
         tag: 'Logística',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'truck',
-        content: '2 Camionetas ejecutivas tipo Mercedes-Benz Sprinter, vidrios polarizados y climatizadas, con choferes profesionales bilingües a disposición exclusiva de la producción desde la llegada al aeropuerto hasta el despegue final.'
+        content: '• Tipo de vehículos requeridos (ej: Camionetas ejecutivas tipo Van con aire acondicionado).\n• Chofer profesional a disposición de la producción durante la estadía.\n• Itinerario de rutas: Aeropuerto ↔ Hotel ↔ Recinto del evento ↔ Retorno al aeropuerto.'
       }
     ]
   },
@@ -174,41 +174,41 @@ const RIDER_DATA: Record<RiderType, RiderDefinition> = {
         id: 'seg-perimetro',
         num: '01',
         title: 'Perímetro & Control de Accesos',
-        subtitle: 'Arcos detectores, cacheo y filtros QR',
+        subtitle: 'Filtros, detectores y acreditaciones',
         tag: 'Control',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'shield',
-        content: 'Todos los accesos al recinto contarán con detectores de metales tipo pórtico y personal calificado de seguridad privada realizando cacheo superficial reglamentario y escaneo de credenciales QR. Prohibido ingreso de envases de vidrio, armas u objetos cortopunzantes.'
+        content: '• Control estricto de acceso en puertas principales, accesos vehiculares y áreas de carga.\n• Filtros de seguridad con detectores de metales y revisión reglamentaria de bolsos.\n• Sistema de acreditación y pulseras por zonas (All Access, Backstage, Escenario, VIP).\n• Política clara de objetos prohibidos para el público asistente.'
       },
       {
         id: 'seg-foso',
         num: '02',
         title: 'Vallas Mojo & Foso de Prensa (Pit)',
-        subtitle: 'Valla antipánico a 1.8m + pasillo despejado',
+        subtitle: 'Vallas de contención antipánico',
         tag: 'Barrera',
         tagColor: 'bg-slate-100 text-slate-700',
         iconName: 'barrier',
-        content: 'Vallas de contención antipánico certificadas tipo Mojo Barriers situadas a una distancia mínima de 1.80 metros del frente del escenario, con pasillo central de extracción de emergencia despejado y guardias cada 2 metros.'
+        content: '• Vallas de contención antipánico certificadas (tipo Mojo Barriers) frente al escenario.\n• Distancia mínima requerida entre el escenario y la primera línea de vallas (foso/pit).\n• Pasillo central libre para extracción rápida y personal de seguridad apostado cada 2 metros.\n• Protocolo para fotógrafos y prensa autorizada.'
       },
       {
         id: 'seg-custodia',
         num: '03',
         title: 'Seguridad Personal & Backstage Estéril',
-        subtitle: '2 Agentes de custodia privada y acceso restringido',
+        subtitle: 'Custodia de artista y zona de camerinos',
         tag: 'Custodia',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'userCheck',
-        content: 'Dos agentes de custodia privada certificados asignados permanentemente al artista principal desde el hotel hasta el escenario. El pasillo de camerinos se mantendrá como perímetro estéril con guardia en puerta y prohibición absoluta de personal no autorizado.'
+        content: '• Agentes de custodia privada asignados al artista principal en traslados y camerinos.\n• Pasillo de camerinos mantenido como perímetro estéril con control estricto de puerta.\n• Ruta de acceso rápido y seguro desde el camerino hasta el escenario.\n• Prohibición absoluta de personas no acreditadas en áreas de descanso del artista.'
       },
       {
         id: 'seg-emergencias',
         num: '04',
         title: 'Unidad Médica, Evacuación & Aforo',
-        subtitle: 'Ambulancia soporte vital, paramédicos & extintores CO2',
+        subtitle: 'Ambulancia, paramédicos & extintores',
         tag: 'Emergencias',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'heartPulse',
-        content: 'Ambulancia medicalizada de soporte vital avanzado y dos paramédicos en punto fijo detrás de tarima con ruta rápida hacia el hospital. Certificado de aforo máximo respetado y 4 extintores de CO2 de 5kg ubicados en esquinas de escenario.'
+        content: '• Ambulancia de soporte vital avanzado en punto fijo detrás de tarima.\n• Personal paramédico y de primeros auxilios disponible durante montaje, show y desmontaje.\n• Plan de evacuación de emergencia y salidas despejadas hacia el hospital más cercano.\n• Extintores de CO2 y PQS ubicados en puntos estratégicos de escenario y cabina FOH.'
       }
     ]
   }
@@ -348,12 +348,8 @@ export default function App() {
 
   // Input list dinámico e interactivo para la sección 05 (Técnico)
   const [inputListChannels, setInputListChannels] = useState<Array<{ id: string; ch: string; name: string; mic: string; stand: string }>>([
-    { id: 'ch-1', ch: '01', name: 'Kick In', mic: 'Shure Beta 91A', stand: 'Almohada interna' },
-    { id: 'ch-2', ch: '02', name: 'Kick Out', mic: 'Shure Beta 52A', stand: 'Bajo con boom' },
-    { id: 'ch-3', ch: '03', name: 'Snare Top', mic: 'Shure SM57', stand: 'Bajo con boom' },
-    { id: 'ch-4', ch: '04', name: 'Bass Line', mic: 'Radial J48 Active DI', stand: '—' },
-    { id: 'ch-5', ch: '05', name: 'Electric Guitar', mic: 'Sennheiser e906', stand: 'Medio con boom' },
-    { id: 'ch-6', ch: '06', name: 'Lead Vocal', mic: 'Shure Axient KSM9', stand: 'Alto redondo pesado' }
+    { id: 'ch-1', ch: '01', name: 'Voz Principal (Lead Vocal)', mic: 'Shure KSM9 / SM58', stand: 'Pie Jirafa' },
+    { id: 'ch-2', ch: '02', name: 'Guitarra / Instrumento Línea', mic: 'Radial J48 DI / SM57', stand: 'Atril bajo' }
   ]);
 
   // Modal para editar sección completa
@@ -898,8 +894,40 @@ export default function App() {
   };
 
   const handleSelectSuggestion = (type: RiderType) => {
-    handleSelectRiderType(type);
+    // Iniciar rider en blanco desde cero para el tipo seleccionado
+    setCurrentRiderId('');
+    setDocHeaderTitle('Nuevo Artista / Banda');
+    setDocHeaderSeason('Temporada 2026');
+    setRiderType(type);
+
+    if (type === 'tecnico') {
+      setInputListChannels([
+        { id: `ch-${Date.now()}-1`, ch: '01', name: 'Voz Principal (Lead Vocal)', mic: 'Shure KSM9 / SM58', stand: 'Pie Jirafa' },
+        { id: `ch-${Date.now()}-2`, ch: '02', name: 'Guitarra / Instrumento Línea', mic: 'Radial J48 DI / SM57', stand: 'Atril bajo' }
+      ]);
+    } else {
+      setInputListChannels([]);
+    }
+
+    setCompletedSectionIds({
+      tecnico: [],
+      hospitality: [],
+      seguridad: []
+    });
+
+    setRiderData(RIDER_DATA);
+    const firstSec = RIDER_DATA[type].sections[0].id;
+    setActiveSectionId(firstSec);
+    if (type === 'tecnico') setActiveAgent('audio_foh');
+    else if (type === 'hospitality') setActiveAgent('hospitality');
+    else if (type === 'seguridad') setActiveAgent('security');
+
+    showToast(`✨ Plantilla en blanco de Rider ${type.toUpperCase()} lista para editar`);
     navigateTo('workspace', 'forward');
+  };
+
+  const handleCreateNewRider = (type: RiderType = 'tecnico') => {
+    handleSelectSuggestion(type);
   };
 
   const handleConfirmStartRider = () => {
