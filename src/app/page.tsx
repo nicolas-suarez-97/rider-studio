@@ -291,6 +291,8 @@ function Icon({ name, className = "w-4 h-4" }: { name: string; className?: strin
       return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>;
     case 'grip':
       return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>;
+    case 'database':
+      return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>;
     default:
       return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg>;
   }
@@ -424,11 +426,91 @@ export default function App() {
   const [chatInput, setChatInput] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Supabase Database Sync & Session State
+  const [currentSessionId, setCurrentSessionId] = useState<string>('c-1');
+  const [currentRiderId, setCurrentRiderId] = useState<string>('r-1');
+  const [isSavingToDb, setIsSavingToDb] = useState(false);
+  const [dbSyncStatus, setDbSyncStatus] = useState<'idle' | 'saved' | 'saving' | 'error'>('idle');
+
   const previewContainerRef = useRef<HTMLDivElement>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Cargar riders guardados desde la base de datos al montar el componente
+  useEffect(() => {
+    async function fetchDatabaseRiders() {
+      try {
+        const res = await fetch('/api/riders');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.riders && data.riders.length > 0) {
+            const formatted: SavedRider[] = data.riders.map((r: any) => ({
+              id: r.id,
+              title: r.title,
+              artist: r.artist_name,
+              tour: r.metadata?.season || 'Tour 2026',
+              type: (r.rider_type as RiderType) || 'tecnico',
+              progress: 100,
+              sectionsCompleted: Array.isArray(r.sections) && r.sections.length > 0 ? r.sections.length : 6,
+              totalSections: Array.isArray(r.sections) && r.sections.length > 0 ? r.sections.length : 6,
+              status: (r.status === 'completed' ? 'completed' : 'in_progress') as any,
+              lastEdited: new Date(r.updated_at || r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }));
+            setSavedRiders(prev => {
+              const ids = new Set(formatted.map(f => f.id));
+              return [...formatted, ...prev.filter(p => !ids.has(p.id))];
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not pre-fetch riders', err);
+      }
+    }
+    fetchDatabaseRiders();
+  }, []);
+
+  const saveCurrentRiderToDatabase = async () => {
+    setIsSavingToDb(true);
+    setDbSyncStatus('saving');
+    try {
+      const res = await fetch('/api/riders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentRiderId.startsWith('r-') ? undefined : currentRiderId,
+          title: riderData[riderType].title,
+          artist_name: docHeaderTitle,
+          rider_type: riderType,
+          venue_name: 'Movistar Arena / Venue Principal',
+          version: 'v1.0',
+          status: 'draft',
+          channels: inputListChannels,
+          sections: riderData[riderType].sections,
+          metadata: { season: docHeaderSeason }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.rider?.id) {
+          setCurrentRiderId(data.rider.id);
+        }
+        setDbSyncStatus('saved');
+        showToast('✅ Rider sincronizado y guardado en Supabase');
+        setTimeout(() => setDbSyncStatus('idle'), 4000);
+      } else {
+        setDbSyncStatus('error');
+        showToast('⚠️ No se pudo guardar en Supabase (verifica credenciales en .env.local)');
+      }
+    } catch (err) {
+      console.error(err);
+      setDbSyncStatus('error');
+      showToast('⚠️ Error de conexión al guardar el rider');
+    } finally {
+      setIsSavingToDb(false);
+    }
   };
 
   // Helper de navegación con View Transitions API y soporte de fallback progresivo
@@ -662,12 +744,17 @@ export default function App() {
         body: JSON.stringify({
           messages: apiMessages,
           riderType,
-          activeAgent
+          activeAgent,
+          sessionId: currentSessionId,
+          riderId: currentRiderId
         })
       });
 
       if (!res.ok) throw new Error('Error al conectar con el servidor de agentes');
       const data = await res.json();
+      if (data.sessionId && data.sessionId !== currentSessionId) {
+        setCurrentSessionId(data.sessionId);
+      }
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       setMessages(prev => [
@@ -1801,6 +1888,24 @@ export default function App() {
                 
                 {/* Botones de Acción Superiores: Compartir & Descargar */}
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={saveCurrentRiderToDatabase}
+                    disabled={isSavingToDb}
+                    className={`${
+                      dbSyncStatus === 'saved'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                        : dbSyncStatus === 'saving'
+                        ? 'bg-slate-100 text-slate-500 border-slate-200'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+                    } border px-3 py-1.5 rounded-full text-xs font-bold shadow-2xs hover:shadow-xs transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-60`}
+                    title="Guardar y sincronizar rider en Supabase"
+                  >
+                    <Icon name="database" className={`w-3.5 h-3.5 ${dbSyncStatus === 'saved' ? 'text-emerald-600' : ''}`} />
+                    <span className="hidden sm:inline">
+                      {dbSyncStatus === 'saving' ? 'Guardando...' : dbSyncStatus === 'saved' ? 'Guardado en BD ✓' : 'Guardar en BD'}
+                    </span>
+                  </button>
 
                   <button
                     type="button"
