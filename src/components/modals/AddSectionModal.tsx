@@ -49,11 +49,11 @@ export function AddSectionModal({
       >
         <motion.form 
           onSubmit={handleSubmit}
-          initial={{ opacity: 0, scale: 0.92, y: 10 }}
+          initial={{ opacity: 0, scale: 0.94, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.94, y: 8 }}
+          exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ type: "spring", stiffness: 450, damping: 30 }}
-          className="bg-white rounded-[28px] max-w-lg w-full p-6 shadow-2xl border border-white flex flex-col gap-4"
+          className="bg-white rounded-[32px] max-w-2xl sm:max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-white flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
         >
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
