@@ -10,6 +10,8 @@ import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem, ChatSessionSummary } from '@/core/types/chat.types';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 import { riderService } from '@/core/services/rider.service';
+import { Rider } from '@/core/models/Rider';
+import { RiderType } from '@/core/types/rider.types';
 
 function ChatPageContent() {
   const searchParams = useSearchParams();
@@ -189,6 +191,31 @@ function ChatPageContent() {
     }
   };
 
+  const handleCreateAndLinkRider = async (artistName: string, type: RiderType = 'tecnico'): Promise<string | null> => {
+    try {
+      const blank = Rider.createBlank(type);
+      const cleanArtist = artistName.trim() || 'Nuevo Artista / Banda';
+      blank.artistName = cleanArtist;
+      blank.title = `Rider ${type === 'tecnico' ? 'Técnico de Audio' : type === 'hospitality' ? 'de Hospitality' : 'de Seguridad'} - ${cleanArtist}`;
+
+      const saved = await riderService.save(blank);
+      if (saved && saved.id) {
+        if (currentSessionId) {
+          await chatService.linkRider(currentSessionId, saved.id);
+        }
+        await loadSessionsList();
+        const list = await riderService.getAll();
+        setAvailableRiders(list.map(r => ({ id: r.id, title: r.title, artist: r.artistName, type: r.type })));
+        showToast(`✨ Rider "${saved.artistName}" creado y vinculado`);
+        return saved.id;
+      }
+    } catch (err) {
+      console.error('Error creating rider from chat:', err);
+      showToast('⚠️ Error al crear el nuevo rider');
+    }
+    return null;
+  };
+
   const handleSendMessage = async (text: string) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg: ChatMessageItem = { sender: 'user', text, time: now };
@@ -267,6 +294,7 @@ function ChatPageContent() {
         onSendMessage={handleSendMessage}
         availableRiders={availableRiders}
         onLinkRider={handleLinkRider}
+        onCreateRider={handleCreateAndLinkRider}
       />
     </div>
   );
