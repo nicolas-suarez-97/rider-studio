@@ -221,6 +221,7 @@ export function ChatClient({
         });
         targetSessionId = newSession.id;
         setCurrentSessionId(newSession.id);
+        router.replace(`/chat?session=${newSession.id}`);
       } catch (e) {
         console.warn('Could not auto-create session', e);
       }
@@ -230,10 +231,7 @@ export function ChatClient({
       const success = await chatService.linkRider(targetSessionId, riderId);
       if (success) {
         await loadSessionsList();
-        showToast(riderId ? '🔗 Rider vinculado. Redirigiendo al editor 3 paneles...' : 'Rider desvinculado');
-        if (riderId) {
-          router.push(`/workspace?id=${riderId}&session=${targetSessionId}`);
-        }
+        showToast(riderId ? '🔗 Rider vinculado al chat correctamente' : 'Rider desvinculado del chat');
         return;
       }
     }
@@ -258,6 +256,7 @@ export function ChatClient({
           });
           targetSessionId = newSession.id;
           setCurrentSessionId(newSession.id);
+          router.replace(`/chat?session=${newSession.id}`);
         } else {
           await chatService.linkRider(targetSessionId, saved.id);
         }
@@ -265,9 +264,8 @@ export function ChatClient({
         await loadSessionsList();
         const list = await riderService.getAll();
         setAvailableRiders(list.map(r => ({ id: r.id, title: r.title, artist: r.artistName, type: r.type })));
-        showToast(`✨ Rider "${saved.artistName}" creado. Abriendo editor 3 paneles...`);
+        showToast(`✨ Rider "${saved.artistName}" creado y vinculado al chat`);
 
-        router.push(`/workspace?id=${saved.id}&session=${targetSessionId}`);
         return saved.id;
       }
     } catch (err) {
