@@ -51,12 +51,22 @@ export function DocumentEditorPanel({
               <span className="text-[11px] font-extrabold uppercase tracking-widest text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full border border-violet-100">
                 Documento de Gira Oficial
               </span>
-              <span className="text-[11px] font-semibold text-slate-400">
-                • {season}
-              </span>
+              {season ? (
+                <span className="text-[11px] font-semibold text-slate-400">
+                  • {season}
+                </span>
+              ) : (
+                <span className="text-[11px] font-medium text-slate-300 italic">
+                  • Sin temporada asignada
+                </span>
+              )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {artistName}
+              {artistName || (
+                <span className="text-slate-300 font-bold italic">
+                  Nombre del Artista / Banda
+                </span>
+              )}
             </h1>
             <p className="text-sm font-semibold text-slate-500">
               {riderTitle}
@@ -150,9 +160,22 @@ export function DocumentEditorPanel({
               </div>
 
               {/* Contenido / Especificaciones de la sección */}
-              {section.content && (
+              {section.content && section.content.trim() !== '' ? (
                 <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed font-normal whitespace-pre-line bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
                   {section.content}
+                </div>
+              ) : (
+                <div
+                  onClick={() => onEditSection(section)}
+                  className="mt-4 pt-3 pb-3 border-t border-dashed border-slate-200 text-xs text-slate-400 font-medium italic flex items-center justify-between px-4 py-3 rounded-2xl bg-slate-50/40 hover:bg-violet-50/40 hover:border-violet-200 hover:text-slate-600 transition-all cursor-pointer group/placeholder"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover/placeholder:bg-violet-400" />
+                    Sección sin contenido prellenado. Haz clic para redactar especificaciones...
+                  </span>
+                  <span className="text-[11px] font-bold text-violet-600 not-italic bg-white px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-2xs group-hover/placeholder:border-violet-300">
+                    + Redactar
+                  </span>
                 </div>
               )}
 

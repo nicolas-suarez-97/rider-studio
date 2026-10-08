@@ -37,14 +37,14 @@ export class Rider {
     
     this.id = params.id || '';
     this.title = params.title || template.title;
-    this.artistName = params.artistName || 'Nuevo Artista / Banda';
-    this.season = params.season || 'Temporada 2026';
-    this.venue = params.venue || 'Venue Principal';
+    this.artistName = params.artistName !== undefined ? params.artistName : '';
+    this.season = params.season !== undefined ? params.season : '';
+    this.venue = params.venue !== undefined ? params.venue : '';
     this.version = params.version || 'v1.0';
     this.status = params.status || 'in_progress';
     this.sections = params.sections && params.sections.length > 0 
       ? JSON.parse(JSON.stringify(params.sections))
-      : JSON.parse(JSON.stringify(template.sections));
+      : (template?.sections || []).map(s => ({ ...s, content: '' }));
     
     this.channels = (params.channels || []).map((c, idx) => 
       c instanceof ChannelInput ? c : ChannelInput.fromData(c, idx)
@@ -55,27 +55,28 @@ export class Rider {
   }
 
   /**
-   * Crea una instancia en blanco a partir de la plantilla guía por tipo
+   * Crea una instancia en blanco a partir de la plantilla guía por tipo.
+   * Sin información pre-llenada: artista, temporada, canales vacíos y
+   * secciones base con contenido en blanco listas para redactar.
    */
   public static createBlank(type: RiderType = 'tecnico'): Rider {
     const template = RIDER_DATA[type];
-    let initialChannels: ChannelInput[] = [];
-
-    if (type === 'tecnico') {
-      initialChannels = [
-        ChannelInput.create('01', 'Voz Principal (Lead Vocal)', 'Shure KSM9 / SM58', 'Pie Jirafa'),
-        ChannelInput.create('02', 'Guitarra / Instrumento Línea', 'Radial J48 DI / SM57', 'Atril bajo')
-      ];
-    }
+    
+    // Mantenemos las secciones base como estructura guía, pero con contenido vacío
+    const blankSections: SectionItem[] = (template?.sections || []).map(s => ({
+      ...s,
+      content: ''
+    }));
 
     return new Rider({
       id: '',
-      title: template.title,
-      artistName: 'Nuevo Artista / Banda',
+      title: template?.title || 'Rider de Producción',
+      artistName: '',
       type,
-      season: 'Temporada 2026',
-      sections: template.sections,
-      channels: initialChannels,
+      season: '',
+      venue: '',
+      sections: blankSections,
+      channels: [],
       completedSectionIds: []
     });
   }
@@ -101,10 +102,10 @@ export class Rider {
     return new Rider({
       id: row.id,
       title: row.title || RIDER_DATA[rType]?.title || 'Rider',
-      artistName: row.artist_name || 'Nuevo Artista / Banda',
+      artistName: row.artist_name || '',
       type: rType,
-      season: row.metadata?.season || 'Temporada 2026',
-      venue: row.venue_name || 'Venue Principal',
+      season: row.metadata?.season || '',
+      venue: row.venue_name || '',
       version: row.version || 'v1.0',
       status: row.status === 'completed' ? 'completed' : 'in_progress',
       sections,
@@ -191,9 +192,9 @@ export class Rider {
     return {
       id: this.id && !this.id.startsWith('r-') ? this.id : undefined,
       title: this.title,
-      artist_name: this.artistName,
+      artist_name: this.artistName.trim() || 'Rider sin título',
       rider_type: this.type,
-      venue_name: this.venue,
+      venue_name: this.venue ? this.venue.trim() : null,
       version: this.version,
       status: this.status,
       channels: this.channels.map(c => c.toJSON()),

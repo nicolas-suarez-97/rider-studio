@@ -72,13 +72,11 @@ export function EditSectionModal({
     setFieldValues(updatedFields);
 
     if (sectionConfig) {
-      const newContent = sectionConfig.fields
-        .map((f) => {
-          const val = updatedFields[f.key] ? updatedFields[f.key].trim() : '[Por especificar]';
-          return `• ${f.prefix}: ${val}`;
-        })
-        .join('\n');
+      const filledLines = sectionConfig.fields
+        .filter((f) => Boolean(updatedFields[f.key] && updatedFields[f.key].trim() !== ''))
+        .map((f) => `• ${f.prefix}: ${updatedFields[f.key].trim()}`);
 
+      const newContent = filledLines.join('\n');
       setFormData(prev => prev ? { ...prev, content: newContent } : null);
     }
   };

@@ -117,6 +117,11 @@ function WorkspaceContent() {
 
   // Guardar en base de datos Supabase
   const handleSaveRider = async () => {
+    if (!rider.artistName || rider.artistName.trim() === '') {
+      showToast('⚠️ Por favor escribe el nombre del artista en el panel izquierdo antes de guardar');
+      return;
+    }
+
     setIsSaving(true);
     setDbSyncStatus('saving');
     try {
