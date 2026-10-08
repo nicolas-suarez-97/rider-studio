@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
+import { AgentRole, AGENT_PROFILES } from '@/lib/agents/rider-agent';
 
 // Tipos de Rider soportados
 type RiderType = 'tecnico' | 'hospitality' | 'seguridad';
@@ -399,12 +400,25 @@ export default function App() {
   ]);
   const [activeChatTab, setActiveChatTab] = useState<'conversations' | 'riders'>('conversations');
 
-  // Chat state
-  const [messages, setMessages] = useState<{ sender: 'ai' | 'user'; text: string; time: string }[]>([
+  // Chat state & AI Agents
+  const [activeAgent, setActiveAgent] = useState<AgentRole>('master');
+  const [isAgentThinking, setIsAgentThinking] = useState(false);
+  const [messages, setMessages] = useState<Array<{
+    sender: 'ai' | 'user';
+    text: string;
+    time: string;
+    role?: AgentRole;
+    roleName?: string;
+    roleAvatar?: string;
+    notice?: string;
+  }>>([
     {
       sender: 'ai',
-      text: '¡Hola! He estructurado las secciones especializadas de tu Rider según el estándar de la industria. Puedes pedirme agregar canales a la Input List, ajustar el catering o modificar los requisitos técnicos.',
-      time: '10:04'
+      text: '¡Hola! Soy tu Copilot de Producción. Coordino a tus agentes especializados (Ingeniero de Audio FOH, Coordinador de Hospitality y Director de Seguridad). Pídeme agregar micrófonos a la Input List, ajustar catering o protocolos técnicos y los aplicaré en vivo.',
+      time: '10:04',
+      role: 'master',
+      roleName: 'Master Production Copilot',
+      roleAvatar: '🧠'
     }
   ]);
   const [chatInput, setChatInput] = useState('');
@@ -448,11 +462,14 @@ export default function App() {
     navigateTo('workspace', 'forward');
   };
 
-  // Switch rider type and reset active section
+  // Switch rider type, reset active section y cambiar agente activo sugerido
   const handleSelectRiderType = (type: RiderType) => {
     setRiderType(type);
     const firstSec = riderData[type].sections[0].id;
     setActiveSectionId(firstSec);
+    if (type === 'tecnico') setActiveAgent('audio_foh');
+    else if (type === 'hospitality') setActiveAgent('hospitality');
+    else if (type === 'seguridad') setActiveAgent('security');
   };
 
   const currentRider = riderData[riderType];
@@ -630,26 +647,101 @@ export default function App() {
     showToast('Canal eliminado de la Input List');
   };
 
+  const callAgentChat = async (userText: string, currentHistory?: Array<{ sender: 'ai' | 'user'; text: string; time: string; role?: AgentRole; roleName?: string; roleAvatar?: string }>) => {
+    setIsAgentThinking(true);
+    try {
+      const historyToUse = currentHistory || messages;
+      const apiMessages = [
+        ...historyToUse.map(m => ({
+          role: m.sender === 'ai' ? 'assistant' : 'user',
+          content: m.text
+        })),
+        { role: 'user', content: userText }
+      ];
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: apiMessages,
+          riderType,
+          activeAgent
+        })
+      });
+
+      if (!res.ok) throw new Error('Error al conectar con el servidor de agentes');
+      const data = await res.json();
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      setMessages(prev => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: data.message,
+          time: now,
+          role: data.role,
+          roleName: data.roleName,
+          roleAvatar: data.roleAvatar,
+          notice: data.notice
+        }
+      ]);
+
+      // Ejecución de acciones generadas por el agente sobre el documento
+      if (data.actions && Array.isArray(data.actions)) {
+        data.actions.forEach((act: any) => {
+          if (act.type === 'add_input_channel' && act.payload) {
+            const nextNum = String(inputListChannels.length + 1).padStart(2, '0');
+            const newChan = {
+              id: `ch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              ch: act.payload.ch || nextNum,
+              name: act.payload.source || act.payload.name || `Canal ${nextNum}`,
+              mic: act.payload.transducer || act.payload.mic || 'Shure Axient KSM9',
+              stand: act.payload.stand || 'Pie Jirafa K&M'
+            };
+            setInputListChannels(cPrev => [...cPrev, newChan]);
+            showToast(`✨ ${data.roleName || 'Agente'}: Canal agregado a la Input List`);
+            setTimeout(() => scrollToSection('tech-inputlist'), 300);
+          } else if (act.type === 'switch_rider_type' && act.payload) {
+            handleSelectRiderType(act.payload);
+            showToast(`✨ Cambiado a Rider ${act.payload.toUpperCase()}`);
+          } else if (act.type === 'update_section' && act.payload) {
+            showToast(`✨ ${data.roleName || 'Agente'}: Especificación actualizada en el rider`);
+          }
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setMessages(prev => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: 'Hubo una dificultad de conexión con el agente. He guardado tu mensaje para el próximo intento.',
+          time: now
+        }
+      ]);
+    } finally {
+      setIsAgentThinking(false);
+    }
+  };
+
   const handleStartChatFromLanding = (e: React.FormEvent) => {
     e.preventDefault();
     if (userPrompt.trim()) {
+      const userText = userPrompt.trim();
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setMessages([
-        { sender: 'user', text: userPrompt, time: now },
-        { 
-          sender: 'ai', 
-          text: `¡Hola! He recibido tu mensaje: "${userPrompt}". Cuéntame los detalles sobre los integrantes, requerimientos de sonido o logística que necesitas para estructurar tu documento.`, 
-          time: now 
-        }
-      ]);
+      const initialUserMsg = { sender: 'user' as const, text: userText, time: now };
+      setMessages([initialUserMsg]);
       const newConv = {
         id: `c-${Date.now()}`,
-        title: userPrompt.length > 28 ? `${userPrompt.slice(0, 28)}...` : userPrompt,
+        title: userText.length > 28 ? `${userText.slice(0, 28)}...` : userText,
         date: 'Ahora',
         active: true
       };
       setConversations(prev => [newConv, ...prev.map(c => ({ ...c, active: false }))]);
+      setUserPrompt('');
       navigateTo('chat_prompt', 'forward');
+      callAgentChat(userText, [initialUserMsg]);
     }
   };
 
@@ -664,7 +756,10 @@ export default function App() {
       {
         sender: 'ai',
         text: '¡Hola! He abierto una nueva sesión. ¿Qué especificaciones o cambios necesitas planificar hoy?',
-        time: now
+        time: now,
+        role: 'master',
+        roleName: 'Master Production Copilot',
+        roleAvatar: '🧠'
       }
     ]);
     showToast('Nueva conversación creada');
@@ -694,7 +789,10 @@ export default function App() {
         { 
           sender: 'ai', 
           text: `Entendido. He inicializado tu ${RIDER_DATA[riderType].title}. Ya tienes configuradas las secciones reglamentarias.`, 
-          time: '10:05' 
+          time: '10:05',
+          role: activeAgent,
+          roleName: AGENT_PROFILES[activeAgent].name,
+          roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠'
         }
       ]);
     }
@@ -703,22 +801,14 @@ export default function App() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
-    const userText = chatInput;
+    if (!chatInput.trim() || isAgentThinking) return;
+    const userText = chatInput.trim();
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setMessages(prev => [...prev, { sender: 'user', text: userText, time: now }]);
+    const userMsg = { sender: 'user' as const, text: userText, time: now };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setChatInput('');
-
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: `He tomado nota de "${userText}". Actualicé la sección correspondiente en la vista previa del documento.`,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-    }, 600);
+    callAgentChat(userText, updatedMessages);
   };
 
   const scrollToSection = (secId: string) => {
@@ -1319,20 +1409,24 @@ export default function App() {
               <div className="shrink-0 px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/60 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                    AI
+                    {activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠'}
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-sm text-slate-900 leading-tight">Agente de Producción</h3>
+                    <h3 className="font-extrabold text-sm text-slate-900 leading-tight">
+                      {AGENT_PROFILES[activeAgent]?.name || 'Agente de Producción'}
+                    </h3>
                     <div className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span className="text-[11px] text-slate-400 font-semibold">En línea • Asistente de Riders</span>
+                      <span className="text-[11px] text-slate-400 font-semibold">
+                        {AGENT_PROFILES[activeAgent]?.title || 'Asistente de Riders'} • Vercel Gateway
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-semibold hidden sm:inline-block">
-                    Modo Conversacional
+                    Modo Multi-Agente
                   </span>
                   <button
                     onClick={() => navigateTo('workspace', 'forward')}
@@ -1344,14 +1438,50 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Selector Rápido de Agentes Especializados */}
+              <div className="shrink-0 px-6 py-2 bg-slate-50/40 border-b border-slate-100 flex items-center gap-2 overflow-x-auto">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+                  Agente Activo:
+                </span>
+                {(['master', 'audio_foh', 'hospitality', 'security'] as AgentRole[]).map((role) => {
+                  const isActive = activeAgent === role;
+                  const icons = { master: '🧠', audio_foh: '🎛️', hospitality: '☕', security: '🛡️' };
+                  const labels = { master: 'Master Copilot', audio_foh: 'Audio & FOH', hospitality: 'Hospitality', security: 'Seguridad' };
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => {
+                        setActiveAgent(role);
+                        showToast(`Agente activado: ${AGENT_PROFILES[role].name}`);
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 active:scale-95 ${
+                        isActive
+                          ? 'bg-zinc-900 text-white shadow-xs'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/70'
+                      }`}
+                    >
+                      <span>{icons[role]}</span>
+                      <span>{labels[role]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Historial de Mensajes del Chat */}
               <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 bg-white">
                 {messages.map((m, idx) => (
                   <div 
                     key={idx}
                     className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'} animate-message-appear`}
-                    style={{ animationDelay: `${idx * 50}ms` }}
+                    style={{ animationDelay: `${idx * 40}ms` }}
                   >
+                    {m.sender === 'ai' && (
+                      <div className="flex items-center gap-1.5 mb-1 px-1">
+                        <span className="text-xs">{m.roleAvatar || '🧠'}</span>
+                        <span className="text-[11px] font-bold text-slate-700">{m.roleName || 'Agente de Producción'}</span>
+                      </div>
+                    )}
                     <div className={`p-4 rounded-2xl max-w-[80%] text-sm leading-relaxed shadow-xs transition-all ${
                       m.sender === 'user'
                         ? 'bg-violet-600 text-white rounded-tr-xs'
@@ -1364,6 +1494,14 @@ export default function App() {
                     </span>
                   </div>
                 ))}
+
+                {/* Indicador de pensamiento del agente */}
+                {isAgentThinking && (
+                  <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-violet-50/80 border border-violet-100 text-violet-700 text-xs font-semibold animate-pulse w-fit">
+                    <span className="w-2 h-2 rounded-full bg-violet-600 animate-ping" />
+                    <span>{AGENT_PROFILES[activeAgent]?.name || 'Agente'} está analizando y sincronizando el rider...</span>
+                  </div>
+                )}
               </div>
 
               {/* Chips de Preguntas Sugeridas */}
@@ -2404,12 +2542,17 @@ export default function App() {
                   
                   {/* Header del Chat */}
                   <div className="shrink-0 flex items-center justify-between pb-2.5 border-b border-slate-100">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                        AI
+                        {activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠'}
                       </div>
                       <div>
-                        <h3 className="font-extrabold text-xs text-slate-900 leading-tight">Agente Producción</h3>
+                        <h3 className="font-extrabold text-xs text-slate-900 leading-tight">
+                          {AGENT_PROFILES[activeAgent]?.name || 'Agente Producción'}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-semibold leading-none mt-0.5">
+                          {AGENT_PROFILES[activeAgent]?.title || 'Copilot de Gira'}
+                        </p>
                       </div>
                     </div>
                     
@@ -2438,6 +2581,33 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Selector de Agentes de IA Especializados */}
+                  <div className="shrink-0 py-2 border-b border-slate-100 flex items-center gap-1 overflow-x-auto">
+                    {(['master', 'audio_foh', 'hospitality', 'security'] as AgentRole[]).map((role) => {
+                      const isActive = activeAgent === role;
+                      const icons = { master: '🧠', audio_foh: '🎛️', hospitality: '☕', security: '🛡️' };
+                      const labels = { master: 'Master', audio_foh: 'Audio', hospitality: 'Hospitality', security: 'Seguridad' };
+                      return (
+                        <button
+                          key={role}
+                          type="button"
+                          onClick={() => {
+                            setActiveAgent(role);
+                            showToast(`Agente activo: ${AGENT_PROFILES[role].name}`);
+                          }}
+                          className={`px-2 py-1 rounded-full text-[10px] font-bold transition-all shrink-0 flex items-center gap-1 active:scale-95 ${
+                            isActive
+                              ? 'bg-zinc-900 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          <span>{icons[role]}</span>
+                          <span>{labels[role]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
                 {/* Historial de Mensajes */}
                 <div className="flex-1 min-h-0 overflow-y-auto py-2.5 space-y-2.5 pr-1 text-xs">
                   {messages.map((m, idx) => (
@@ -2445,6 +2615,12 @@ export default function App() {
                       key={idx}
                       className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
                     >
+                      {m.sender === 'ai' && (
+                        <div className="flex items-center gap-1 mb-0.5 px-1">
+                          <span className="text-[10px]">{m.roleAvatar || '🧠'}</span>
+                          <span className="text-[10px] font-bold text-slate-600">{m.roleName || 'Agente'}</span>
+                        </div>
+                      )}
                       <div className={`p-3 rounded-2xl max-w-[88%] leading-relaxed ${
                         m.sender === 'user'
                           ? 'bg-zinc-900 text-white rounded-tr-xs shadow-xs'
@@ -2457,6 +2633,14 @@ export default function App() {
                       </span>
                     </div>
                   ))}
+
+                  {/* Indicador de pensamiento */}
+                  {isAgentThinking && (
+                    <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-violet-50/80 border border-violet-100 text-violet-700 text-[11px] font-semibold animate-pulse w-fit">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-600 animate-ping" />
+                      <span>{AGENT_PROFILES[activeAgent]?.name || 'Agente'} escribiendo...</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Chips de Preguntas Sugeridas */}
