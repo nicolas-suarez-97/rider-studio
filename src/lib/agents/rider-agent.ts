@@ -9,6 +9,12 @@ import { RiderType } from '@/core/types/rider.types';
 
 export type { AgentRole, AgentAction, AgentResponse, AgentProfile };
 export { AGENT_PROFILES };
+export {
+  RIDER_GENERATOR_SYSTEM_PROMPT,
+  RIDER_AUDITOR_SYSTEM_PROMPT,
+  buildRiderGenerationUserPrompt,
+  buildRiderAuditUserPrompt
+} from './prompts/rider-llm-prompts';
 
 export const SYSTEM_PROMPTS: Record<AgentRole, string> = {
   master: `Eres el Master Production Copilot de Rider Studio, una plataforma profesional para eventos en vivo y giras.

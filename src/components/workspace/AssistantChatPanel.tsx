@@ -57,23 +57,30 @@ export function AssistantChatPanel({
   const profile = AGENT_PROFILES[activeAgent];
   const info = AGENT_INFO[activeAgent];
 
-  // En escritorio, si está colapsado muestra una tira delgada. En móvil no se colapsa (se cambia con pestañas).
   if (isCollapsed) {
     return (
-      <div className="hidden xl:flex w-14 border-l border-slate-200/80 bg-white/70 backdrop-blur-md flex-col items-center py-4 justify-between shrink-0 select-none">
+      <div 
+        onClick={onToggleCollapse}
+        className="hidden xl:flex w-12 border-l border-slate-200/80 bg-white/70 backdrop-blur-md flex-col items-center py-4 justify-between shrink-0 select-none cursor-pointer hover:bg-slate-50/90 transition-colors group"
+        title="Clic para abrir Asistente IA"
+      >
         <button
-          onClick={onToggleCollapse}
-          className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCollapse();
+          }}
+          className="p-2 rounded-xl bg-slate-100 group-hover:bg-violet-100 text-slate-600 group-hover:text-violet-700 transition-colors cursor-pointer"
           title="Expandir panel del asistente"
         >
           <Icon name="panelRightOpen" className="w-4 h-4" />
         </button>
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 font-bold text-xs flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full bg-violet-100 text-violet-700 font-bold text-xs flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
             {info.icon}
           </div>
-          <span className="text-[10px] font-black uppercase text-slate-400 [writing-mode:vertical-rl] rotate-180 tracking-widest">
-            Asistente IA
+          <span className="text-[10px] font-black uppercase text-slate-400 group-hover:text-violet-600 transition-colors [writing-mode:vertical-rl] rotate-180 tracking-widest">
+            Copilot IA
           </span>
         </div>
         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

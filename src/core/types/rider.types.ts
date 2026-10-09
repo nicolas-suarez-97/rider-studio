@@ -24,7 +24,10 @@ export interface ChannelData {
   ch: string;
   name: string;
   mic: string;
+  altMic?: string;
   stand: string;
+  phantom?: boolean;
+  subSnake?: string;
 }
 
 export interface LinkedChatSession {
@@ -47,4 +50,34 @@ export interface SavedRiderSummary {
   channels?: ChannelData[];
   sections?: SectionItem[];
   linkedSessions?: LinkedChatSession[];
+}
+
+export interface RiderModuleData {
+  sections: SectionItem[];
+  channels?: ChannelData[];
+  completedSectionIds?: string[];
+  stagePlot?: StagePlotConfig;
+}
+
+export type ExportScope = 'master' | 'tecnico' | 'hospitality' | 'seguridad';
+
+export type StageElementCategory = 'instrument' | 'vocal' | 'amp' | 'monitor' | 'power' | 'riser' | 'snake';
+
+export interface StageElement {
+  id: string;
+  name: string;
+  category: StageElementCategory;
+  icon: string;
+  x: number;
+  y: number;
+  channel?: string;
+  notes?: string;
+  powerRequirement?: string;
+}
+
+export interface StagePlotConfig {
+  stageWidth: number;
+  stageDepth: number;
+  stageHeight: number;
+  elements: StageElement[];
 }

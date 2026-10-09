@@ -5,7 +5,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
     title: 'Rider Técnico de Audio & Escenario',
     badge: 'Producción Técnica',
     badgeColor: 'bg-zinc-100 text-zinc-800 border-zinc-200',
-    description: 'Especificaciones acústicas, microfonía, monitores, backline y distribución de tarima.',
+    description: 'Especificaciones acústicas, microfonía, monitores, backline, rigging y distribución de tarima.',
     sections: [
       {
         id: 'tech-contactos',
@@ -15,7 +15,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
         tag: 'Contactos',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'users',
-        content: '• Artista / Banda: [Nombre del Artista o Banda]\n• Management / Producción Ejecutiva: [Nombre / Teléfono / Email]\n• Ingeniero FOH / Sonido de Sala: [Nombre / Teléfono / Email]\n• Ingeniero de Monitores: [Nombre / Teléfono / Email]\n• Stage Manager / Jefe de Escenario: [Nombre / Teléfono / Email]\n• Fecha y Venue del Evento: [Ciudad, Recinto, Fecha]'
+        content: '• Artista / Banda: [Nombre del Artista o Banda]\n• Management / Producción Ejecutiva: [Nombre / Teléfono / Email]\n• Ingeniero FOH / Sonido de Sala: [Nombre / Teléfono / Email]\n• Ingeniero de Monitores: [Nombre / Teléfono / Email]\n• Diseñador de Iluminación (LD) / Video: [Nombre / Teléfono / Email]\n• Stage Manager / Jefe de Escenario: [Nombre / Teléfono / Email]\n• Fecha y Venue del Evento: [Ciudad, Recinto, Fecha]'
       },
       {
         id: 'tech-pa',
@@ -25,57 +25,77 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
         tag: 'Audio FOH',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'speaker',
-        content: '• Criterio PA: Sistema Line Array profesional de primer nivel (ej: L-Acoustics, d&b audiotechnik, Meyer Sound).\n• Cobertura: Cobertura homogénea y coherente en todo el recinto con mínimo 110 dBA SPL continuo sin distorsión.\n• Consola FOH preferida: [Especificar consola digital principal, ej: DiGiCo, Avid S6L, Yamaha CL5].\n• Conectividad: Líneas Cat6e blindadas desde escenario a FOH, split pasivo aislado por transformadores.'
+        content: '• Criterio PA: Sistema Line Array profesional de primer nivel (Preferencia Tier 1: L-Acoustics K1/K2, d&b audiotechnik GSL/KSL, Meyer Sound Panther).\n• Cobertura & SPL: Cobertura homogénea (+/-3dB) en toda la audiencia con mínimo 102 dBA continuo / 114 dBC pico en FOH (10-12 dB de headroom sin distorsión).\n• Ingeniero de Sistemas: Obligatoriedad de presencia de técnico de sistemas certificado por el fabricante durante alineación y show.\n• Consola FOH preferida: [Tier 1: DiGiCo Quantum 338 / Avid S6L / Yamaha Rivage PM5. Tier 2: DiGiCo SD12 / Yamaha CL5].\n• Conectividad: Líneas Cat6e blindadas etherCON desde escenario a FOH, split pasivo aislado por transformadores.'
       },
       {
         id: 'tech-monitores',
         num: '03',
-        title: 'Monitoreo & Sistema IEM',
-        subtitle: 'In-Ears inalámbricos, mezclas y cuñas',
+        title: 'Monitoreo, IEM & Radiofrecuencia (RF)',
+        subtitle: 'In-Ears inalámbricos, mezclas, cuñas y RF',
         tag: 'Monitores',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'headphones',
-        content: '• Sistema de IEM (In-Ear Monitors): Cantidad de canales inalámbricos estéreo requeridos (especificar marca/modelo ej: Shure PSM1000 / Sennheiser G4).\n• Monitores de Piso: Cantidad de cuñas/wedges bi-amplificadas de 12" o 15" y mezclas independientes.\n• Side fills y Drum fill: Requerimientos de subwoofers y satélites para cobertura lateral y batería.\n• Consola de Monitores: [Especificar consola de monitores dedicada o si se comparte con FOH].'
+        content: '• Sistema de IEM (In-Ear Monitors): Cantidad de canales inalámbricos estéreo requeridos (ej: Shure PSM1000 / Sennheiser 2000 con combinador de antena activo).\n• Coordinación de RF: Escaneo de radiofrecuencia obligatorio in-situ previo al soundcheck.\n• Monitores de Piso: Cuñas/wedges bi-amplificadas de 15" (d&b M4 o L-Acoustics X15) y mezclas independientes.\n• Side fills y Drum fill: Subwoofer 18" + satélite para batería; 2x side fills estéreo en laterales.\n• Consola de Monitores: [Consola dedicada de 48+ canales con split pasivo aislado galvánicamente].'
       },
       {
         id: 'tech-backline',
         num: '04',
-        title: 'Backline Requerido',
-        subtitle: 'Instrumentos, amplificadores & atriles',
+        title: 'Backline Requerido & Voltajes',
+        subtitle: 'Instrumentos, amplificadores & transformadores',
         tag: 'Instrumentos',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'guitar',
-        content: '• Batería: Medidas de bombo, toms, redoblante, marca de parches y atriles.\n• Bajo: Cabezal y gabinete (ej: 8x10" / 4x10").\n• Guitarras: Amplificadores valvulares requeridos con footswitch.\n• Teclados: Modelos específicos, fuentes de poder y atriles reforzados.'
+        content: '• Batería: Medidas de bombo, toms, redoblante, alfombra antideslizante obligatoria y banquetas de eje roscado.\n• Bajo: Cabezal y gabinete (ej: Ampeg SVT-CL + 8x10" / Aguilar).\n• Guitarras: Amplificadores valvulares requeridos con footswitch y transformadores de voltaje 110V/220V si aplica.\n• Teclados: Modelos específicos, fuentes de poder originales y atriles reforzados.'
       },
       {
         id: 'tech-inputlist',
         num: '05',
         title: 'Input List & Patch de Escenario',
-        subtitle: 'Canales, microfonía y cajas directas',
+        subtitle: 'Canales, microfonía, cajas directas y phantom',
         tag: 'Canales',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'list',
-        content: 'Configura en la tabla interactiva inferior los canales de entrada, transductores (micrófonos dinámicos/condensador), cajas directas activas (DI) y phantom power (+48V).'
+        content: 'Configura en la tabla interactiva inferior los canales de entrada, transductores principales y sustitutos homologados, tipos de atril, alimentación phantom (+48V) y sub-snakes de escenario.'
       },
       {
         id: 'tech-stageplot',
         num: '06',
-        title: 'Stage Plot & Tomas de Corriente',
-        subtitle: 'Distribución en tarima y acometida AC',
+        title: 'Stage Plot & Acometida Eléctrica',
+        subtitle: 'Distribución en tarima, risers y tierra aislada',
         tag: 'Tarima',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'map',
-        content: '• Dimensiones mínimas de tarima (ancho x profundidad x altura).\n• Risers (tarimas elevadas con ruedas y freno) para batería o percusión.\n• Distribución espacial de los músicos (Stage Left, Center, Stage Right).\n• Puntos de corriente eléctrica regulada y aterrizada por posición (110V/220V).'
+        content: '• Dimensiones mínimas de tarima: Ancho x profundidad x altura libre de obstáculos.\n• Risers: Tarimas elevadas con freno y alfombra negra (ej: 2.40m x 2.40m x 0.40m para batería).\n• Distribución espacial: Posiciones físicas de músicos en escenario (Stage Left, Center, Stage Right).\n• Puntos de corriente (AC Drops): Puntos regulados 20A con TIERRA FÍSICA AISLADA DEDICADA EXCLUSIVAMENTE PARA AUDIO (no compartida con luces).'
       },
       {
         id: 'tech-iluminacion',
         num: '07',
-        title: 'Iluminación, Video & Efectos',
-        subtitle: 'Patch DMX, pantallas LED & FX',
+        title: 'Iluminación, Pantallas LED & Visuales',
+        subtitle: 'Patch DMX, luminarias, pantalla LED y niebla',
         tag: 'Visuales',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'lightbulb',
-        content: '• Consola de control de luces requerida con universo Art-Net/sACN.\n• Tipos de luminarias mínimas (Spot, Beam, Wash, Strobes y cegadoras).\n• Pantalla LED de fondo (dimensiones mínimas, pitch P3.9 y procesador).\n• Máquinas de niebla o humo base agua para visualización de haces.'
+        content: '• Consola de control de luces: GrandMA3 o ChamSys con universos Art-Net/sACN.\n• Luminarias mínimas: Spot, Beam, Wash LED, Strobes y cegadoras incandescentes.\n• Pantalla LED de fondo: Dimensiones mínimas, pitch P3.9 o menor, tasa de refresco 3840Hz y procesador NovaStar/Brompton.\n• Máquinas de niebla: Exclusivamente máquinas base agua (Hazer). Prohibido uso de niebla base aceite.'
+      },
+      {
+        id: 'tech-rigging',
+        num: '08',
+        title: 'Rigging, Cargas & Puntos de Cuelgue',
+        subtitle: 'Motores, truss, cargas estáticas y dinámicas',
+        tag: 'Estructuras',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'anchor',
+        content: '• Puntos de cuelgue de PA: Capacidad mínima de 1 a 2 toneladas por punto con grilletes y eslingas certificadas.\n• Puntos de rigging de iluminación: Distribución de puentes de luces (Frontal, Contra y Calles).\n• Rigger certificado: Presencia obligatoria de rigger profesional para supervisar el cálculo de cargas y colgado.'
+      },
+      {
+        id: 'tech-terminos',
+        num: '09',
+        title: 'Condiciones Contractuales & SLA Contra-Rider',
+        subtitle: 'Aprobación de sustituciones y plazos de entrega',
+        tag: 'Términos',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'fileCheck',
+        content: '• Plazo de Contra-Rider: Toda propuesta de sustitución debe remitirse con un mínimo de 15 días hábiles previo al evento.\n• Aprobación por escrito: Ningún equipo puede reemplazarse sin el consentimiento expreso y por escrito del ingeniero responsable.\n• Penalización por incumplimiento: El promotor asume la responsabilidad operativa y financiera ante cualquier desviación técnica no acordada.'
       }
     ]
   },
@@ -83,57 +103,67 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
     title: 'Rider de Hospitality & Catering',
     badge: 'Hospitality & Catering',
     badgeColor: 'bg-zinc-100 text-zinc-800 border-zinc-200',
-    description: 'Requisitos de camerinos, catering, régimen de dietas, hotel y transporte de gira.',
+    description: 'Requisitos de camerinos, catering, régimen de dietas, lavandería, hotel y transporte de gira.',
     sections: [
       {
         id: 'hosp-camerinos',
         num: '01',
         title: 'Camerinos & Acondicionamiento',
-        subtitle: 'Camerino principal y camerinos de banda',
+        subtitle: 'Camerino principal, banda y seguridad privada',
         tag: 'Confort',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'door',
-        content: '• Camerino Principal: Capacidad, baño privado, climatización (temperatura requerida), espejo de cuerpo entero con iluminación cálida de maquillaje y sofás.\n• Camerino de Músicos / Banda: Capacidad mínima, perchero con ganchos, toallas limpias y asientos cómodos.\n• Camerino de Crew / Producción: Mesa de trabajo con tomas eléctricas e internet de alta velocidad.'
+        content: '• Camerino Principal: Baño privado, climatización (21°C - 22°C), sofá cómodo, espejo de maquillaje con luz cálida y cerradura con llave entregada al Tour Manager.\n• Camerino de Músicos / Banda: Capacidad mínima, percheros con ganchos, toallas limpias y asientos confortables.\n• Camerino de Crew / Producción: Mesa de trabajo, tomas eléctricas y red Wi-Fi privada de alta velocidad para producción.'
       },
       {
         id: 'hosp-catering',
         num: '02',
-        title: 'Catering, Comidas & Dietas',
-        subtitle: 'Almuerzo, cena y dietas especiales',
+        title: 'Catering, Menú & Dietas Especiales',
+        subtitle: 'Almuerzo, cena, horarios y opción buyout',
         tag: 'Alimentación',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'wine',
-        content: '• Número total de raciones (PAX) para almuerzo y cena.\n• Horarios requeridos de servicio de comidas calientes según cronograma de producción.\n• Restricciones alimentarias: Cantidad de opciones vegetarianas, veganas, celíacas o libres de lactosa.\n• Vajilla, cubiertos y servilletas de material reutilizable o biodegradable (no plástico de un solo uso).'
+        content: '• Raciones (PAX): Número total de raciones para almuerzo y cena caliente post-soundcheck.\n• Horarios de servicio: Coordinados estrictamente con el cronograma de montaje y pruebas de sonido.\n• Restricciones alimentarias: Detalle de opciones vegetarianas, veganas, celíacas (sin TACC) y sin lactosa.\n• Opción Buyout: Cláusula de pago de viáticos en efectivo por persona en caso de no proveer catering in-situ.\n• Vajilla sustentable: Cerámica o materiales biodegradables (prohibido plástico de un solo uso).'
       },
       {
         id: 'hosp-bebidas',
         num: '03',
         title: 'Hidratación, Bebidas & Cuidado Vocal',
-        subtitle: 'Estación de café, agua y jengibre',
+        subtitle: 'Estación de café, té, jengibre y tarima',
         tag: 'Bebidas',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'coffee',
-        content: '• Agua mineral sin gas: Cantidad de botellas requeridas (temperatura ambiente y frías).\n• Estación de café: Cafetera espresso, café de grano, leche vegetal (avena/almendra) y endulzantes.\n• Cuidado vocal: Jengibre fresco, miel orgánica, limones cortados y té de hierbas.\n• Bebidas para escenario: Botellas pequeñas y toallas de mano para tarima.'
+        content: '• Agua mineral sin gas: Botellas de 500ml a temperatura ambiente y frías.\n• Cuidado vocal del artista: Jengibre fresco cortado, limones orgánicos, miel pura de abeja y té caliente de manzanilla.\n• Estación de café: Cafetera espresso con café en grano y leches vegetales (avena/almendra).\n• Bebidas para escenario: Botellas de agua pequeñas sin gas y toallas negras ubicadas en posiciones de tarima.'
+      },
+      {
+        id: 'hosp-lavanderia',
+        num: '04',
+        title: 'Guardarropa, Lavandería & Toallas',
+        subtitle: 'Servicio de lavado exprés y dotación de toallas',
+        tag: 'Vestuario',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'shirt',
+        content: '• Lavandería de vestuario: Servicio de tintorería y lavado exprés (retorno en menos de 24 horas) para vestuario de escena.\n• Toallas de camerino: Toallas de baño limpias y secas para aseo personal post-show.\n• Toallas de escenario: Toallas de mano de color negro absoluto para uso durante el concierto.'
       },
       {
         id: 'hosp-hotel',
-        num: '04',
+        num: '05',
         title: 'Hotelería & Alojamiento',
-        subtitle: 'Hotel, suites y habitaciones dobles',
+        subtitle: 'Hotel, suites, late check-out y desayuno',
         tag: 'Hospedaje',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'hotel',
-        content: '• Categoría de hotel requerida (4 o 5 estrellas) ubicado a corta distancia del recinto.\n• Distribución: Suite o Junior Suite para artista principal + habitaciones individuales/dobles para banda y crew.\n• Condiciones: Desayuno incluido, Wi-Fi de alta velocidad, check-in temprano o late check-out confirmado.'
+        content: '• Categoría de hotel: 4 o 5 estrellas ubicado a menos de 20 minutos del recinto del evento.\n• Distribución: 1 Master Suite para artista principal + habitaciones dobles estándar para banda y equipo técnico.\n• Condiciones garantizadas: Desayuno buffet incluido, Wi-Fi de alta velocidad, Early Check-in y Late Check-out garantizado hasta las 16:00.'
       },
       {
         id: 'hosp-transporte',
-        num: '05',
-        title: 'Transporte Local & Transfers',
-        subtitle: 'Vehículos con chofer y logística',
+        num: '06',
+        title: 'Transporte Local & Logística de Carga',
+        subtitle: 'Vans ejecutivas, chofer y transporte de equipaje',
         tag: 'Logística',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'truck',
-        content: '• Tipo de vehículos requeridos (ej: Camionetas ejecutivas tipo Van con aire acondicionado).\n• Chofer profesional a disposición de la producción durante la estadía.\n• Itinerario de rutas: Aeropuerto ↔ Hotel ↔ Recinto del evento ↔ Retorno al aeropuerto.'
+        content: '• Flota vehicular: Camionetas ejecutivas tipo Van (ej. Mercedes Sprinter) con aire acondicionado y chofer exclusivo.\n• Camioneta de carga auxiliar: Vehículo cerrado para traslado de equipajes personales e instrumentos de mano.\n• Itinerario completo: Aeropuerto ↔ Hotel ↔ Recinto (prueba de sonido y show) ↔ Retorno al aeropuerto.'
       }
     ]
   },
@@ -141,47 +171,67 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
     title: 'Rider de Seguridad & Protocolos Venue',
     badge: 'Seguridad & Protocolos',
     badgeColor: 'bg-zinc-100 text-zinc-800 border-zinc-200',
-    description: 'Protocolos de acceso, custodia de artistas, vallas Mojo de contención y contingencia.',
+    description: 'Protocolos de acceso, custodia de artistas, vallas Mojo de contención, pirotecnia y contingencia.',
     sections: [
       {
         id: 'seg-perimetro',
         num: '01',
-        title: 'Perímetro & Control de Accesos',
-        subtitle: 'Filtros, detectores y acreditaciones',
+        title: 'Perímetro, Accesos & Drones',
+        subtitle: 'Filtros, detectores, pulseras y zona antidrones',
         tag: 'Control',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'shield',
-        content: '• Control estricto de acceso en puertas principales, accesos vehiculares y áreas de carga.\n• Filtros de seguridad con detectores de metales y revisión reglamentaria de bolsos.\n• Sistema de acreditación y pulseras por zonas (All Access, Backstage, Escenario, VIP).\n• Política clara de objetos prohibidos para el público asistente.'
+        content: '• Control estricto de accesos: Puertas principales, portones vehiculares y muelles de descarga.\n• Filtros y detectores: Arcos detectores de metales y revisión reglamentaria de bolsos.\n• Sistema de acreditaciones: Matriz de pulseras zonificadas (All Access, Backstage, Escenario, FOH, VIP).\n• Política antidrones: Prohibición total de sobrevuelo de drones no autorizados sobre el público o escenario.'
       },
       {
         id: 'seg-foso',
         num: '02',
-        title: 'Vallas Mojo & Foso de Prensa (Pit)',
-        subtitle: 'Vallas de contención antipánico',
+        title: 'Vallas Mojo, Foso (Pit) & Hidratación',
+        subtitle: 'Vallas antipánico, pasillo y agua para público',
         tag: 'Barrera',
         tagColor: 'bg-slate-100 text-slate-700',
         iconName: 'barrier',
-        content: '• Vallas de contención antipánico certificadas (tipo Mojo Barriers) frente al escenario.\n• Distancia mínima requerida entre el escenario y la primera línea de vallas (foso/pit).\n• Pasillo central libre para extracción rápida y personal de seguridad apostado cada 2 metros.\n• Protocolo para fotógrafos y prensa autorizada.'
+        content: '• Vallas Mojo certificadas: Barreras de aluminio antipánico con escalón de vigilancia frente a tarima.\n• Foso libre (Pit): Distancia mínima de 1.80m entre tarima y vallas con pasillo despejado de evacuación rápida.\n• Hidratación masiva: Suministro continuo de agua potable por parte del personal de seguridad a las primeras filas.\n• Protocolo de fotógrafos: Acceso restringido a primeras 3 canciones sin flash.'
       },
       {
         id: 'seg-custodia',
         num: '03',
-        title: 'Seguridad Personal & Backstage Estéril',
-        subtitle: 'Custodia de artista y zona de camerinos',
+        title: 'Custodia del Artista & Backstage Estéril',
+        subtitle: 'Custodia personal, ruta a tarima y avance',
         tag: 'Custodia',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'userCheck',
-        content: '• Agentes de custodia privada asignados al artista principal en traslados y camerinos.\n• Pasillo de camerinos mantenido como perímetro estéril con control estricto de puerta.\n• Ruta de acceso rápido y seguro desde el camerino hasta el escenario.\n• Prohibición absoluta de personas no acreditadas en áreas de descanso del artista.'
+        content: '• Custodia personal: Agentes de seguridad privada dedicados exclusivamente al artista en todo momento.\n• Backstage estéril: Pasillo de camerinos de acceso restringido estricto sin presencia de público ni invitados.\n• Ruta de escape y acceso: Corredor seguro e iluminado entre camerino y escenario con avance previo de seguridad.'
       },
       {
         id: 'seg-emergencias',
         num: '04',
-        title: 'Unidad Médica, Evacuación & Aforo',
-        subtitle: 'Ambulancia, paramédicos & extintores',
+        title: 'Unidad Médica, Evacuación & Primeros Auxilios',
+        subtitle: 'Ambulancia medicalizada, DEA y extintores',
         tag: 'Emergencias',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'heartPulse',
-        content: '• Ambulancia de soporte vital avanzado en punto fijo detrás de tarima.\n• Personal paramédico y de primeros auxilios disponible durante montaje, show y desmontaje.\n• Plan de evacuación de emergencia y salidas despejadas hacia el hospital más cercano.\n• Extintores de CO2 y PQS ubicados en puntos estratégicos de escenario y cabina FOH.'
+        content: '• Ambulancia de soporte vital avanzado: Ubicada permanentemente en punto fijo detrás de tarima.\n• Personal paramédico y DEA: Paramédicos con Desfibrilador Externo Automático (DEA) en backstage durante todo el evento.\n• Rutas de evacuación médica: Salidas de emergencia despejadas hacia hospital de trauma más cercano.\n• Extintores en tarima: Extintores de CO2 y PQS en ambos lados de escenario y cabina FOH.'
+      },
+      {
+        id: 'seg-sfx',
+        num: '05',
+        title: 'Seguridad en Efectos Especiales & Pirotecnia',
+        subtitle: 'Permisos de bomberos, distancias mínimas y extintores',
+        tag: 'Pirotecnia',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'flame',
+        content: '• Permisos bomberiles: Autorización oficial de las autoridades locales para uso de efectos pirotécnicos o CO2.\n• Distancias de seguridad: Perímetro de exclusión mínimo de 3 metros respecto a músicos y público.\n• Bombero de retén: Presencia de técnico de bomberos con extintor presurizado en laterales de tarima.'
+      },
+      {
+        id: 'seg-clima',
+        num: '06',
+        title: 'Protocolo Meteorológico & Viento Límite',
+        subtitle: 'Anemómetro en tarima y plan de suspensión por tormenta',
+        tag: 'Contingencia',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'cloudRain',
+        content: '• Monitoreo de viento: Anemómetro instalado en la estructura de tarima con registro continuo de rachas de viento.\n• Velocidad de viento crítica: Protocolo de bajar techos, pantallas y line arrays si el viento supera los 45 km/h.\n• Alerta por tormenta eléctrica: Procedimiento coordinado de evacuación o corte eléctrico ante caída de rayos en radio de 5 km.'
       }
     ]
   }

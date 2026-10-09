@@ -19,6 +19,8 @@ interface SectionsNavPanelProps {
   onOpenAddSection: () => void;
   onResetBlank: () => void;
   progressPercent: number;
+  masterProgress?: { completed: number; total: number; percent: number };
+  moduleStats?: Record<RiderType, { completed: number; total: number; percent: number }>;
   onSaveRider?: () => void;
   isSaving?: boolean;
   dbSyncStatus?: 'idle' | 'saving' | 'saved' | 'error';
@@ -42,53 +44,14 @@ export function SectionsNavPanel({
   progressPercent,
   onSaveRider,
   isSaving = false,
-  dbSyncStatus = 'idle',
-  riderType = 'tecnico',
-  onSelectRiderType
+  dbSyncStatus = 'idle'
 }: SectionsNavPanelProps) {
   return (
     <aside className="w-full xl:w-80 xl:border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden">
-      {/* Selector de Plantilla de Rider (especialmente útil en móviles donde el Header colapsa opciones) */}
-      {onSelectRiderType && (
-        <div className="xl:hidden p-3 border-b border-slate-200/60 bg-slate-50/50">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 px-1">
-            Plantilla Activa:
-          </span>
-          <div className="grid grid-cols-3 gap-1.5 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/60">
-            {(['tecnico', 'hospitality', 'seguridad'] as RiderType[]).map((t) => {
-              const active = riderType === t;
-              const titles = { tecnico: 'Técnico', hospitality: 'Hospitality', seguridad: 'Seguridad' };
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => onSelectRiderType(t)}
-                  className={`py-1.5 text-xs font-bold rounded-xl transition-all text-center cursor-pointer ${
-                    active
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {titles[t]}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Header del Outline: Artista, Gira y Conteo de Secciones */}
+      <div className="p-3.5 sm:p-4 border-b border-slate-200/60 shrink-0 space-y-3">
 
-      {/* Header del Outline */}
-      <div className="p-3.5 sm:p-4 border-b border-slate-200/60 shrink-0">
-        <div className="flex items-center justify-between mb-2.5">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            Índice de Secciones
-          </span>
-          <span className="text-[11px] font-extrabold text-violet-600 bg-violet-50 px-2.5 py-0.5 rounded-full border border-violet-100">
-            {progressPercent}% Completado
-          </span>
-        </div>
-
-        {/* Artista y Temporada Editables (fuente >= 16px en móvil para evitar zoom involuntario en iOS) */}
+        {/* Artista y Temporada Editables */}
         <div className="space-y-1 bg-slate-50/80 p-2 sm:p-2.5 rounded-2xl border border-slate-200/60">
           <input
             type="text"
@@ -104,6 +67,16 @@ export function SectionsNavPanel({
             className="w-full bg-transparent text-sm sm:text-xs font-semibold text-slate-400 outline-none hover:bg-white focus:bg-white px-2.5 py-1 rounded-xl transition-all"
             placeholder="Temporada o Gira"
           />
+        </div>
+
+        {/* Subheader de la lista de secciones activas */}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Secciones ({completedSectionIds.length}/{sections.length})
+          </span>
+          <span className="text-[11px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+            {progressPercent}% Módulo
+          </span>
         </div>
       </div>
 
@@ -123,7 +96,7 @@ export function SectionsNavPanel({
               <Reorder.Item
                 key={section.id}
                 value={section}
-                className={`group relative p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 ${
+                className={`group relative p-3 rounded-2xl border transition-colors cursor-pointer flex items-center gap-3 ${
                   isActive
                     ? 'bg-violet-50/70 border-violet-200 shadow-xs ring-1 ring-violet-200/60'
                     : 'bg-white hover:bg-slate-50/80 border-slate-200/70'
@@ -157,7 +130,7 @@ export function SectionsNavPanel({
                 <button
                   type="button"
                   onClick={(e) => onToggleComplete(section.id, e)}
-                  className={`w-8 h-8 sm:w-6 sm:h-6 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                  className={`w-8 h-8 sm:w-6 sm:h-6 rounded-full flex items-center justify-center transition-colors shrink-0 cursor-pointer ${
                     isCompleted
                       ? 'bg-emerald-500 text-white shadow-xs'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-400'

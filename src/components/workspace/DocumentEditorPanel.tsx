@@ -3,7 +3,8 @@
 import React from 'react';
 import { Icon } from '../common/Icon';
 import { InputListTable } from './InputListTable';
-import { SectionItem, RiderType } from '@/core/types/rider.types';
+import { StagePlotView } from './StagePlotView';
+import { SectionItem, RiderType, ChannelData, StagePlotConfig } from '@/core/types/rider.types';
 import { ChannelInput } from '@/core/models/ChannelInput';
 
 interface DocumentEditorPanelProps {
@@ -16,7 +17,8 @@ interface DocumentEditorPanelProps {
   completedSectionIds: string[];
   onToggleComplete: (id: string, e?: React.MouseEvent) => void;
   onEditSection: (section: SectionItem) => void;
-  onUpdateChannel: (chId: string, field: 'name' | 'mic' | 'stand', val: string) => void;
+  onDeleteSection?: (sectionId: string, title: string) => void;
+  onUpdateChannel: (chId: string, field: keyof ChannelData, val: string | boolean) => void;
   onAddChannel: () => void;
   onDeleteChannel: (chId: string) => void;
   onExport: () => void;
@@ -26,6 +28,8 @@ interface DocumentEditorPanelProps {
   dbSyncStatus?: 'idle' | 'saving' | 'saved' | 'error';
   onUpdateArtistName?: (val: string) => void;
   onUpdateSeason?: (val: string) => void;
+  stagePlot: StagePlotConfig;
+  onUpdateStagePlot?: (newConfig: StagePlotConfig) => void;
 }
 
 export function DocumentEditorPanel({
@@ -38,6 +42,7 @@ export function DocumentEditorPanel({
   completedSectionIds,
   onToggleComplete,
   onEditSection,
+  onDeleteSection,
   onUpdateChannel,
   onAddChannel,
   onDeleteChannel,
@@ -47,7 +52,9 @@ export function DocumentEditorPanel({
   isSaving = false,
   dbSyncStatus = 'idle',
   onUpdateArtistName,
-  onUpdateSeason
+  onUpdateSeason,
+  stagePlot,
+  onUpdateStagePlot
 }: DocumentEditorPanelProps) {
   return (
     <main className="flex-1 h-full overflow-y-auto p-3.5 sm:p-6 md:p-10 space-y-4 sm:space-y-6 pb-28 xl:pb-10 overscroll-contain">
@@ -129,7 +136,7 @@ export function DocumentEditorPanel({
                 ) : (
                   <>
                     <Icon name="database" className="w-3.5 h-3.5" />
-                    <span>Guardar Raider</span>
+                    <span>Guardar Rider</span>
                   </>
                 )}
               </button>
@@ -162,6 +169,7 @@ export function DocumentEditorPanel({
         {sections.map((section) => {
           const isCompleted = completedSectionIds.includes(section.id);
           const isInputListSection = section.id === 'tech-inputlist';
+          const isStagePlotSection = section.id === 'tech-stageplot' || section.iconName === 'map';
 
           return (
             <div
@@ -206,6 +214,16 @@ export function DocumentEditorPanel({
                   >
                     <Icon name="edit" className="w-4 h-4" />
                   </button>
+                  {onDeleteSection && (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteSection(section.id, section.title)}
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-100 flex items-center justify-center transition-all cursor-pointer"
+                      title={`Eliminar sección "${section.title}"`}
+                    >
+                      <Icon name="trash" className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={(e) => onToggleComplete(section.id, e)}
@@ -250,6 +268,21 @@ export function DocumentEditorPanel({
                   onDeleteChannel={onDeleteChannel}
                 />
               )}
+
+              {/* Render del Stage Plot 2D interactivo para la sección de tarima */}
+              {isStagePlotSection && riderType === 'tecnico' && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <StagePlotView
+                    stagePlot={stagePlot}
+                    onUpdateStagePlot={onUpdateStagePlot}
+                    artistName={artistName}
+                    riderTitle={riderTitle}
+                    season={season}
+                    channels={channels}
+                    onOpenModal={onOpenStagePlot}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -285,7 +318,7 @@ export function DocumentEditorPanel({
               ) : (
                 <>
                   <Icon name="database" className="w-3.5 h-3.5 text-violet-600" />
-                  <span>Guardar Raider</span>
+                  <span>Guardar Rider</span>
                 </>
               )}
             </button>
@@ -304,7 +337,7 @@ export function DocumentEditorPanel({
             className="px-5 py-2.5 rounded-full text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 transition-all shadow-md shadow-violet-500/25 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
           >
             <Icon name="download" className="w-3.5 h-3.5" />
-            <span>Exportar Documento Oficial</span>
+            <span>Exportar</span>
           </button>
         </div>
       </div>

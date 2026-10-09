@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Icon } from './Icon';
-import { RiderType } from '@/core/types/rider.types';
+import { RiderType, ExportScope } from '@/core/types/rider.types';
 
 interface HeaderProps {
   pageType: 'landing' | 'workspace' | 'chat';
@@ -13,10 +13,13 @@ interface HeaderProps {
   completedCount?: number;
   totalCount?: number;
   progressPercent?: number;
+  moduleStats?: Record<RiderType, { completed: number; total: number; percent: number }>;
+  masterProgress?: { completed: number; total: number; percent: number };
   onSaveRider?: () => void;
   isSaving?: boolean;
   dbSyncStatus?: 'idle' | 'saving' | 'saved' | 'error';
   onExport?: () => void;
+  onOpenExportModal?: (scope?: ExportScope) => void;
   onOpenStagePlot?: () => void;
   onShare?: () => void;
   chatSessionId?: string | null;
@@ -30,14 +33,12 @@ export function Header({
   completedCount = 0,
   totalCount = 7,
   progressPercent = 0,
-  onSaveRider,
-  isSaving = false,
-  dbSyncStatus = 'idle',
+  moduleStats,
+  masterProgress,
   onExport,
-  onOpenStagePlot,
-  chatSessionId,
-  riderId
+  onOpenExportModal
 }: HeaderProps) {
+
   return (
     <div className="sticky top-0 z-40 shrink-0 w-full flex flex-col">
       {/* ========================================================
@@ -132,17 +133,20 @@ export function Header({
             </Link>
             <span className="text-slate-300 hidden sm:inline">/</span>
 
-            {/* Selector de Tipo de Rider en Subheader */}
+            {/* Selector de Tipo de Rider en Subheader con Progreso Departamental */}
             {onSelectRiderType && (
               <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/70">
                 {(['tecnico', 'hospitality', 'seguridad'] as RiderType[]).map((type) => {
                   const active = riderType === type;
                   const titles = { tecnico: 'Técnico', hospitality: 'Hospitality', seguridad: 'Seguridad' };
+                  const stat = moduleStats?.[type];
+                  const is100 = stat && stat.percent === 100;
+
                   return (
                     <button
                       key={type}
                       onClick={() => onSelectRiderType(type)}
-                      className={`relative px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 cursor-pointer ${
+                      className={`relative px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 cursor-pointer flex items-center gap-1.5 ${
                         active ? 'text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
@@ -150,10 +154,23 @@ export function Header({
                         <motion.div
                           layoutId="activeRiderTabSubheader"
                           className="absolute inset-0 bg-white rounded-full shadow-2xs"
-                          transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                          transition={{ type: "spring", stiffness: 600, damping: 36 }}
                         />
                       )}
                       <span className="relative z-10">{titles[type]}</span>
+                      {stat && (
+                        <span 
+                          className={`relative z-10 text-[9px] font-black px-1.5 py-0.2 rounded-full transition-colors ${
+                            is100
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : active
+                              ? 'bg-slate-100 text-slate-600'
+                              : 'bg-slate-200/80 text-slate-500'
+                          }`}
+                        >
+                          {stat.completed}/{stat.total}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -161,11 +178,11 @@ export function Header({
             )}
           </div>
 
-          {/* Lado Derecho: Progreso, Guardado, Acciones de Exportación */}
+          {/* Lado Derecho: Progreso Master, Guardado, Stage Plot y Exportación */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Indicador de Progreso */}
+            {/* Indicador de Progreso del Módulo Activo */}
             <div className="hidden md:flex items-center gap-2 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200/60 text-xs">
-              <div className="w-14 bg-slate-200 h-1.5 rounded-full overflow-hidden">
+              <div className="w-12 bg-slate-200 h-1.5 rounded-full overflow-hidden">
                 <div 
                   className="bg-emerald-500 h-full transition-all duration-300"
                   style={{ width: `${progressPercent}%` }}
@@ -176,74 +193,43 @@ export function Header({
               </span>
             </div>
 
-            {/* Guardar en Supabase */}
-            {onSaveRider && (
-              <button
-                onClick={onSaveRider}
-                disabled={isSaving}
-                className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer ${
-                  dbSyncStatus === 'saved'
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                    : dbSyncStatus === 'error'
-                    ? 'bg-rose-50 text-rose-700 border border-rose-300'
-                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 active:scale-95'
-                }`}
-                title="Guardar y sincronizar este rider en la base de datos Supabase"
+            {/* Progreso Global del Rider General */}
+            {masterProgress && (
+              <div 
+                className="hidden xl:flex items-center gap-2 bg-violet-50/80 px-3 py-1 rounded-full border border-violet-200/70 text-xs"
+                title="Progreso consolidado de los 3 módulos del Rider de Producción"
               >
-                {isSaving ? (
-                  <>
-                    <span className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="hidden sm:inline">Guardando...</span>
-                  </>
-                ) : dbSyncStatus === 'saved' ? (
-                  <>
-                    <Icon name="check" className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="hidden sm:inline">Guardado</span>
-                  </>
-                ) : dbSyncStatus === 'error' ? (
-                  <span>⚠️ Reintentar</span>
-                ) : (
-                  <>
-                    <Icon name="database" className="w-3.5 h-3.5 text-violet-600" />
-                    <span>Guardar</span>
-                  </>
-                )}
-              </button>
+                <span className="text-[10px] font-black uppercase tracking-wider text-violet-600">Rider:</span>
+                <div className="w-14 bg-violet-200/70 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-violet-600 h-full transition-all duration-300"
+                    style={{ width: `${masterProgress.percent}%` }}
+                  />
+                </div>
+                <span className="font-black text-violet-800 whitespace-nowrap text-[11px]">
+                  {masterProgress.completed}/{masterProgress.total} ({masterProgress.percent}%)
+                </span>
+              </div>
             )}
 
-            {/* Stage Plot */}
-            {onOpenStagePlot && (
-              <button 
-                onClick={onOpenStagePlot}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 transition-all active:scale-95 shadow-2xs cursor-pointer"
-              >
-                <Icon name="map" className="w-3.5 h-3.5 text-slate-500" />
-                <span>Stage Plot</span>
-              </button>
-            )}
 
-            {/* Acceso al Chat IA del Rider */}
-            <Link
-              href={chatSessionId ? `/chat?session=${chatSessionId}` : riderId ? `/chat?riderId=${riderId}` : '/chat'}
-              prefetch={false}
-              className="hidden lg:flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200/60 hover:bg-violet-100 transition-all active:scale-95"
-              title="Abrir asistente de chat para este rider"
+
+            {/* Botón de Exportación Directo */}
+            <button 
+              type="button"
+              onClick={() => {
+                if (onOpenExportModal) {
+                  onOpenExportModal('master');
+                } else if (onExport) {
+                  onExport();
+                }
+              }}
+              className="bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-1 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
+              title="Abrir centro de exportación para imprimir o guardar PDF"
             >
-              <Icon name="messageSquare" className="w-3 h-3" />
-              <span>Chat IA</span>
-            </Link>
-
-            {/* Exportar PDF */}
-            {onExport && (
-              <button 
-                onClick={onExport}
-                className="bg-violet-600 hover:bg-violet-700 text-white px-3 py-1 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer"
-              >
-                <Icon name="download" className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Exportar PDF</span>
-                <span className="sm:hidden">PDF</span>
-              </button>
-            )}
+              <Icon name="download" className="w-3.5 h-3.5" />
+              <span>Exportar</span>
+            </button>
           </div>
         </div>
       )}

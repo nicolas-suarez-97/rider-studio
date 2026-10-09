@@ -3,10 +3,11 @@
 import React from 'react';
 import { Icon } from '../common/Icon';
 import { ChannelInput } from '@/core/models/ChannelInput';
+import { ChannelData } from '@/core/types/rider.types';
 
 interface InputListTableProps {
   channels: ChannelInput[];
-  onUpdateChannel: (chId: string, field: 'name' | 'mic' | 'stand', val: string) => void;
+  onUpdateChannel: (chId: string, field: keyof ChannelData, val: string | boolean) => void;
   onAddChannel: () => void;
   onDeleteChannel: (chId: string) => void;
 }
@@ -20,7 +21,7 @@ export function InputListTable({
   return (
     <div className="mt-4 border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-xs">
       {/* Header */}
-      <div className="bg-slate-50/90 px-3.5 sm:px-4 py-2.5 border-b border-slate-200/80 flex items-center justify-between">
+      <div className="bg-slate-50/90 px-3.5 sm:px-4 py-2.5 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Icon name="list" className="w-3.5 h-3.5 text-slate-500 shrink-0" />
           <span className="text-xs font-black text-slate-700 tracking-wide uppercase">
@@ -30,18 +31,20 @@ export function InputListTable({
             {channels.length} {channels.length === 1 ? 'Canal' : 'Canales'}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onAddChannel}
-          className="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95"
-        >
-          <Icon name="plus" className="w-3 h-3 text-violet-600" />
-          <span>Añadir Canal</span>
-        </button>
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <button
+            type="button"
+            onClick={onAddChannel}
+            className="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95"
+          >
+            <Icon name="plus" className="w-3 h-3 text-violet-600" />
+            <span>Añadir Canal</span>
+          </button>
+        </div>
       </div>
 
-      {/* VISTA 1: Mobile Cards (pantallas < 640px) */}
-      <div className="block sm:hidden divide-y divide-slate-100">
+      {/* VISTA 1: Mobile Cards (pantallas < 768px) */}
+      <div className="block md:hidden divide-y divide-slate-100">
         {channels.length === 0 ? (
           <div className="py-6 px-4 text-center text-xs text-slate-400 font-medium">
             No hay canales agregados aún. Pulsa &quot;Añadir Canal&quot; para comenzar el patch list.
@@ -60,33 +63,62 @@ export function InputListTable({
                     value={ch.name}
                     onChange={(e) => onUpdateChannel(ch.id, 'name', e.target.value)}
                     placeholder="Fuente (ej. Voz Principal)"
-                    className="flex-1 bg-slate-50/80 border border-slate-200/70 rounded-xl px-2.5 py-1.5 text-base sm:text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-violet-500"
+                    className="flex-1 bg-slate-50/80 border border-slate-200/70 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-violet-500"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onDeleteChannel(ch.id)}
-                  className="w-8 h-8 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 active:bg-rose-100 flex items-center justify-center transition-all cursor-pointer shrink-0"
-                  title="Eliminar canal"
-                >
-                  <Icon name="trash" className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onUpdateChannel(ch.id, 'phantom', !ch.phantom)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                      ch.phantom
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                        : 'bg-slate-100 text-slate-400 hover:text-slate-600 border border-slate-200/60'
+                    }`}
+                  >
+                    +48V
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteChannel(ch.id)}
+                    className="w-8 h-8 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 active:bg-rose-100 flex items-center justify-center transition-all cursor-pointer shrink-0"
+                    title="Eliminar canal"
+                  >
+                    <Icon name="trash" className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              {/* Campos Mic / DI y Atril apilados en móvil */}
+              {/* Campos Mic / Alt Mic */}
               <div className="grid grid-cols-2 gap-2 pl-9">
                 <div>
                   <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                    Micrófono / DI
+                    Transductor Primario
                   </label>
                   <input
                     type="text"
                     value={ch.mic}
                     onChange={(e) => onUpdateChannel(ch.id, 'mic', e.target.value)}
-                    placeholder="ej. Shure SM58"
-                    className="w-full bg-slate-50/60 border border-slate-200/60 rounded-lg px-2 py-1 text-base sm:text-xs font-medium text-slate-700 outline-none focus:bg-white focus:border-violet-500"
+                    placeholder="ej. Shure Beta 52A"
+                    className="w-full bg-slate-50/60 border border-slate-200/60 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 outline-none focus:bg-white focus:border-violet-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                    Sustituto Homologado
+                  </label>
+                  <input
+                    type="text"
+                    value={ch.altMic || ''}
+                    onChange={(e) => onUpdateChannel(ch.id, 'altMic', e.target.value)}
+                    placeholder="ej. Audix D6"
+                    className="w-full bg-slate-50/60 border border-slate-200/60 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 outline-none focus:bg-white focus:border-violet-500"
+                  />
+                </div>
+              </div>
+
+              {/* Campos Stand y Sub-snake */}
+              <div className="grid grid-cols-2 gap-2 pl-9">
                 <div>
                   <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
                     Atril / Stand
@@ -95,8 +127,20 @@ export function InputListTable({
                     type="text"
                     value={ch.stand}
                     onChange={(e) => onUpdateChannel(ch.id, 'stand', e.target.value)}
-                    placeholder="ej. Pie Jirafa"
-                    className="w-full bg-slate-50/60 border border-slate-200/60 rounded-lg px-2 py-1 text-base sm:text-xs font-medium text-slate-600 outline-none focus:bg-white focus:border-violet-500"
+                    placeholder="ej. Pie Jirafa Corto"
+                    className="w-full bg-slate-50/60 border border-slate-200/60 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 outline-none focus:bg-white focus:border-violet-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                    Sub-Snake / Manguera
+                  </label>
+                  <input
+                    type="text"
+                    value={ch.subSnake || ''}
+                    onChange={(e) => onUpdateChannel(ch.id, 'subSnake', e.target.value)}
+                    placeholder="ej. Sub 1 Drums"
+                    className="w-full bg-slate-50/60 border border-slate-200/60 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 outline-none focus:bg-white focus:border-violet-500"
                   />
                 </div>
               </div>
@@ -105,22 +149,25 @@ export function InputListTable({
         )}
       </div>
 
-      {/* VISTA 2: Desktop / Tablet Table (pantallas >= 640px) */}
-      <div className="hidden sm:block overflow-x-auto">
+      {/* VISTA 2: Desktop / Tablet Table (pantallas >= 768px) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="bg-slate-50/50 border-b border-slate-200/60 text-slate-400 font-bold text-[10px] uppercase">
-              <th className="py-2.5 px-3 w-14 text-center">CH</th>
-              <th className="py-2.5 px-3">Canal / Fuente</th>
-              <th className="py-2.5 px-3">Micrófono / DI</th>
-              <th className="py-2.5 px-3">Atril / Stand</th>
+              <th className="py-2.5 px-3 w-12 text-center">CH</th>
+              <th className="py-2.5 px-3 w-40">Canal / Fuente</th>
+              <th className="py-2.5 px-3">Transductor Principal</th>
+              <th className="py-2.5 px-3">Sustituto Homologado</th>
+              <th className="py-2.5 px-3 w-28">Atril / Stand</th>
+              <th className="py-2.5 px-2 w-14 text-center">+48V</th>
+              <th className="py-2.5 px-3 w-28">Sub-Snake</th>
               <th className="py-2.5 px-3 w-10 text-center"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {channels.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-slate-400 font-medium">
+                <td colSpan={8} className="py-6 text-center text-slate-400 font-medium">
                   No hay canales agregados aún. Pulsa &quot;Añadir Canal&quot; para comenzar el patch list.
                 </td>
               </tr>
@@ -145,7 +192,16 @@ export function InputListTable({
                       value={ch.mic}
                       onChange={(e) => onUpdateChannel(ch.id, 'mic', e.target.value)}
                       placeholder="ej. Shure SM58"
-                      className="w-full bg-transparent font-medium text-slate-600 outline-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-violet-300 px-2 py-1 rounded-lg transition-all text-xs"
+                      className="w-full bg-transparent font-medium text-slate-700 outline-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-violet-300 px-2 py-1 rounded-lg transition-all text-xs"
+                    />
+                  </td>
+                  <td className="py-2 px-3">
+                    <input
+                      type="text"
+                      value={ch.altMic || ''}
+                      onChange={(e) => onUpdateChannel(ch.id, 'altMic', e.target.value)}
+                      placeholder="ej. Sennheiser e935"
+                      className="w-full bg-transparent font-medium text-slate-500 outline-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-violet-300 px-2 py-1 rounded-lg transition-all text-xs"
                     />
                   </td>
                   <td className="py-2 px-3">
@@ -154,6 +210,29 @@ export function InputListTable({
                       value={ch.stand}
                       onChange={(e) => onUpdateChannel(ch.id, 'stand', e.target.value)}
                       placeholder="ej. Pie Jirafa"
+                      className="w-full bg-transparent text-slate-500 outline-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-violet-300 px-2 py-1 rounded-lg transition-all text-xs"
+                    />
+                  </td>
+                  <td className="py-2 px-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => onUpdateChannel(ch.id, 'phantom', !ch.phantom)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-black transition-all cursor-pointer ${
+                        ch.phantom
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'text-slate-300 hover:text-slate-500'
+                      }`}
+                      title={ch.phantom ? 'Phantom +48V activado' : 'Activar Phantom +48V'}
+                    >
+                      +48V
+                    </button>
+                  </td>
+                  <td className="py-2 px-3">
+                    <input
+                      type="text"
+                      value={ch.subSnake || ''}
+                      onChange={(e) => onUpdateChannel(ch.id, 'subSnake', e.target.value)}
+                      placeholder="ej. Drums / SL"
                       className="w-full bg-transparent text-slate-500 outline-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-violet-300 px-2 py-1 rounded-lg transition-all text-xs"
                     />
                   </td>

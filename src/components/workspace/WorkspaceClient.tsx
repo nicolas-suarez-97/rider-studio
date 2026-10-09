@@ -10,10 +10,12 @@ import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel'
 import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { AddSectionModal } from '@/components/modals/AddSectionModal';
 import { EditSectionModal } from '@/components/modals/EditSectionModal';
+import { MasterExportModal } from '@/components/modals/MasterExportModal';
+import { StagePlotModal } from '@/components/modals/StagePlotModal';
 import { Rider } from '@/core/models/Rider';
 import { riderService } from '@/core/services/rider.service';
 import { chatService } from '@/core/services/chat.service';
-import { RiderType, SectionItem } from '@/core/types/rider.types';
+import { RiderType, SectionItem, ChannelData, ExportScope, StagePlotConfig } from '@/core/types/rider.types';
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
@@ -48,7 +50,13 @@ export function WorkspaceClient({
     if (t === 'seguridad') return 'security';
     return 'audio_foh';
   });
-  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  // Mostrar el chat expandido solo si hay una conversación asociada al rider; de lo contrario mantenerlo oculto
+  const hasAssociatedChat = Boolean(
+    initialSessionId ||
+    (initialMessages && initialMessages.length > 0) ||
+    (initialRiderData?.linkedSessions && initialRiderData.linkedSessions.length > 0)
+  );
+  const [isChatCollapsed, setIsChatCollapsed] = useState(!hasAssociatedChat);
   const [isSaving, setIsSaving] = useState(false);
   const [dbSyncStatus, setDbSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -58,6 +66,9 @@ export function WorkspaceClient({
   // Modales
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
   const [editingSection, setEditingSection] = useState<SectionItem | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportScope, setExportScope] = useState<ExportScope>('master');
+  const [showStagePlotModal, setShowStagePlotModal] = useState(false);
 
   // Chat & Sesión Asociada
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(initialSessionId);
@@ -116,36 +127,43 @@ export function WorkspaceClient({
     };
   }, [currentSessionId]);
 
-  // Cambiar tipo de rider
+  // Cambiar tipo de rider preservando artista, temporada, id y contenido de módulos
   const handleSelectRiderType = (type: RiderType) => {
-    const blank = Rider.createBlank(type);
-    setRider(blank);
-    if (blank.sections.length > 0) {
-      setActiveSectionId(blank.sections[0].id);
+    const updated = new Rider({ ...rider });
+    updated.switchType(type);
+    setRider(updated);
+
+    if (updated.sections.length > 0) {
+      setActiveSectionId(updated.sections[0].id);
     }
     if (type === 'tecnico') setActiveAgent('audio_foh');
     else if (type === 'hospitality') setActiveAgent('hospitality');
     else if (type === 'seguridad') setActiveAgent('security');
 
     const sessionQuery = currentSessionId ? `&session=${currentSessionId}` : '';
-    router.replace(`/workspace?type=${type}${sessionQuery}`);
-    showToast(`✨ Cambiado a Rider ${type.toUpperCase()}`);
+    const idQuery = updated.id ? `&id=${updated.id}` : '';
+    router.replace(`/workspace?type=${type}${idQuery}${sessionQuery}`);
+    showToast(`✨ Cambiado a Módulo ${type.toUpperCase()} (${updated.artistName || 'Mismo Artista'})`);
   };
 
   // Guardar en base de datos Supabase
   const handleSaveRider = async (customRider?: Rider) => {
     const targetRider = customRider ? new Rider(customRider) : new Rider(rider);
-    if (!targetRider.artistName || targetRider.artistName.trim() === '') {
-      targetRider.artistName = 'Nuevo Artista / Banda';
-    }
+    const hasArtist = Boolean(targetRider.artistName && targetRider.artistName.trim() !== '');
+
     if (!targetRider.title || targetRider.title.trim() === '') {
-      targetRider.title = `Rider de Producción - ${targetRider.artistName}`;
+      targetRider.title = hasArtist
+        ? `Rider de Producción - ${targetRider.artistName.trim()}`
+        : 'Rider de Producción';
     }
 
     setIsSaving(true);
     setDbSyncStatus('saving');
     try {
       const saved = await riderService.save(targetRider);
+      if (!hasArtist) {
+        saved.artistName = '';
+      }
       setRider(saved);
       setDbSyncStatus('saved');
       showToast('✅ Rider sincronizado y guardado en Supabase');
@@ -226,11 +244,15 @@ export function WorkspaceClient({
   };
 
   const handleReorderSections = (newSections: SectionItem[]) => {
-    setRider(prev => new Rider({ ...prev, sections: newSections }));
+    setRider(prev => {
+      const updated = new Rider({ ...prev });
+      updated.reorderSections(newSections);
+      return updated;
+    });
   };
 
   // Canales
-  const handleUpdateChannel = (chId: string, field: 'name' | 'mic' | 'stand', val: string) => {
+  const handleUpdateChannel = (chId: string, field: keyof ChannelData, val: string | boolean) => {
     setRider(prev => {
       const updated = new Rider({ ...prev });
       updated.updateChannel(chId, { [field]: val });
@@ -252,6 +274,34 @@ export function WorkspaceClient({
       updated.deleteChannel(chId);
       return updated;
     });
+  };
+
+  // Stage Plot
+  const handleUpdateStagePlot = (newConfig: StagePlotConfig) => {
+    setRider(prev => {
+      const updated = new Rider({ ...prev });
+      updated.updateStagePlot(newConfig);
+      return updated;
+    });
+  };
+
+  // Restablecer desde ceros
+  const handleResetBlank = async () => {
+    const ok = window.confirm(
+      '¿Deseas empezar este rider completamente de ceros? Se vaciarán los contenidos de todas las secciones, el Input List y el plano de escenario (Stage Plot) para empezar un rider totalmente en blanco.'
+    );
+    if (!ok) return;
+
+    const updated = new Rider({ ...rider });
+    updated.resetFromScratch();
+    setRider(updated);
+
+    if (updated.sections.length > 0) {
+      setActiveSectionId(updated.sections[0].id);
+    }
+
+    showToast('🔄 Rider reiniciado en blanco desde ceros');
+    await handleSaveRider(updated);
   };
 
   // Chat con Asistente
@@ -326,12 +376,13 @@ export function WorkspaceClient({
     }
   };
 
-  const handleExport = () => {
-    window.print();
+  const handleOpenExportModal = (scope: ExportScope = 'master') => {
+    setExportScope(scope);
+    setShowExportModal(true);
   };
 
   const handleOpenStagePlot = () => {
-    showToast('📐 Generador de Stage Plot 2D en preparación');
+    setShowStagePlotModal(true);
   };
 
   return (
@@ -345,10 +396,13 @@ export function WorkspaceClient({
         completedCount={rider.completedSectionIds.length}
         totalCount={rider.sections.length}
         progressPercent={rider.getProgress()}
+        moduleStats={rider.getModuleStats()}
+        masterProgress={rider.getMasterProgress()}
         onSaveRider={handleSaveRider}
         isSaving={isSaving}
         dbSyncStatus={dbSyncStatus}
-        onExport={handleExport}
+        onExport={() => handleOpenExportModal('master')}
+        onOpenExportModal={handleOpenExportModal}
         onOpenStagePlot={handleOpenStagePlot}
         chatSessionId={currentSessionId}
         riderId={rider.id}
@@ -378,8 +432,10 @@ export function WorkspaceClient({
             completedSectionIds={rider.completedSectionIds}
             onToggleComplete={handleToggleComplete}
             onOpenAddSection={() => setShowAddSectionModal(true)}
-            onResetBlank={() => handleSelectRiderType(rider.type)}
+            onResetBlank={handleResetBlank}
             progressPercent={rider.getProgress()}
+            masterProgress={rider.getMasterProgress()}
+            moduleStats={rider.getModuleStats()}
             onSaveRider={() => handleSaveRider()}
             isSaving={isSaving}
             dbSyncStatus={dbSyncStatus}
@@ -400,16 +456,19 @@ export function WorkspaceClient({
             completedSectionIds={rider.completedSectionIds}
             onToggleComplete={handleToggleComplete}
             onEditSection={(s) => setEditingSection(s)}
+            onDeleteSection={handleDeleteSection}
             onUpdateChannel={handleUpdateChannel}
             onAddChannel={handleAddChannel}
             onDeleteChannel={handleDeleteChannel}
-            onExport={handleExport}
+            onExport={() => handleOpenExportModal('master')}
             onOpenStagePlot={handleOpenStagePlot}
             onSaveRider={() => handleSaveRider()}
             isSaving={isSaving}
             dbSyncStatus={dbSyncStatus}
             onUpdateArtistName={handleUpdateTitle}
             onUpdateSeason={handleUpdateSeason}
+            stagePlot={rider.stagePlot}
+            onUpdateStagePlot={handleUpdateStagePlot}
           />
         </div>
 
@@ -511,6 +570,25 @@ export function WorkspaceClient({
         onClose={() => setEditingSection(null)}
         onSave={handleSaveEditedSection}
         onDelete={handleDeleteSection}
+      />
+
+      <MasterExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        rider={rider}
+        initialScope={exportScope}
+        onShowToast={showToast}
+      />
+
+      <StagePlotModal
+        isOpen={showStagePlotModal}
+        onClose={() => setShowStagePlotModal(false)}
+        artistName={rider.artistName}
+        channels={rider.channels}
+        riderTitle={rider.title}
+        season={rider.season}
+        stagePlot={rider.stagePlot}
+        onUpdateStagePlot={handleUpdateStagePlot}
       />
     </div>
   );
