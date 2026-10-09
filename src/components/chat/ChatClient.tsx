@@ -8,7 +8,8 @@ import { ChatView } from '@/components/chat/ChatView';
 import { chatService } from '@/core/services/chat.service';
 import { riderService } from '@/core/services/rider.service';
 import { AgentRole } from '@/core/types/agent.types';
-import { ChatMessageItem, ChatSessionSummary } from '@/core/types/chat.types';
+import { ChatAttachment, ChatMessageItem, ChatSessionSummary } from '@/core/types/chat.types';
+import { composeChatContent } from '@/core/utils/chat-attachments';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 import { Rider } from '@/core/models/Rider';
 import { RiderType } from '@/core/types/rider.types';
@@ -100,9 +101,14 @@ export function ChatClient({
     };
   }, []);
 
-  const handleSendMessage = useCallback(async (text: string) => {
+  const handleSendMessage = useCallback(async (text: string, attachments?: ChatAttachment[]) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const userMsg: ChatMessageItem = { sender: 'user', text, time: now };
+    const userMsg: ChatMessageItem = {
+      sender: 'user',
+      text,
+      time: now,
+      attachments: attachments?.length ? attachments : undefined
+    };
     
     setMessages(prev => [...prev, userMsg]);
     setIsAgentThinking(true);
@@ -114,7 +120,7 @@ export function ChatClient({
       const data = await chatService.sendMessage({
         messages: currentSnapshot.map(m => ({
           role: m.sender === 'user' ? 'user' : 'assistant',
-          content: m.text
+          content: m.attachments?.length ? composeChatContent(m.text, m.attachments) : m.text
         })),
         riderType: activeSession?.riderInfo?.riderType || 'tecnico',
         activeAgent,

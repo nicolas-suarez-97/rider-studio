@@ -8,6 +8,17 @@ export interface LinkedRiderInfo {
   riderType: RiderType;
 }
 
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  kind: 'image' | 'pdf' | 'text' | 'document';
+  previewUrl?: string;
+  extractedText?: string;
+  truncated?: boolean;
+}
+
 export interface ChatMessageItem {
   id?: string;
   sender: 'ai' | 'user';
@@ -16,6 +27,7 @@ export interface ChatMessageItem {
   role?: AgentRole;
   roleName?: string;
   roleAvatar?: string;
+  attachments?: ChatAttachment[];
 }
 
 export interface ChatSessionSummary {

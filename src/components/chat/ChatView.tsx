@@ -4,7 +4,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Icon } from '../common/Icon';
 import { AgentRole } from '@/core/types/agent.types';
-import { ChatMessageItem, ChatSessionSummary } from '@/core/types/chat.types';
+import { ChatAttachment, ChatMessageItem, ChatSessionSummary } from '@/core/types/chat.types';
+import {
+  ATTACHMENT_ACCEPT,
+  MAX_ATTACHMENTS,
+  readChatAttachment
+} from '@/core/utils/chat-attachments';
 import { RiderType } from '@/core/types/rider.types';
 import { AGENT_PROFILES, AGENT_INFO, SAMPLE_FAQS } from '@/core/constants/agent-profiles';
 
@@ -18,7 +23,7 @@ interface ChatViewProps {
   onSelectAgent: (role: AgentRole) => void;
   messages: ChatMessageItem[];
   isThinking: boolean;
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, attachments?: ChatAttachment[]) => void;
   availableRiders?: Array<{ id: string; title: string; artist: string; type: string }>;
   onLinkRider?: (sessionId: string, riderId: string | null) => void;
   onCreateRider?: (artistName: string, type: RiderType) => Promise<string | null>;
@@ -40,6 +45,9 @@ export function ChatView({
   onCreateRider
 }: ChatViewProps) {
   const [inputVal, setInputVal] = useState('');
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [attachError, setAttachError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showLinkMenu, setShowLinkMenu] = useState(false);
   const [isCreatingRider, setIsCreatingRider] = useState(false);
   const [newRiderName, setNewRiderName] = useState('');
@@ -77,9 +85,47 @@ export function ChatView({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputVal.trim() || isThinking) return;
-    onSendMessage(inputVal.trim());
+    if (isThinking) return;
+    if (!inputVal.trim() && attachments.length === 0) return;
+    onSendMessage(inputVal.trim(), attachments);
     setInputVal('');
+    setAttachments([]);
+    setAttachError('');
+  };
+
+  const handleAttachFiles = async (fileList: FileList | null) => {
+    if (!fileList?.length) return;
+    const remaining = MAX_ATTACHMENTS - attachments.length;
+    if (remaining <= 0) {
+      setAttachError(`Solo puedes adjuntar hasta ${MAX_ATTACHMENTS} archivos.`);
+      return;
+    }
+
+    const selected = Array.from(fileList).slice(0, remaining);
+    if (fileList.length > remaining) {
+      setAttachError(`Solo puedes adjuntar hasta ${MAX_ATTACHMENTS} archivos.`);
+    } else {
+      setAttachError('');
+    }
+
+    const next: ChatAttachment[] = [];
+    for (const file of selected) {
+      try {
+        next.push(await readChatAttachment(file));
+      } catch (err) {
+        setAttachError(err instanceof Error ? err.message : 'No se pudo adjuntar el archivo.');
+      }
+    }
+    if (next.length) setAttachments((prev) => [...prev, ...next]);
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachError('');
+    setAttachments((prev) => {
+      const target = prev.find((file) => file.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((file) => file.id !== id);
+    });
   };
 
   const profile = AGENT_PROFILES[activeAgent];
@@ -192,50 +238,6 @@ export function ChatView({
             );
           })
         )}
-      </div>
-
-      {/* Especialistas de Producción */}
-      <div className="p-3 border-t border-slate-200/60 bg-white/50 space-y-2 shrink-0">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">
-          Agente Especializado Activo:
-        </span>
-        <div className="grid grid-cols-2 gap-1.5">
-          {(['master', 'audio_foh', 'hospitality', 'security'] as AgentRole[]).map((role) => {
-            const active = activeAgent === role;
-            const avatars: Record<AgentRole, string> = {
-              master: '🧠 Master',
-              audio_foh: '🎛️ Audio',
-              hospitality: '☕ Hosp.',
-              security: '🛡️ Seg.'
-            };
-
-            return (
-              <button
-                key={role}
-                onClick={() => {
-                  onSelectAgent(role);
-                  if (isMobile) setIsMobileSidebarOpen(false);
-                }}
-                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer ${
-                  active
-                    ? 'bg-violet-600 text-white shadow-xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                }`}
-              >
-                {avatars[role]}
-              </button>
-            );
-          })}
-        </div>
-        <div className="pt-2">
-          <Link
-            href="/workspace"
-            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-          >
-            <span>Abrir en Workspace 3 Paneles</span>
-            <span>→</span>
-          </Link>
-        </div>
       </div>
     </>
   );
@@ -504,10 +506,6 @@ export function ChatView({
                 </div>
               )}
             </div>
-
-            <span className="hidden sm:inline-flex text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              En línea
-            </span>
           </div>
         </div>
 
@@ -571,7 +569,27 @@ export function ChatView({
                         {m.roleName}
                       </span>
                     )}
-                    <p className="whitespace-pre-line">{m.text}</p>
+                    {m.attachments && m.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-1.5">
+                        {m.attachments.map((file) => (
+                          <span
+                            key={file.id}
+                            className={`inline-flex items-center gap-1.5 max-w-full rounded-xl px-1.5 py-1 text-[11px] font-semibold ${
+                              isAi ? 'bg-slate-100 text-slate-700' : 'bg-white/15 text-white'
+                            }`}
+                          >
+                            {file.kind === 'image' && file.previewUrl ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img src={file.previewUrl} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                            ) : (
+                              <Icon name="fileText" className="w-3.5 h-3.5 shrink-0" />
+                            )}
+                            <span className="truncate max-w-[160px]">{file.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {m.text ? <p className="whitespace-pre-line">{m.text}</p> : null}
                     <span className={`block text-[9px] sm:text-[10px] mt-1 text-right ${isAi ? 'text-slate-400' : 'text-violet-200'}`}>
                       {m.time}
                     </span>
@@ -593,23 +611,101 @@ export function ChatView({
 
         {/* Input Bar con safe-area inferior */}
         <div className="p-3 sm:p-4 bg-white/90 backdrop-blur-md border-t border-slate-200/60 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-1.5 sm:p-2 focus-within:border-violet-500 focus-within:bg-white transition-all shadow-xs">
+          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex flex-col gap-1.5 bg-slate-50 border border-slate-200/80 rounded-2xl p-1.5 sm:p-2 focus-within:border-violet-500 focus-within:bg-white transition-all shadow-xs">
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 px-1 pt-0.5">
+                {attachments.map((file) => (
+                  <span
+                    key={file.id}
+                    className="inline-flex items-center gap-1.5 max-w-full rounded-xl bg-white border border-slate-200 pl-1.5 pr-1 py-1 text-[11px] font-semibold text-slate-700"
+                  >
+                    {file.kind === 'image' && file.previewUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={file.previewUrl} alt="" className="w-6 h-6 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <Icon name="fileText" className="w-3.5 h-3.5 shrink-0 text-violet-600" />
+                    )}
+                    <span className="truncate max-w-[160px]">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(file.id)}
+                      className="w-5 h-5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                      aria-label={`Quitar ${file.name}`}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {attachError && (
+              <p className="px-2 text-[11px] font-medium text-rose-600">{attachError}</p>
+            )}
             <input
               type="text"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               placeholder={`Escribe a ${profile.name}...`}
-              className="flex-1 bg-transparent text-base sm:text-sm text-slate-800 placeholder-slate-400 px-2 sm:px-3 py-1 outline-none font-medium"
+              className="w-full bg-transparent text-base sm:text-sm text-slate-800 placeholder-slate-400 px-2 sm:px-3 py-1.5 outline-none font-medium"
               disabled={isThinking}
             />
-            <button
-              type="submit"
-              disabled={!inputVal.trim() || isThinking}
-              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
-            >
-              <span className="hidden xs:inline">Enviar</span>
-              <Icon name="send" className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ATTACHMENT_ACCEPT}
+                className="hidden"
+                onChange={(e) => {
+                  void handleAttachFiles(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isThinking}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-40"
+                title="Adjuntar imagen, PDF o documento"
+                aria-label="Adjuntar archivo"
+              >
+                <Icon name="paperclip" className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto">
+                {(['master', 'audio_foh', 'hospitality', 'security'] as AgentRole[]).map((role) => {
+                  const active = activeAgent === role;
+                  const labels: Record<AgentRole, string> = {
+                    master: '🧠 Master',
+                    audio_foh: '🎛️ Audio',
+                    hospitality: '☕ Hosp.',
+                    security: '🛡️ Seg.'
+                  };
+
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => onSelectAgent(role)}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                        active
+                          ? 'bg-violet-600 text-white shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {labels[role]}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="submit"
+                disabled={(!inputVal.trim() && attachments.length === 0) || isThinking}
+                className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+              >
+                <span className="hidden xs:inline">Enviar</span>
+                <Icon name="send" className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </form>
         </div>
       </main>

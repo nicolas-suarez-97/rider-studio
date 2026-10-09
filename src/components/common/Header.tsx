@@ -75,17 +75,6 @@ export function Header({
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <nav className="flex items-center gap-1 sm:gap-2 mr-0.5 sm:mr-1" aria-label="Navegación principal">
             <Link
-              href="/workspace?type=tecnico"
-              prefetch={false}
-              className={`text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-full transition-all active:scale-95 shrink-0 ${
-                pageType === 'workspace'
-                  ? 'bg-violet-50 text-violet-700 font-bold border border-violet-200/60'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <span>Workspace</span>
-            </Link>
-            <Link
               href="/chat"
               prefetch={false}
               className={`text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-full transition-all active:scale-95 shrink-0 ${
@@ -234,39 +223,7 @@ export function Header({
         </div>
       )}
 
-      {/* ========================================================
-          3. SUBHEADER: Herramientas contextuales de Chat
-         ======================================================== */}
-      {pageType === 'chat' && (
-        <div className="h-10 px-3 sm:px-6 md:px-10 flex items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-sm text-xs shrink-0">
-          <div className="flex items-center gap-2 text-slate-500">
-            <Link
-              href="/"
-              prefetch={false}
-              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 font-medium px-2 py-0.5 rounded-md hover:bg-slate-100 transition-all active:scale-95"
-              title="Volver al inicio"
-            >
-              <Icon name="arrowLeft" className="w-3 h-3" />
-              <span>Inicio</span>
-            </Link>
-            <span className="text-slate-300">/</span>
-            <span className="text-xs font-semibold text-slate-700">Asistente Multi-Agente</span>
-            <span className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 ml-1.5" />
-            <span className="hidden sm:inline text-[11px] text-slate-500 font-medium">4 Agentes Especializados de Producción</span>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              href="/workspace?type=tecnico"
-              prefetch={false}
-              className="text-violet-600 hover:text-violet-800 font-bold text-xs flex items-center gap-1 hover:underline"
-            >
-              <span>Ir al Workspace</span>
-              <span>→</span>
-            </Link>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
