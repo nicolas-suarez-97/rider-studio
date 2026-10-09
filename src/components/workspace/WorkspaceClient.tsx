@@ -413,10 +413,6 @@ export function WorkspaceClient({
         {/* Panel 1: Outline y navegación de secciones */}
         <div className={`h-full ${mobileTab === 'sections' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:w-auto shrink-0`}>
           <SectionsNavPanel
-            docHeaderTitle={rider.artistName}
-            setDocHeaderTitle={handleUpdateTitle}
-            docHeaderSeason={rider.season}
-            setDocHeaderSeason={handleUpdateSeason}
             sections={rider.sections}
             onReorderSections={handleReorderSections}
             activeSectionId={activeSectionId}

@@ -6,10 +6,6 @@ import { Icon } from '../common/Icon';
 import { SectionItem, RiderType } from '@/core/types/rider.types';
 
 interface SectionsNavPanelProps {
-  docHeaderTitle: string;
-  setDocHeaderTitle: (val: string) => void;
-  docHeaderSeason: string;
-  setDocHeaderSeason: (val: string) => void;
   sections: SectionItem[];
   onReorderSections: (newSections: SectionItem[]) => void;
   activeSectionId: string;
@@ -29,10 +25,6 @@ interface SectionsNavPanelProps {
 }
 
 export function SectionsNavPanel({
-  docHeaderTitle,
-  setDocHeaderTitle,
-  docHeaderSeason,
-  setDocHeaderSeason,
   sections,
   onReorderSections,
   activeSectionId,
@@ -49,25 +41,7 @@ export function SectionsNavPanel({
   return (
     <aside className="w-full xl:w-80 xl:border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden">
       {/* Header del Outline: Artista, Gira y Conteo de Secciones */}
-      <div className="p-3.5 sm:p-4 border-b border-slate-200/60 shrink-0 space-y-3">
-
-        {/* Artista y Temporada Editables */}
-        <div className="space-y-1 bg-slate-50/80 p-2 sm:p-2.5 rounded-2xl border border-slate-200/60">
-          <input
-            type="text"
-            value={docHeaderTitle}
-            onChange={(e) => setDocHeaderTitle(e.target.value)}
-            className="w-full bg-transparent text-base sm:text-sm font-black text-slate-800 outline-none hover:bg-white focus:bg-white px-2.5 py-1 rounded-xl transition-all"
-            placeholder="Nombre del Artista / Banda"
-          />
-          <input
-            type="text"
-            value={docHeaderSeason}
-            onChange={(e) => setDocHeaderSeason(e.target.value)}
-            className="w-full bg-transparent text-sm sm:text-xs font-semibold text-slate-400 outline-none hover:bg-white focus:bg-white px-2.5 py-1 rounded-xl transition-all"
-            placeholder="Temporada o Gira"
-          />
-        </div>
+      <div className="p-3.5 sm:p-4 border-b border-slate-200/60 shrink-0">
 
         {/* Subheader de la lista de secciones activas */}
         <div className="flex items-center justify-between pt-1">

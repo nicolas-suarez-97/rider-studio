@@ -137,35 +137,6 @@ export function AssistantChatPanel({
             </Link>
           </div>
         )}
-
-        {/* Selector de Agentes Especializados */}
-        <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/60">
-          {(['master', 'audio_foh', 'hospitality', 'security'] as AgentRole[]).map((role) => {
-            const active = activeAgent === role;
-            const avatars: Record<AgentRole, string> = {
-              master: '🧠',
-              audio_foh: '🎛️',
-              hospitality: '☕',
-              security: '🛡️'
-            };
-
-            return (
-              <button
-                key={role}
-                onClick={() => onSelectAgent(role)}
-                className={`py-1.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
-                  active
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-400 hover:text-slate-700'
-                }`}
-                title={AGENT_PROFILES[role].name}
-              >
-                <span>{avatars[role]}</span>
-                <span className="text-[9px] capitalize">{role.split('_')[0]}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* Flujo de Mensajes */}
@@ -247,22 +218,51 @@ export function AssistantChatPanel({
 
       {/* Input de Chat con padding inferior para no solapar la barra de navegación móvil */}
       <form onSubmit={handleSubmit} className="p-3 border-t border-slate-200/60 bg-white/50 shrink-0 pb-20 xl:pb-3">
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-1.5 focus-within:border-violet-500 focus-within:bg-white transition-all">
+        <div className="flex flex-col gap-1.5 bg-slate-50 border border-slate-200/80 rounded-2xl p-1.5 focus-within:border-violet-500 focus-within:bg-white transition-all">
           <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder={`Consulta a ${profile.name}...`}
-            className="flex-1 bg-transparent text-base sm:text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 outline-none font-medium"
+            className="w-full bg-transparent text-base sm:text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 outline-none font-medium"
             disabled={isThinking}
           />
-          <button
-            type="submit"
-            disabled={!inputText.trim() || isThinking}
-            className="w-8 h-8 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0"
-          >
-            <Icon name="send" className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto">
+              {(['master', 'audio_foh', 'hospitality', 'security'] as AgentRole[]).map((role) => {
+                const active = activeAgent === role;
+                const labels: Record<AgentRole, string> = {
+                  master: '🧠 Master',
+                  audio_foh: '🎛️ Audio',
+                  hospitality: '☕ Hosp.',
+                  security: '🛡️ Seg.'
+                };
+
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => onSelectAgent(role)}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                      active
+                        ? 'bg-violet-600 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    }`}
+                    title={AGENT_PROFILES[role].name}
+                  >
+                    {labels[role]}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="submit"
+              disabled={!inputText.trim() || isThinking}
+              className="w-8 h-8 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0"
+            >
+              <Icon name="send" className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </form>
     </aside>
