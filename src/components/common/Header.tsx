@@ -65,7 +65,8 @@ export function Header({
       {/* ========================================================
           1. HEADER PRINCIPAL GLOBAL (Idéntico en todas las vistas)
          ======================================================== */}
-      <header className="h-14 sm:h-16 px-3 sm:px-6 md:px-10 flex items-center justify-between border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
+      <header className="h-14 sm:h-16 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
+        <div className="h-full w-full max-w-6xl mx-auto px-3 sm:px-6 flex items-center justify-between">
         {/* Logo de Marca */}
         <Link 
           href={homeHref}
@@ -115,7 +116,24 @@ export function Header({
             <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
               Promotor
             </span>
-          ) : pageType === 'gate' ? null : (
+          ) : pageType === 'gate' ? (
+            <nav className="flex items-center gap-1.5 sm:gap-2" aria-label="Entrar">
+              <Link
+                href="/artista"
+                prefetch={false}
+                className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-violet-300 hover:text-violet-700 inline-flex items-center active:scale-95"
+              >
+                Artista
+              </Link>
+              <Link
+                href="/promotor"
+                prefetch={false}
+                className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-xs shadow-violet-500/25 inline-flex items-center active:scale-95"
+              >
+                Promotor
+              </Link>
+            </nav>
+          ) : (
             <>
           <nav className="flex items-center gap-1 sm:gap-2 mr-0.5 sm:mr-1" aria-label="Navegación principal">
             <Link
@@ -148,6 +166,7 @@ export function Header({
             </>
           )}
         </div>
+        </div>
       </header>
 
       {/* ========================================================
@@ -155,7 +174,8 @@ export function Header({
          ======================================================== */}
       {(pageType === 'workspace' || pageType === 'view' || pageType === 'promotor') && (
         <>
-        <div className="h-12 px-3 sm:px-6 md:px-10 flex items-center justify-center md:justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-sm text-xs gap-2 overflow-x-auto no-scrollbar shrink-0">
+        <div className="h-12 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm text-xs shrink-0">
+        <div className="h-full max-w-6xl mx-auto px-3 sm:px-6 flex items-center justify-center md:justify-between gap-2 overflow-x-auto no-scrollbar">
           {/* Selector de Tipo de Rider */}
           {onSelectRiderType && (
               <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/70">
@@ -284,6 +304,7 @@ export function Header({
               </span>
             )}
           </div>
+        </div>
         </div>
         {pageType === 'workspace' && (
         <div className="md:hidden fixed z-30 right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] flex flex-col gap-2">

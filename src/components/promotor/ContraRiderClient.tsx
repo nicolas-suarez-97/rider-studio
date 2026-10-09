@@ -319,6 +319,12 @@ export function ContraRiderClient({
     setMobileTab('contra');
   };
 
+  const closeInventory = () => {
+    if (isThinking) return;
+    setInventoryOpen(false);
+    setPendingFiles([]);
+  };
+
   const addInventoryFiles = (incoming: File[]) => {
     let kept = [...keptNames];
     let pending = [...pendingFiles];
@@ -552,12 +558,14 @@ export function ContraRiderClient({
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={openInventory}
-                disabled={isThinking || inventoryOpen}
-                className="bg-white hover:bg-violet-50 disabled:opacity-40 text-violet-700 border border-violet-200 h-10 px-4 rounded-full text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95"
+                onClick={inventoryOpen ? closeInventory : openInventory}
+                disabled={isThinking}
+                className={inventoryOpen
+                  ? 'h-10 px-4 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 flex items-center gap-1.5 cursor-pointer active:scale-95'
+                  : 'bg-white hover:bg-violet-50 disabled:opacity-40 text-violet-700 border border-violet-200 h-10 px-4 rounded-full text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95'}
               >
-                <Icon name="sparkles" className="w-3.5 h-3.5" />
-                {assistantFiles.length > 0 ? 'Volver a generar' : 'Generar contra-rider'}
+                <Icon name={inventoryOpen ? 'arrowLeft' : 'sparkles'} className="w-3.5 h-3.5" />
+                {inventoryOpen ? 'Volver' : assistantFiles.length > 0 ? 'Volver a generar' : 'Generar contra-rider'}
               </button>
               {assistantFiles.map((file) => (
                 <span key={file.name} className="inline-flex items-center gap-1.5 max-w-[220px] h-8 px-2.5 rounded-full bg-slate-50 border border-slate-200">
@@ -675,10 +683,7 @@ export function ContraRiderClient({
               disabled={isThinking}
               onAdd={addInventoryFiles}
               onRemove={removeInventoryItem}
-              onCancel={() => {
-                setInventoryOpen(false);
-                setPendingFiles([]);
-              }}
+              onCancel={closeInventory}
               onGenerate={generateInventory}
             />
           ) : (
