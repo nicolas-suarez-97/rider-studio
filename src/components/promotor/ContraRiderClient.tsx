@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Header } from '@/components/common/Header';
 import { Icon } from '@/components/common/Icon';
 import { Toast } from '@/components/common/Toast';
+import { ContraCross } from '@/components/promotor/ContraCross';
+import { InventoryStep } from '@/components/promotor/InventoryStep';
 import { PromotorAssistant } from '@/components/promotor/PromotorAssistant';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
 import { Rider } from '@/core/models/Rider';
@@ -17,8 +19,11 @@ import {
 } from '@/core/types/contra-rider.types';
 import { RiderType } from '@/core/types/rider.types';
 import { answersFromLines, sendBlockReason } from '@/lib/promotor/contra-rider';
+import { downloadContraRiderFile, sourcesFromGeneratePrompt, sourcesFromReviewPrompt } from '@/lib/promotor/contra-file';
+import { formatAttachmentSize } from '@/core/utils/chat-attachments';
 
-type MobileTab = 'contra' | 'document' | 'assistant';
+type MobileTab = 'contra' | 'cross' | 'document' | 'assistant';
+type SidePanel = 'none' | 'cross' | 'document' | 'chat';
 
 interface ContraMeta {
   status: 'draft' | 'sent';
@@ -29,9 +34,13 @@ interface ContraMeta {
 
 interface AssistantMeta {
   sessionId: string | null;
-  file: PromotorFileView | null;
+  files: PromotorFileView[];
+  submitted: PromotorFileView | null;
   messages: PromotorChatMessage[];
 }
+
+const MAX_INVENTORY_FILES = 5;
+const INVENTORY_EXTENSIONS = new Set(['pdf', 'txt', 'md', 'docx']);
 
 interface ContraRiderClientProps {
   showId: string;
@@ -46,6 +55,25 @@ const RESPONSE_CHOICES: { value: Exclude<ContraResponse, ''>; label: string; act
   { value: 'no_puedo', label: 'No puedo', activeClass: 'bg-rose-600 text-white border-rose-600' },
   { value: 'pregunta', label: 'Pregunta', activeClass: 'bg-amber-500 text-white border-amber-500' },
 ];
+
+function lineGap(line: Pick<ContraLine, 'response' | 'offer' | 'note'>): 'oferta' | 'nota' | null {
+  if (line.response === 'alternativa' && !line.offer.trim()) return 'oferta';
+  if (line.response === 'no_puedo' && !line.note.trim()) return 'nota';
+  return null;
+}
+
+function crossFromMessages(messages: PromotorChatMessage[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const review = messages[index]?.review;
+    if (!review?.findings?.length) continue;
+    const previous = messages[index - 1]?.text;
+    return {
+      review,
+      sources: [...sourcesFromGeneratePrompt(previous), ...sourcesFromReviewPrompt(previous)],
+    };
+  }
+  return null;
+}
 
 const MODULE_FILTERS: { id: 'todos' | RiderType; label: string }[] = [
   { id: 'todos', label: 'Todos' },
@@ -69,9 +97,13 @@ export function ContraRiderClient({
   const [readSectionIds, setReadSectionIds] = useState<string[]>([]);
   const [activeAgent, setActiveAgent] = useState<AgentRole>('master');
   const [assistantMessages, setAssistantMessages] = useState<PromotorChatMessage[]>(initialAssistant.messages);
-  const [assistantFile, setAssistantFile] = useState<PromotorFileView | null>(initialAssistant.file);
+  const [assistantFiles, setAssistantFiles] = useState<PromotorFileView[]>(initialAssistant.files);
+  const [submittedFile, setSubmittedFile] = useState<PromotorFileView | null>(initialAssistant.submitted);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [keptNames, setKeptNames] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(initialAssistant.sessionId);
-  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  const [side, setSide] = useState<SidePanel>(() => (crossFromMessages(initialAssistant.messages) ? 'cross' : 'none'));
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState('está revisando el rider...');
   const [highlightedLineId, setHighlightedLineId] = useState<string | null>(null);
@@ -82,12 +114,37 @@ export function ContraRiderClient({
   const saveTimer = useRef<number | null>(null);
   const requestId = useRef(0);
   const linesRef = useRef(lines);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   linesRef.current = lines;
 
   const readableTypes = rider.getReadableTypes();
   const visibleLines = lines.filter((line) => moduleFilter === 'todos' || line.module === moduleFilter);
   const blockReason = sendBlockReason(lines);
+  const cross = useMemo(() => crossFromMessages(assistantMessages), [assistantMessages]);
   const answered = lines.filter((line) => line.response).length;
+  const lineNumbers = useMemo(() => {
+    const map: Record<string, string> = {};
+    lines.forEach((line, index) => {
+      map[line.id] = String(index + 1).padStart(2, '0');
+    });
+    return map;
+  }, [lines]);
+  const inventoryItems = [
+    ...assistantFiles
+      .filter((file) => keptNames.includes(file.name))
+      .map((file) => ({
+        id: `stored:${file.name}`,
+        name: file.name,
+        size: file.size,
+        detail: file.hasText ? 'texto leído' : 'sin texto',
+      })),
+    ...pendingFiles.map((file) => ({
+      id: `pending:${file.name}`,
+      name: file.name,
+      size: file.size,
+      detail: 'se leerá al generar',
+    })),
+  ];
 
   const statusLabel = useMemo(() => {
     if (contraStatus === 'sent' && version > 0) return `Enviado v${version}`;
@@ -150,9 +207,20 @@ export function ContraRiderClient({
       updated.switchType(line.module);
       setRider(updated);
     }
+    setSide('document');
     setMobileTab('document');
     window.setTimeout(() => {
       document.getElementById(line.sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
+
+  const focusBlocker = () => {
+    const target = lines.find((line) => lineGap(line)) ?? lines.find((line) => !line.response);
+    if (!target) return;
+    if (moduleFilter !== 'todos' && moduleFilter !== target.module) setModuleFilter('todos');
+    setMobileTab('contra');
+    window.setTimeout(() => {
+      document.getElementById(`contra-${target.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 60);
   };
 
@@ -182,6 +250,7 @@ export function ContraRiderClient({
       { sender: 'user' as const, text, createdAt: new Date().toISOString() },
     ];
     setAssistantMessages(history);
+    setSide('chat');
     setMobileTab('assistant');
     setThinkingLabel('está revisando el rider...');
     setIsThinking(true);
@@ -222,26 +291,141 @@ export function ContraRiderClient({
     }
   };
 
-  const uploadContraFile = async (file: File) => {
+  const openInventory = () => {
+    if (isThinking || inventoryOpen) return;
+    setKeptNames(assistantFiles.map((file) => file.name));
+    setPendingFiles([]);
+    setInventoryOpen(true);
+    setMobileTab('contra');
+  };
+
+  const addInventoryFiles = (incoming: File[]) => {
+    let kept = [...keptNames];
+    let pending = [...pendingFiles];
+    for (const file of incoming) {
+      const extension = file.name.split('.').pop()?.toLowerCase() || '';
+      if (extension === 'doc') {
+        showToast('El formato .doc no se puede leer. Guárdalo como .docx, PDF o texto.');
+        continue;
+      }
+      if (!INVENTORY_EXTENSIONS.has(extension)) {
+        showToast('Usa PDF, Word o texto.');
+        continue;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        showToast('El archivo supera el límite de 8 MB.');
+        continue;
+      }
+      kept = kept.filter((name) => name !== file.name);
+      pending = pending.filter((item) => item.name !== file.name);
+      if (kept.length + pending.length >= MAX_INVENTORY_FILES) {
+        showToast('Puedes usar hasta 5 archivos.');
+        break;
+      }
+      pending.push(file);
+    }
+    setKeptNames(kept);
+    setPendingFiles(pending);
+  };
+
+  const removeInventoryItem = (id: string) => {
+    if (id.startsWith('stored:')) {
+      const name = id.slice('stored:'.length);
+      setKeptNames((current) => current.filter((item) => item !== name));
+      return;
+    }
+    const name = id.slice('pending:'.length);
+    setPendingFiles((current) => current.filter((file) => file.name !== name));
+  };
+
+  const generateInventory = async () => {
     if (isThinking) return;
-    const extension = file.name.split('.').pop()?.toLowerCase();
+    const kept = assistantFiles.filter((file) => keptNames.includes(file.name));
+    if (kept.length + pendingFiles.length === 0) return;
+    if (
+      assistantFiles.length > 0
+      && !window.confirm('Esto arma otro archivo de contra-rider en el mismo hilo. Las pastillas que ya marcaste se quedan.')
+    ) return;
+
+    const names = [...kept.map((file) => file.name), ...pendingFiles.map((file) => file.name)];
+    setInventoryOpen(false);
+    setSide('cross');
+    setMobileTab('cross');
+    pushAssistant({
+      sender: 'user',
+      text: `Genera el contra-rider con: ${names.join(', ')}.`,
+      createdAt: new Date().toISOString(),
+    });
+    setThinkingLabel('está cruzando tus datos con el rider...');
+    setIsThinking(true);
+    try {
+      const form = new FormData();
+      pendingFiles.forEach((file) => form.append('files', file));
+      form.set('keep', JSON.stringify(kept.map((file) => file.name)));
+      form.set('activeAgent', activeAgent);
+      if (sessionId) form.set('sessionId', sessionId);
+      const response = await fetch(`/api/promotor/shows/${showId}/chat`, { method: 'POST', body: form });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo leer el inventario');
+      if (typeof data.sessionId === 'string') setSessionId(data.sessionId);
+      if (Array.isArray(data.files)) setAssistantFiles(data.files);
+      setPendingFiles([]);
+      if (data.review?.findings?.length) {
+        downloadContraRiderFile({
+          artistName: rider.artistName,
+          sources: names,
+          findings: data.review.findings,
+          summary: data.review.summary,
+        });
+      }
+      pushAssistant({
+        sender: 'ai',
+        text: data.reply || 'No pude armar la propuesta.',
+        createdAt: new Date().toISOString(),
+        roleName: data.roleName,
+        roleAvatar: data.roleAvatar,
+        review: data.review || null,
+      });
+    } catch (error) {
+      pushAssistant({
+        sender: 'ai',
+        text: error instanceof Error ? error.message : 'No se pudo leer el inventario.',
+        createdAt: new Date().toISOString(),
+      });
+      showToast(error instanceof Error ? error.message : 'No se pudo leer el inventario');
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  const uploadSubmitted = async (file: File) => {
+    if (isThinking) return;
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
     if (extension === 'doc') {
       showToast('El formato .doc no se puede leer. Guárdalo como .docx, PDF o texto.');
+      return;
+    }
+    if (!INVENTORY_EXTENSIONS.has(extension)) {
+      showToast('Usa PDF, Word o texto.');
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
       showToast('El archivo supera el límite de 8 MB.');
       return;
     }
-    if (assistantFile && !window.confirm('Reemplazar el contra-rider actual y generar otra revisión?')) return;
+    if (
+      submittedFile
+      && !window.confirm('Reemplazar el contra-rider subido y revisar de nuevo? Las pastillas que ya marcaste se quedan.')
+    ) return;
 
-    setMobileTab('assistant');
+    setSide('cross');
+    setMobileTab('cross');
     pushAssistant({
       sender: 'user',
       text: `Revisa el contra-rider «${file.name}».`,
       createdAt: new Date().toISOString(),
     });
-    setThinkingLabel('está comparando el archivo...');
+    setThinkingLabel('está comparando el contra-rider...');
     setIsThinking(true);
     try {
       const form = new FormData();
@@ -251,12 +435,12 @@ export function ContraRiderClient({
       if (sessionId) form.set('sessionId', sessionId);
       const response = await fetch(`/api/promotor/shows/${showId}/chat`, { method: 'POST', body: form });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo leer el archivo');
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo leer el contra-rider');
       if (typeof data.sessionId === 'string') setSessionId(data.sessionId);
-      if (data.file) setAssistantFile(data.file);
+      setSubmittedFile(data.submitted ?? null);
       pushAssistant({
         sender: 'ai',
-        text: data.reply || 'No pude revisar el archivo.',
+        text: data.reply || 'No pude revisar el contra-rider.',
         createdAt: new Date().toISOString(),
         roleName: data.roleName,
         roleAvatar: data.roleAvatar,
@@ -265,28 +449,48 @@ export function ContraRiderClient({
     } catch (error) {
       pushAssistant({
         sender: 'ai',
-        text: error instanceof Error ? error.message : 'No se pudo leer el archivo.',
+        text: error instanceof Error ? error.message : 'No se pudo leer el contra-rider.',
         createdAt: new Date().toISOString(),
       });
-      showToast(error instanceof Error ? error.message : 'No se pudo leer el archivo');
+      showToast(error instanceof Error ? error.message : 'No se pudo leer el contra-rider');
     } finally {
       setIsThinking(false);
     }
   };
 
-  const clearContraFile = async () => {
-    if (isThinking || !assistantFile) return;
-    if (!window.confirm('Quitar el archivo? El hilo se conserva, pero las próximas respuestas ya no lo verán.')) return;
-    setAssistantFile(null);
+  const removeSubmitted = async () => {
+    if (isThinking || !submittedFile) return;
+    if (!window.confirm('Quitar el contra-rider subido? Las próximas respuestas ya no lo verán.')) return;
+    const previous = submittedFile;
+    setSubmittedFile(null);
     const response = await fetch(`/api/promotor/shows/${showId}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intent: 'clear' }),
+      body: JSON.stringify({ intent: 'remove-submitted' }),
     });
     if (!response.ok) {
-      setAssistantFile(assistantFile);
+      setSubmittedFile(previous);
       showToast('No se pudo quitar el archivo');
     }
+  };
+
+  const removeStoredFile = async (name: string) => {
+    if (isThinking) return;
+    if (!window.confirm('Quitar este archivo? Las próximas respuestas ya no lo usarán.')) return;
+    const previous = assistantFiles;
+    setAssistantFiles((current) => current.filter((file) => file.name !== name));
+    const response = await fetch(`/api/promotor/shows/${showId}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intent: 'remove-file', name }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setAssistantFiles(previous);
+      showToast('No se pudo quitar el archivo');
+      return;
+    }
+    if (Array.isArray(data.files)) setAssistantFiles(data.files);
   };
 
   const applyFinding = (finding: ContraFinding) => {
@@ -312,6 +516,31 @@ export function ContraRiderClient({
     }, 60);
   };
 
+  const applyCovered = (findings: ContraFinding[]) => {
+    const targets = findings.filter((finding) => {
+      if (finding.verdict !== 'cumple' && finding.suggestedResponse !== 'cubro') return false;
+      const line = linesRef.current.find((item) => item.id === finding.lineId);
+      return Boolean(line && !line.response);
+    });
+    if (targets.length === 0) {
+      showToast('Las filas cubiertas ya tienen respuesta.');
+      return;
+    }
+    setLines((current) => {
+      const next = current.map((line) => {
+        const finding = targets.find((item) => item.lineId === line.id);
+        if (!finding || line.response) return line;
+        return { ...line, response: 'cubro' as const };
+      });
+      setContraStatus('draft');
+      scheduleSave(next);
+      return next;
+    });
+    setAppliedLineIds((current) => [...new Set([...current, ...targets.map((item) => item.lineId)])]);
+    if (window.matchMedia('(max-width: 1279px)').matches) setMobileTab('contra');
+    showToast(targets.length === 1 ? 'Marqué 1 fila como Cubro igual.' : `Marqué ${targets.length} filas como Cubro igual.`);
+  };
+
   return (
     <div className="h-dvh max-h-dvh overflow-hidden bg-[#f8f9fa] text-slate-900 flex flex-col">
       <Toast message={toastMessage} />
@@ -322,32 +551,124 @@ export function ContraRiderClient({
           const updated = new Rider(rider);
           updated.switchType(type);
           setRider(updated);
+          setSide('document');
           setMobileTab('document');
         } : undefined}
         visibleModuleTypes={readableTypes}
       />
 
       <div className="flex-1 flex overflow-hidden">
-        <section className={`h-full min-w-0 flex-col pb-16 xl:pb-0 ${mobileTab === 'contra' ? 'flex flex-1' : 'hidden'} xl:flex xl:flex-1 xl:min-w-0`}>
+        <section className={`h-full min-w-0 flex-col pb-16 xl:pb-0 ${mobileTab === 'contra' ? 'flex flex-1' : 'hidden'} xl:flex xl:flex-[1.4] xl:min-w-0`}>
           <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-full">
-                Contra-rider
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full">
-                {statusLabel}
-              </span>
-              <span className="text-[11px] font-semibold text-slate-400">
-                {saveState === 'saving' ? 'Guardando…' : saveState === 'saved' ? 'Borrador guardado' : saveState === 'error' ? 'Sin guardar' : `${answered}/${lines.length} respondidos`}
-              </span>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-full">
+                    Contra-rider
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full">
+                    {statusLabel}
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-400">
+                    {saveState === 'saving' ? 'Guardando…' : saveState === 'saved' ? 'Borrador guardado' : saveState === 'error' ? 'Sin guardar' : `${answered}/${lines.length} respondidos`}
+                  </span>
+                </div>
+                <h1 className="mt-2 text-xl sm:text-2xl font-black tracking-tight text-slate-900 truncate">
+                  {rider.artistName || 'Artista'}
+                </h1>
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {[rider.season, rider.venue, rider.version].filter(Boolean).join(' · ') || rider.title}
+                </p>
+              </div>
             </div>
-            <h1 className="mt-2 text-xl sm:text-2xl font-black tracking-tight text-slate-900 truncate">
-              {rider.artistName || 'Artista'}
-            </h1>
-            <p className="text-xs font-semibold text-slate-500 truncate">
-              {[rider.season, rider.venue, rider.version].filter(Boolean).join(' · ') || rider.title}
-            </p>
-            <div className="mt-3 flex gap-1.5 overflow-x-auto no-scrollbar">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={openInventory}
+                disabled={isThinking || inventoryOpen}
+                className="bg-white hover:bg-violet-50 disabled:opacity-40 text-violet-700 border border-violet-200 h-10 px-4 rounded-full text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Icon name="sparkles" className="w-3.5 h-3.5" />
+                {assistantFiles.length > 0 ? 'Volver a generar' : 'Generar contra-rider'}
+              </button>
+              {assistantFiles.map((file) => (
+                <span key={file.name} className="inline-flex items-center gap-1.5 max-w-[220px] h-8 px-2.5 rounded-full bg-slate-50 border border-slate-200">
+                  <span className="text-[10px] font-semibold text-slate-500 truncate" title={file.name}>
+                    {file.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeStoredFile(file.name)}
+                    disabled={isThinking}
+                    className="text-[10px] font-bold text-slate-400 hover:text-rose-600 disabled:opacity-40 cursor-pointer shrink-0"
+                  >
+                    Quitar
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => uploadInputRef.current?.click()}
+                disabled={isThinking}
+                className="bg-white hover:bg-violet-50 disabled:opacity-40 text-violet-700 border border-violet-200 h-10 px-4 rounded-full text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Icon name="paperclip" className="w-3.5 h-3.5" />
+                Subir contra-rider
+              </button>
+              {submittedFile ? (
+                <span className="inline-flex items-center gap-1.5 max-w-[220px] h-8 px-2.5 rounded-full bg-slate-50 border border-slate-200">
+                  <span className="text-[10px] font-semibold text-slate-500 truncate" title={submittedFile.name}>
+                    {submittedFile.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={removeSubmitted}
+                    disabled={isThinking}
+                    className="text-[10px] font-bold text-slate-400 hover:text-rose-600 disabled:opacity-40 cursor-pointer shrink-0"
+                  >
+                    Quitar
+                  </button>
+                </span>
+              ) : null}
+              <input
+                ref={uploadInputRef}
+                type="file"
+                accept=".pdf,.txt,.md,.docx,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                onChange={(event) => {
+                  const next = event.target.files?.[0];
+                  event.target.value = '';
+                  if (next) uploadSubmitted(next);
+                }}
+              />
+              <button
+                type="button"
+                onClick={send}
+                disabled={Boolean(blockReason) || isSending}
+                className={`ml-auto h-10 px-4 rounded-full text-xs font-bold flex items-center gap-1.5 shrink-0 ${
+                  blockReason || isSending
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                    : 'bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/25 cursor-pointer active:scale-95'
+                }`}
+              >
+                <Icon name="send" className="w-3.5 h-3.5" />
+                {isSending ? 'Enviando…' : 'Enviar contra-rider'}
+              </button>
+            </div>
+            {blockReason ? (
+              <button
+                type="button"
+                onClick={focusBlocker}
+                className="mt-2 text-left text-[11px] font-bold text-rose-600 hover:text-rose-800 cursor-pointer"
+              >
+                {blockReason}
+              </button>
+            ) : (
+              <p className="mt-2 text-[11px] font-semibold text-slate-500">
+                El envío congela esta versión. El rider del artista no cambia.
+              </p>
+            )}
+            {!inventoryOpen ? <div className="mt-3 flex gap-1.5 overflow-x-auto no-scrollbar">
               {MODULE_FILTERS.filter((filter) => filter.id === 'todos' || readableTypes.includes(filter.id)).map((filter) => (
                 <button
                   key={filter.id}
@@ -362,17 +683,35 @@ export function ContraRiderClient({
                   {filter.label}
                 </button>
               ))}
-            </div>
+            </div> : null}
           </div>
 
+          {inventoryOpen ? (
+            <InventoryStep
+              items={inventoryItems}
+              disabled={isThinking}
+              onAdd={addInventoryFiles}
+              onRemove={removeInventoryItem}
+              onCancel={() => {
+                setInventoryOpen(false);
+                setPendingFiles([]);
+              }}
+              onGenerate={generateInventory}
+            />
+          ) : (
           <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4">
             <div className="bg-white border border-slate-200/80 rounded-[28px] shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] divide-y divide-slate-100">
-            {visibleLines.map((line, index) => {
-              const detailLabel = line.response === 'alternativa'
-                ? 'Oferta'
-                : line.response === 'no_puedo'
-                  ? 'Motivo'
-                  : 'Pregunta';
+            {visibleLines.map((line) => {
+              const gap = lineGap(line);
+              const detailLabel = gap === 'oferta'
+                ? 'Oferta · falta para enviar'
+                : gap === 'nota'
+                  ? 'Motivo · falta para enviar'
+                  : line.response === 'alternativa'
+                    ? 'Oferta'
+                    : line.response === 'no_puedo'
+                      ? 'Motivo'
+                      : 'Pregunta';
               const detailValue = line.response === 'alternativa' ? line.offer : line.note;
               const detailPlaceholder = line.response === 'alternativa'
                 ? 'El equipo o la condición que propones'
@@ -383,12 +722,18 @@ export function ContraRiderClient({
                 <article
                   key={line.id}
                   id={`contra-${line.id}`}
-                  className={`px-4 sm:px-5 py-5 ${highlightedLineId === line.id ? 'bg-violet-50/80' : ''}`}
+                  className={`px-4 sm:px-5 py-5 ${
+                    gap
+                      ? 'bg-rose-50/60 ring-1 ring-inset ring-rose-200'
+                      : highlightedLineId === line.id
+                        ? 'bg-violet-50/80'
+                        : ''
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       <span className="mt-0.5 text-[11px] font-black tabular-nums text-slate-300">
-                        {String(index + 1).padStart(2, '0')}
+                        {lineNumbers[line.id]}
                       </span>
                       <div className="min-w-0">
                         <h2 className="text-sm font-extrabold text-slate-900 leading-snug">
@@ -432,7 +777,7 @@ export function ContraRiderClient({
                   </div>
                   {line.response && line.response !== 'cubro' ? (
                     <label className="mt-3 sm:ml-8 block">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{detailLabel}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${gap ? 'text-rose-600' : 'text-slate-400'}`}>{detailLabel}</span>
                       <textarea
                         value={detailValue}
                         onChange={(event) => updateLine(
@@ -443,7 +788,11 @@ export function ContraRiderClient({
                         )}
                         rows={2}
                         placeholder={detailPlaceholder}
-                        className="mt-1.5 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm font-medium text-slate-800 outline-none focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10"
+                        className={`mt-1.5 w-full resize-none rounded-2xl border px-3.5 py-2.5 text-sm font-medium text-slate-800 outline-none focus:bg-white focus:ring-4 ${
+                          gap
+                            ? 'border-rose-300 bg-white focus:border-rose-400 focus:ring-rose-500/10'
+                            : 'border-slate-200 bg-slate-50/70 focus:border-violet-400 focus:ring-violet-500/10'
+                        }`}
                       />
                     </label>
                   ) : null}
@@ -452,24 +801,51 @@ export function ContraRiderClient({
             })}
             </div>
           </div>
-
-          <div className="shrink-0 border-t border-slate-200/80 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-            <p className="text-[11px] font-semibold text-slate-500 min-w-0">
-              {blockReason || 'El envío congela esta versión. El rider del artista no cambia.'}
-            </p>
-            <button
-              type="button"
-              onClick={send}
-              disabled={Boolean(blockReason) || isSending}
-              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white h-10 px-4 rounded-full text-xs font-bold shadow-md shadow-violet-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
-            >
-              <Icon name="send" className="w-3.5 h-3.5" />
-              {isSending ? 'Enviando…' : 'Enviar contra-rider'}
-            </button>
-          </div>
+          )}
         </section>
 
-        <section className={`h-full min-w-0 border-l border-slate-200/80 bg-[#f8f9fa] ${mobileTab === 'document' ? 'flex flex-1' : 'hidden'} xl:flex xl:flex-1 xl:min-w-0`}>
+        <section className={`h-full min-w-0 min-h-0 border-l border-slate-200/80 bg-[#f8f9fa] pb-16 xl:pb-0 ${mobileTab === 'cross' ? 'flex flex-1' : 'hidden'} ${side === 'cross' ? 'xl:flex xl:flex-1 xl:max-w-[640px] xl:min-w-[360px]' : 'xl:hidden'}`}>
+          {cross ? (
+            <ContraCross
+              artistName={rider.artistName}
+              sources={cross.sources}
+              findings={cross.review.findings}
+              lineNumbers={lineNumbers}
+              appliedLineIds={appliedLineIds}
+              thinkingLabel={isThinking && side === 'cross' ? thinkingLabel : null}
+              onApplyFinding={applyFinding}
+              onApplyCovered={applyCovered}
+              onOpenDocument={() => {
+                setSide('document');
+                setMobileTab('document');
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center px-6 text-center">
+              <p className="text-sm font-semibold text-slate-500">
+                {isThinking ? thinkingLabel : 'El cruce aparece aquí cuando generas el contra-rider.'}
+              </p>
+            </div>
+          )}
+        </section>
+
+        {(side === 'document' || mobileTab === 'document') ? (
+        <section className={`h-full min-w-0 min-h-0 flex-col border-l border-slate-200/80 bg-[#f8f9fa] pb-16 xl:pb-0 ${mobileTab === 'document' ? 'flex flex-1' : 'hidden'} ${side === 'document' ? 'xl:flex xl:flex-1 xl:max-w-[720px] xl:min-w-[360px]' : 'xl:hidden'}`}>
+          {cross ? (
+            <div className="shrink-0 px-4 py-2 border-b border-slate-200/80 bg-white/80 flex items-center justify-between gap-3">
+              <p className="text-[11px] font-semibold text-slate-500">Rider del artista, solo lectura</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSide('cross');
+                  setMobileTab('cross');
+                }}
+                className="text-xs font-bold text-violet-700 hover:text-violet-900 cursor-pointer"
+              >
+                Volver al cruce
+              </button>
+            </div>
+          ) : null}
           <DocumentEditorPanel
             readOnly
             riderTitle={rider.title}
@@ -493,24 +869,33 @@ export function ContraRiderClient({
             stagePlot={rider.stagePlot}
           />
         </section>
+        ) : null}
 
-        <section className={`h-full min-w-0 ${mobileTab === 'assistant' ? 'flex flex-1' : 'hidden'} xl:flex xl:w-auto`}>
+        <section className={`h-full min-h-0 min-w-0 border-l border-slate-200/80 ${mobileTab === 'assistant' ? 'flex flex-1' : 'hidden'} ${side === 'chat' ? 'xl:flex xl:w-[440px] xl:max-w-[440px] xl:flex-none' : 'xl:flex xl:w-12 xl:flex-none'}`}>
           <PromotorAssistant
             artistName={rider.artistName}
             version={rider.version}
             activeAgent={activeAgent}
             onSelectAgent={setActiveAgent}
             messages={assistantMessages}
-            file={assistantFile}
+            files={assistantFiles}
+            submittedFile={submittedFile}
             isThinking={isThinking}
             thinkingLabel={thinkingLabel}
-            isCollapsed={isChatCollapsed}
-            onToggleCollapse={() => setIsChatCollapsed((current) => !current)}
+            isCollapsed={side !== 'chat'}
+            onToggleCollapse={() => {
+              if (side === 'chat') {
+                setSide(cross ? 'cross' : 'none');
+                return;
+              }
+              setSide('chat');
+              setMobileTab('assistant');
+            }}
             onSendMessage={askAssistant}
-            onUpload={uploadContraFile}
-            onClearFile={clearContraFile}
-            onApplyFinding={applyFinding}
-            appliedLineIds={appliedLineIds}
+            onOpenCross={() => {
+              setSide('cross');
+              setMobileTab('cross');
+            }}
           />
         </section>
       </div>
@@ -529,9 +914,27 @@ export function ContraRiderClient({
           <Icon name="fileCheck" className="w-4 h-4" />
           <span className="text-[10px]">Contra-rider</span>
         </button>
+        {cross ? (
+          <button
+            type="button"
+            onClick={() => {
+              setSide('cross');
+              setMobileTab('cross');
+            }}
+            className={`flex-1 py-1.5 rounded-2xl flex flex-col items-center gap-0.5 ${
+              mobileTab === 'cross' ? 'text-violet-600 bg-violet-50 font-bold' : 'text-slate-400 font-medium'
+            }`}
+          >
+            <Icon name="list" className="w-4 h-4" />
+            <span className="text-[10px]">Cruce</span>
+          </button>
+        ) : null}
         <button
           type="button"
-          onClick={() => setMobileTab('document')}
+          onClick={() => {
+            setSide('document');
+            setMobileTab('document');
+          }}
           className={`flex-1 py-1.5 rounded-2xl flex flex-col items-center gap-0.5 ${
             mobileTab === 'document' ? 'text-violet-600 bg-violet-50 font-bold' : 'text-slate-400 font-medium'
           }`}
@@ -541,7 +944,10 @@ export function ContraRiderClient({
         </button>
         <button
           type="button"
-          onClick={() => setMobileTab('assistant')}
+          onClick={() => {
+            setSide('chat');
+            setMobileTab('assistant');
+          }}
           className={`flex-1 py-1.5 rounded-2xl flex flex-col items-center gap-0.5 ${
             mobileTab === 'assistant' ? 'text-violet-600 bg-violet-50 font-bold' : 'text-slate-400 font-medium'
           }`}

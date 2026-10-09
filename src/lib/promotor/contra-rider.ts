@@ -32,7 +32,8 @@ export function emptyContraRecord(): ContraRiderRecord {
     version: 0,
     sentAt: null,
     answers: {},
-    file: null,
+    files: [],
+    submittedFile: null,
     review: null,
     reviewSessionId: null,
   };
@@ -51,12 +52,12 @@ export function suggestionFor(
   const text = suggestedText.trim().slice(0, 1000);
   if (verdict === 'cumple') return { response: 'cubro', text: '' };
   if (verdict === 'parcial') {
-    return { response: 'alternativa', text: offer || text || 'Oferta parcial descrita en el archivo.' };
+    return { response: 'alternativa', text: offer || text || 'Oferta tomada del inventario.' };
   }
   if (verdict === 'contradice') {
-    return { response: 'no_puedo', text: text || offer || 'El archivo contradice este pedido.' };
+    return { response: 'no_puedo', text: text || offer || 'El inventario contradice este pedido.' };
   }
-  return { response: 'no_puedo', text: text || 'El archivo no menciona este pedido.' };
+  return { response: 'no_puedo', text: text || 'El inventario no menciona este pedido.' };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -96,10 +97,22 @@ export function readStoredContra(metadata: Json | null | undefined): ContraRider
     version: typeof raw.version === 'number' && raw.version > 0 ? Math.floor(raw.version) : 0,
     sentAt: typeof raw.sentAt === 'string' ? raw.sentAt : null,
     answers,
-    file: readContraFile(raw.file),
+    files: readContraFiles(raw.files, raw.file),
+    submittedFile: readContraFile(raw.submittedFile),
     review: readContraReview(raw.review),
     reviewSessionId: typeof raw.reviewSessionId === 'string' ? raw.reviewSessionId : null,
   };
+}
+
+function readContraFiles(list: unknown, legacy: unknown): ContraFileRecord[] {
+  if (Array.isArray(list)) {
+    return list
+      .map(readContraFile)
+      .filter((file): file is ContraFileRecord => file !== null)
+      .slice(0, 5);
+  }
+  const single = readContraFile(legacy);
+  return single ? [single] : [];
 }
 
 function readContraFile(value: unknown): ContraFileRecord | null {
@@ -149,6 +162,13 @@ export function readContraReview(value: unknown): ContraReviewRecord | null {
     findings,
     reviewedAt: typeof raw.reviewedAt === 'string' ? raw.reviewedAt : new Date(0).toISOString(),
   };
+}
+
+export function toPromotorFileViews(files: ContraFileRecord[]): PromotorFileView[] {
+  return files.flatMap((file) => {
+    const view = toPromotorFileView(file);
+    return view ? [view] : [];
+  });
 }
 
 export function toPromotorFileView(file: ContraFileRecord | null): PromotorFileView | null {

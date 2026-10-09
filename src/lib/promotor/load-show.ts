@@ -9,6 +9,7 @@ import {
   sanitizeAnswers,
   sendBlockReason,
   toPromotorFileView,
+  toPromotorFileViews,
 } from '@/lib/promotor/contra-rider';
 import { readShareLink } from '@/lib/repositories/rider.repository';
 import { getChatMessages, getRiderById, saveContraRider } from '@/lib/services/rider-storage';
@@ -40,7 +41,8 @@ export async function loadPromotorShow(showId: string) {
     },
     assistant: {
       sessionId: stored.reviewSessionId,
-      file: toPromotorFileView(stored.file),
+      files: toPromotorFileViews(stored.files),
+      submitted: toPromotorFileView(stored.submittedFile),
       messages,
     },
   };

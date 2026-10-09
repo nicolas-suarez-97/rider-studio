@@ -9,6 +9,7 @@ import {
   ReviewVerdict,
 } from '@/core/types/contra-rider.types';
 import { lineHasPedido, suggestionFor } from '@/lib/promotor/contra-rider';
+import { verdictSummary } from '@/lib/promotor/contra-file';
 
 export const MAX_CONTRA_FILE_BYTES = 8 * 1024 * 1024;
 export const MAX_CONTRA_EXTRACTED_CHARS = 20000;
@@ -93,37 +94,81 @@ export function catalogLines(lines: ContraLine[]): ContraLine[] {
   return lines.filter((line) => lineHasPedido(line.pedido));
 }
 
+export const MAX_INVENTORY_FILES = 5;
+
+export function joinInventory(sources: Array<{ name: string; text: string }>, limit = MAX_CONTRA_EXTRACTED_CHARS): string {
+  const chunks: string[] = [];
+  let used = 0;
+  for (const source of sources) {
+    const body = source.text.trim();
+    if (!body) continue;
+    const header = `## ${source.name}\n`;
+    const room = limit - used - header.length;
+    if (room <= 80) break;
+    const slice = body.slice(0, room);
+    chunks.push(`${header}${slice}`);
+    used += header.length + slice.length + 2;
+  }
+  return chunks.join('\n\n');
+}
+
 export function buildRevisionSystemPrompt(
   agentPrompt: string,
   snapshot: string,
   fileText: string,
-  mode: 'review' | 'ask',
+  mode: 'generate' | 'review' | 'ask',
   catalog: string
 ): string {
+  const fileLabel = mode === 'review'
+    ? 'CONTRA-RIDER DEL RECINTO'
+    : 'INVENTARIO Y PROPUESTAS DEL RECINTO';
   const fileBlock = fileText.trim()
-    ? `CONTRA-RIDER DEL RECINTO:\n${fileText}`
-    : 'CONTRA-RIDER DEL RECINTO: (no hay archivo con texto)';
+    ? `${fileLabel}:\n${fileText}`
+    : `${fileLabel}: (no hay archivos con texto)`;
 
-  const modeBlock = mode === 'review'
-    ? `MODO REVISIÓN.
-Compara el contra-rider del recinto con cada pedido del catálogo.
+  const reviewBlock = `MODO REVISIÓN.
+El documento es un contra-rider ya redactado por el recinto.
+Compáralo con cada pedido escrito del catálogo.
 Responde solo con JSON válido, sin markdown, con esta forma:
 {"reply":"","verdict":"cumple|con_observaciones|no_cumple","summary":"","findings":[{"lineId":"","verdict":"cumple|parcial|no_aparece|contradice","riderAsk":"","fileOffer":"","suggestedText":""}]}
 Incluye un finding por cada lineId del catálogo.
-Usa cumple solo si el archivo ofrece lo pedido.
-Usa parcial si ofrece algo usable, pero falta cantidad, marca o condición.
-Usa no_aparece si el pedido no se menciona.
+En fileOffer cita el nombre del archivo y lo que ese texto ofrece o niega.
+Usa cumple solo si el archivo ofrece lo mismo que pide el rider.
+Usa parcial si ofrece algo usable, pero incompleto o distinto.
+Usa no_aparece si el archivo no lo menciona.
 Usa contradice si el archivo lo niega o ofrece algo incompatible.
-No inventes inventario. No digas que editaste, guardaste o enviaste el rider.
+No inventes equipos. No digas que editaste, guardaste o enviaste el rider.
+En reply y summary usa solo estas respuestas: Cubro igual, Alternativa y No puedo.
+Responde en español.
+
+CATÁLOGO:
+${catalog}`;
+
+  const modeBlock = mode === 'review'
+    ? reviewBlock
+    : mode === 'generate'
+    ? `MODO PROPUESTA.
+Los documentos son datos sueltos del promotor: inventario, cotizaciones, listas o notas. No son un contra-rider ya redactado.
+Cruza esos datos con cada pedido escrito del artista y redacta el contra-rider resultante.
+Responde solo con JSON válido, sin markdown, con esta forma:
+{"reply":"","verdict":"cumple|con_observaciones|no_cumple","summary":"","findings":[{"lineId":"","verdict":"cumple|parcial|no_aparece|contradice","riderAsk":"","fileOffer":"","suggestedText":""}]}
+Incluye un finding por cada lineId del catálogo.
+En fileOffer cita el nombre del archivo y la oferta o el motivo tomado de ese texto.
+Usa cumple solo si el inventario ofrece lo mismo que pide el rider.
+Usa parcial si ofrece algo usable, pero incompleto o distinto. suggestedText es la alternativa concreta.
+Usa no_aparece si el inventario no lo menciona. suggestedText: "El inventario no menciona este pedido."
+Usa contradice si el inventario lo niega o ofrece algo incompatible.
+No inventes equipos que no estén escritos. No digas que editaste, guardaste o enviaste el rider.
+En reply y summary usa solo estas respuestas: Cubro igual, Alternativa y No puedo.
 Responde en español.
 
 CATÁLOGO:
 ${catalog}`
     : `MODO CONSULTA DEL PROMOTOR.
-Respondes sobre el rider publicado y, si hay texto, sobre el contra-rider del recinto.
+Respondes sobre el rider publicado y, si hay texto, sobre el inventario o las propuestas del recinto.
 No modificas el rider. No digas que guardaste, actualizaste o enviaste nada.
 Si el dato no está escrito, dilo. Cita la sección.
-Si preguntan por el archivo y no hay texto, dilo.
+Si preguntan por los archivos y no hay texto, dilo.
 Responde en español y de forma breve.`;
 
   return `${agentPrompt}
@@ -152,27 +197,16 @@ function reviewVerdict(findings: ContraFinding[]): ReviewVerdict {
   return 'con_observaciones';
 }
 
-function countSummary(findings: ContraFinding[]): string {
-  const count = (verdict: FindingVerdict) => findings.filter((finding) => finding.verdict === verdict).length;
-  const label = (amount: number, singular: string, plural: string) => `${amount} ${amount === 1 ? singular : plural}`;
-  return [
-    label(count('cumple'), 'cubierto', 'cubiertos'),
-    label(count('parcial'), 'parcial', 'parciales'),
-    label(count('no_aparece'), 'sin mención', 'sin mención'),
-    label(count('contradice'), 'en contradicción', 'en contradicción'),
-  ].join(', ') + '.';
-}
-
 const VERDICT_LINE = {
-  cumple: 'El archivo cubre los pedidos escritos del rider.',
-  con_observaciones: 'El archivo cubre parte de los pedidos. Revisa los parciales y lo que no aparece.',
-  no_cumple: 'El archivo no cubre el rider: hay pedidos sin mención o en contradicción.',
+  cumple: 'Todos los pedidos quedan en Cubro igual.',
+  con_observaciones: 'Hay pedidos en Cubro igual, Alternativa y No puedo.',
+  no_cumple: 'La mayoría de los pedidos quedan en No puedo.',
 } as const;
 
 export function reviewFromFindings(
   lines: ContraLine[],
   rawFindings: Array<{ lineId: string; verdict: FindingVerdict; riderAsk?: string; fileOffer?: string; suggestedText?: string }>,
-  summaryHint: string
+  _summaryHint: string
 ): ContraReviewRecord | null {
   const catalog = catalogLines(lines);
   if (catalog.length === 0) return null;
@@ -202,7 +236,7 @@ export function reviewFromFindings(
 
   for (const line of catalog) {
     if (seen.has(line.id)) continue;
-    const suggested = suggestionFor('no_aparece', '', 'El archivo no menciona este pedido.');
+    const suggested = suggestionFor('no_aparece', '', 'El inventario no menciona este pedido.');
     findings.push({
       lineId: line.id,
       sectionTitle: line.sectionTitle,
@@ -215,7 +249,7 @@ export function reviewFromFindings(
   }
 
   const verdict = reviewVerdict(findings);
-  const summary = summaryHint.trim().slice(0, 600) || countSummary(findings);
+  const summary = verdictSummary(findings);
   return {
     verdict,
     summary,
@@ -265,35 +299,87 @@ function coverage(terms: string[], haystack: string): number {
   return hits / terms.length;
 }
 
-export function heuristicReview(lines: ContraLine[], fileText: string): { reply: string; review: ContraReviewRecord | null } {
+function normalizeText(text: string): string {
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function hasPhrase(text: string, haystack: string): boolean {
+  const words = normalizeText(text).split(/[^a-z0-9]+/).filter((word) => word.length >= 4);
+  for (let index = 0; index < words.length - 1; index += 1) {
+    if (haystack.includes(`${words[index]} ${words[index + 1]}`)) return true;
+  }
+  return false;
+}
+
+export function proposeFromInventory(
+  lines: ContraLine[],
+  sources: Array<{ name: string; text: string }>,
+  kind: 'inventory' | 'contra' = 'inventory'
+): { reply: string; review: ContraReviewRecord | null } {
   const catalog = catalogLines(lines);
   if (catalog.length === 0) {
-    return { reply: 'Este rider no tiene pedidos escritos para comparar.', review: null };
+    return {
+      reply: kind === 'contra'
+        ? 'Este rider no tiene pedidos escritos para comparar.'
+        : 'Este rider no tiene pedidos escritos para armar un contra-rider.',
+      review: null,
+    };
   }
-  const haystack = fileText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const readable = sources.filter((source) => source.text.trim());
+  if (readable.length === 0) {
+    return { reply: emptyFileReply(), review: null };
+  }
+
+  const stacks = readable.map((source) => ({
+    name: source.name,
+    haystack: normalizeText(source.text),
+  }));
   const raw = catalog.map((line) => {
-    const titleScore = coverage(termsOf(line.sectionTitle), haystack);
-    const bodyScore = coverage(termsOf(line.pedido).slice(0, 12), haystack);
-    const verdict: FindingVerdict = titleScore >= 0.5 || bodyScore >= 0.34 ? 'parcial' : 'no_aparece';
+    let best = { name: stacks[0].name, title: 0, body: 0, phrase: false };
+    const titleTerms = termsOf(line.sectionTitle);
+    const bodyTerms = termsOf(line.pedido).slice(0, 12);
+    for (const stack of stacks) {
+      const title = coverage(titleTerms, stack.haystack);
+      const body = coverage(bodyTerms, stack.haystack);
+      const phrase = hasPhrase(line.sectionTitle, stack.haystack) || hasPhrase(line.pedido, stack.haystack);
+      const score = Math.max(title, body) + (phrase ? 0.01 : 0);
+      const bestScore = Math.max(best.title, best.body) + (best.phrase ? 0.01 : 0);
+      if (score > bestScore) best = { name: stack.name, title, body, phrase };
+    }
+    const mentionedInFile = best.title >= 0.5 || best.body >= 0.34;
+    const verdict: FindingVerdict = mentionedInFile ? 'parcial' : 'no_aparece';
+    const mention = kind === 'contra' ? 'el archivo menciona este pedido' : 'tus datos mencionan este pedido';
+    const missing = kind === 'contra' ? 'El archivo no menciona este pedido.' : 'Tus datos no mencionan este pedido.';
     return {
       lineId: line.id,
       verdict,
       riderAsk: line.pedido.slice(0, 240),
-      fileOffer: verdict === 'parcial' ? 'El archivo menciona parte de este pedido.' : '',
+      fileOffer: verdict === 'no_aparece' ? '' : `${best.name}: ${mention}.`,
       suggestedText: verdict === 'parcial'
-        ? 'El archivo menciona parte de este pedido. Confirma la oferta.'
-        : 'El archivo no menciona este pedido.',
+        ? `Alternativa tomada de ${best.name}. Confirma la oferta.`
+        : missing,
     };
   });
   const review = reviewFromFindings(catalog, raw, '');
   if (!review) {
-    return { reply: 'No pude armar la revisión del archivo.', review: null };
+    return {
+      reply: kind === 'contra' ? 'No pude comparar ese contra-rider.' : 'No pude armar el contra-rider con esos datos.',
+      review: null,
+    };
   }
-  review.summary = countSummary(review.findings);
+  review.summary = verdictSummary(review.findings);
+  const names = readable.map((source) => source.name).join(', ');
+  const verdictLine = VERDICT_LINE[review.verdict];
   return {
-    reply: `Comparé términos del archivo con el rider. ${VERDICT_LINE[review.verdict]} ${review.summary}`,
+    reply: kind === 'contra'
+      ? `Comparé el contra-rider (${names}) con el rider. ${verdictLine} ${review.summary}`
+      : `Crucé los datos que subiste (${names}) con lo que pide el artista. ${verdictLine} ${review.summary}`,
     review,
   };
+}
+
+export function heuristicReview(lines: ContraLine[], fileText: string): { reply: string; review: ContraReviewRecord | null } {
+  return proposeFromInventory(lines, [{ name: 'archivo', text: fileText }]);
 }
 
 export function emptyFileReply(): string {

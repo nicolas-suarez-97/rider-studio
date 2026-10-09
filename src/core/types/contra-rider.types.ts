@@ -67,7 +67,8 @@ export interface ContraRiderRecord {
   version: number;
   sentAt: string | null;
   answers: Record<string, ContraAnswer>;
-  file: ContraFileRecord | null;
+  files: ContraFileRecord[];
+  submittedFile: ContraFileRecord | null;
   review: ContraReviewRecord | null;
   reviewSessionId: string | null;
 }
