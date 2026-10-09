@@ -2,8 +2,14 @@ import { RIDER_DATA } from '@/core/constants/rider-templates';
 import { Rider } from '@/core/models/Rider';
 import {
   ContraAnswer,
+  ContraFileRecord,
+  ContraFinding,
   ContraLine,
   ContraResponse,
+  ContraReviewRecord,
+  FindingVerdict,
+  PromotorFileView,
+  ReviewVerdict,
   ContraRiderRecord,
 } from '@/core/types/contra-rider.types';
 import { RiderModuleData, RiderType, SectionItem } from '@/core/types/rider.types';
@@ -16,9 +22,41 @@ const MODULE_LABEL: Record<RiderType, string> = {
 };
 
 const RESPONSES = new Set<ContraResponse>(['', 'cubro', 'alternativa', 'no_puedo', 'pregunta']);
+const FINDING_VERDICTS = new Set<FindingVerdict>(['cumple', 'parcial', 'no_aparece', 'contradice']);
+const REVIEW_VERDICTS = new Set<ReviewVerdict>(['cumple', 'con_observaciones', 'no_cumple']);
+const EMPTY_PEDIDO = 'Sin pedido escrito en esta sección.';
 
 export function emptyContraRecord(): ContraRiderRecord {
-  return { status: 'draft', version: 0, sentAt: null, answers: {} };
+  return {
+    status: 'draft',
+    version: 0,
+    sentAt: null,
+    answers: {},
+    file: null,
+    review: null,
+    reviewSessionId: null,
+  };
+}
+
+export function lineHasPedido(pedido: string): boolean {
+  return pedido.trim() !== EMPTY_PEDIDO;
+}
+
+export function suggestionFor(
+  verdict: FindingVerdict,
+  fileOffer: string,
+  suggestedText: string
+): { response: Exclude<ContraResponse, ''>; text: string } {
+  const offer = fileOffer.trim().slice(0, 500);
+  const text = suggestedText.trim().slice(0, 1000);
+  if (verdict === 'cumple') return { response: 'cubro', text: '' };
+  if (verdict === 'parcial') {
+    return { response: 'alternativa', text: offer || text || 'Oferta parcial descrita en el archivo.' };
+  }
+  if (verdict === 'contradice') {
+    return { response: 'no_puedo', text: text || offer || 'El archivo contradice este pedido.' };
+  }
+  return { response: 'no_puedo', text: text || 'El archivo no menciona este pedido.' };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -58,6 +96,69 @@ export function readStoredContra(metadata: Json | null | undefined): ContraRider
     version: typeof raw.version === 'number' && raw.version > 0 ? Math.floor(raw.version) : 0,
     sentAt: typeof raw.sentAt === 'string' ? raw.sentAt : null,
     answers,
+    file: readContraFile(raw.file),
+    review: readContraReview(raw.review),
+    reviewSessionId: typeof raw.reviewSessionId === 'string' ? raw.reviewSessionId : null,
+  };
+}
+
+function readContraFile(value: unknown): ContraFileRecord | null {
+  const raw = asRecord(value);
+  if (!raw || typeof raw.name !== 'string' || !raw.name.trim()) return null;
+  return {
+    name: raw.name.slice(0, 180),
+    mime: typeof raw.mime === 'string' ? raw.mime.slice(0, 120) : 'application/octet-stream',
+    size: typeof raw.size === 'number' && raw.size >= 0 ? Math.floor(raw.size) : 0,
+    extractedText: typeof raw.extractedText === 'string' ? raw.extractedText.slice(0, 20000) : '',
+    uploadedAt: typeof raw.uploadedAt === 'string' ? raw.uploadedAt : new Date(0).toISOString(),
+  };
+}
+
+export function readContraReview(value: unknown): ContraReviewRecord | null {
+  const raw = asRecord(value);
+  if (!raw || typeof raw.verdict !== 'string' || !REVIEW_VERDICTS.has(raw.verdict as ReviewVerdict)) return null;
+  if (!Array.isArray(raw.findings)) return null;
+
+  const findings: ContraFinding[] = [];
+  for (const item of raw.findings) {
+    const finding = asRecord(item);
+    if (!finding || typeof finding.lineId !== 'string') continue;
+    if (typeof finding.verdict !== 'string' || !FINDING_VERDICTS.has(finding.verdict as FindingVerdict)) continue;
+    const verdict = finding.verdict as FindingVerdict;
+    const fileOffer = typeof finding.fileOffer === 'string' ? finding.fileOffer.slice(0, 500) : '';
+    const riderAsk = typeof finding.riderAsk === 'string' ? finding.riderAsk.slice(0, 500) : '';
+    const suggested = suggestionFor(
+      verdict,
+      fileOffer,
+      typeof finding.suggestedText === 'string' ? finding.suggestedText : ''
+    );
+    findings.push({
+      lineId: finding.lineId,
+      sectionTitle: typeof finding.sectionTitle === 'string' ? finding.sectionTitle.slice(0, 160) : finding.lineId,
+      verdict,
+      riderAsk,
+      fileOffer,
+      suggestedResponse: suggested.response,
+      suggestedText: suggested.text,
+    });
+  }
+
+  return {
+    verdict: raw.verdict as ReviewVerdict,
+    summary: typeof raw.summary === 'string' ? raw.summary.slice(0, 600) : '',
+    findings,
+    reviewedAt: typeof raw.reviewedAt === 'string' ? raw.reviewedAt : new Date(0).toISOString(),
+  };
+}
+
+export function toPromotorFileView(file: ContraFileRecord | null): PromotorFileView | null {
+  if (!file) return null;
+  return {
+    name: file.name,
+    mime: file.mime,
+    size: file.size,
+    uploadedAt: file.uploadedAt,
+    hasText: file.extractedText.trim().length > 0,
   };
 }
 

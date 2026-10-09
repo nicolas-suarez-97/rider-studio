@@ -261,7 +261,9 @@ export class RiderRepository implements IRiderRepository {
 
     const now = new Date().toISOString();
     const base = asMetadataRecord(rider.metadata) ?? {};
-    const metadata: Json = { ...base, contraRider };
+    const current = asMetadataRecord(base.contraRider) ?? {};
+    const incoming = asMetadataRecord(contraRider) ?? {};
+    const metadata: Json = { ...base, contraRider: { ...current, ...incoming } };
     const next: DbRider = { ...rider, metadata, updated_at: now };
 
     if (isSupabaseServerConfigured()) {

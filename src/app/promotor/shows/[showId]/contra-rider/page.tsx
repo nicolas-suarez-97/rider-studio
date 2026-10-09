@@ -30,6 +30,7 @@ async function ContraRiderServer({ params }: PageProps) {
       showId={show.showId}
       initialRiderData={show.rider}
       initialContra={show.contra}
+      initialAssistant={show.assistant}
     />
   );
 }

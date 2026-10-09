@@ -1,14 +1,17 @@
 import { Rider } from '@/core/models/Rider';
-import { ContraRiderRecord } from '@/core/types/contra-rider.types';
+import { PromotorChatMessage } from '@/core/types/contra-rider.types';
+import { Json } from '@/lib/supabase/database.types';
 import {
   answersFromLines,
   buildContraLines,
+  readContraReview,
   readStoredContra,
   sanitizeAnswers,
   sendBlockReason,
+  toPromotorFileView,
 } from '@/lib/promotor/contra-rider';
 import { readShareLink } from '@/lib/repositories/rider.repository';
-import { getRiderById, saveContraRider } from '@/lib/services/rider-storage';
+import { getChatMessages, getRiderById, saveContraRider } from '@/lib/services/rider-storage';
 
 export async function loadPromotorShow(showId: string) {
   const row = await getRiderById(showId);
@@ -18,6 +21,8 @@ export async function loadPromotorShow(showId: string) {
   rider.linkedSessions = [];
   const stored = readStoredContra(row.metadata);
   const lines = buildContraLines(rider, stored.answers);
+
+  const messages = await loadReviewMessages(stored.reviewSessionId);
 
   return {
     showId: row.id,
@@ -33,7 +38,32 @@ export async function loadPromotorShow(showId: string) {
       sentAt: stored.sentAt,
       lines,
     },
+    assistant: {
+      sessionId: stored.reviewSessionId,
+      file: toPromotorFileView(stored.file),
+      messages,
+    },
   };
+}
+
+async function loadReviewMessages(sessionId: string | null): Promise<PromotorChatMessage[]> {
+  if (!sessionId) return [];
+  const rows = await getChatMessages(sessionId).catch(() => []);
+  return rows.slice(-40).flatMap((row) => {
+    if (row.role !== 'user' && row.role !== 'assistant') return [];
+    const actions = row.actions && typeof row.actions === 'object' && !Array.isArray(row.actions)
+      ? row.actions as Record<string, Json | undefined>
+      : null;
+    const review = actions?.kind === 'contra-review' ? readContraReview(actions.review) : null;
+    return [{
+      sender: row.role === 'assistant' ? 'ai' as const : 'user' as const,
+      text: row.content,
+      createdAt: row.created_at,
+      roleName: row.role_name || undefined,
+      roleAvatar: row.role_avatar || undefined,
+      review,
+    }];
+  });
 }
 
 export async function persistContraRider(
@@ -56,7 +86,7 @@ export async function persistContraRider(
   }
 
   const now = new Date().toISOString();
-  const next: ContraRiderRecord = intent === 'send'
+  const next = intent === 'send'
     ? {
         status: 'sent',
         version: previous.version + 1,
@@ -70,7 +100,12 @@ export async function persistContraRider(
         answers: answersFromLines(lines),
       };
 
-  const saved = await saveContraRider(showId, JSON.parse(JSON.stringify(next)));
+  const saved = await saveContraRider(showId, JSON.parse(JSON.stringify({
+    status: next.status,
+    version: next.version,
+    sentAt: next.sentAt,
+    answers,
+  })));
   if (!saved) return { error: 'No se pudo guardar el contra-rider', status: 500 as const };
 
   return {

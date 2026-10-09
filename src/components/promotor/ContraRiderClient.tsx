@@ -4,13 +4,21 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Header } from '@/components/common/Header';
 import { Icon } from '@/components/common/Icon';
 import { Toast } from '@/components/common/Toast';
+import { PromotorAssistant } from '@/components/promotor/PromotorAssistant';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
 import { Rider } from '@/core/models/Rider';
-import { ContraLine, ContraResponse } from '@/core/types/contra-rider.types';
+import { AgentRole } from '@/core/types/agent.types';
+import {
+  ContraFinding,
+  ContraLine,
+  ContraResponse,
+  PromotorChatMessage,
+  PromotorFileView,
+} from '@/core/types/contra-rider.types';
 import { RiderType } from '@/core/types/rider.types';
 import { answersFromLines, sendBlockReason } from '@/lib/promotor/contra-rider';
 
-type MobileTab = 'contra' | 'document';
+type MobileTab = 'contra' | 'document' | 'assistant';
 
 interface ContraMeta {
   status: 'draft' | 'sent';
@@ -19,10 +27,17 @@ interface ContraMeta {
   lines: ContraLine[];
 }
 
+interface AssistantMeta {
+  sessionId: string | null;
+  file: PromotorFileView | null;
+  messages: PromotorChatMessage[];
+}
+
 interface ContraRiderClientProps {
   showId: string;
   initialRiderData: ConstructorParameters<typeof Rider>[0];
   initialContra: ContraMeta;
+  initialAssistant: AssistantMeta;
 }
 
 const RESPONSE_CHOICES: { value: Exclude<ContraResponse, ''>; label: string; activeClass: string }[] = [
@@ -39,7 +54,12 @@ const MODULE_FILTERS: { id: 'todos' | RiderType; label: string }[] = [
   { id: 'seguridad', label: 'Seguridad' },
 ];
 
-export function ContraRiderClient({ showId, initialRiderData, initialContra }: ContraRiderClientProps) {
+export function ContraRiderClient({
+  showId,
+  initialRiderData,
+  initialContra,
+  initialAssistant,
+}: ContraRiderClientProps) {
   const [rider, setRider] = useState<Rider>(() => new Rider(initialRiderData));
   const [lines, setLines] = useState<ContraLine[]>(initialContra.lines);
   const [contraStatus, setContraStatus] = useState(initialContra.status);
@@ -47,6 +67,15 @@ export function ContraRiderClient({ showId, initialRiderData, initialContra }: C
   const [moduleFilter, setModuleFilter] = useState<'todos' | RiderType>('todos');
   const [mobileTab, setMobileTab] = useState<MobileTab>('contra');
   const [readSectionIds, setReadSectionIds] = useState<string[]>([]);
+  const [activeAgent, setActiveAgent] = useState<AgentRole>('master');
+  const [assistantMessages, setAssistantMessages] = useState<PromotorChatMessage[]>(initialAssistant.messages);
+  const [assistantFile, setAssistantFile] = useState<PromotorFileView | null>(initialAssistant.file);
+  const [sessionId, setSessionId] = useState<string | null>(initialAssistant.sessionId);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [thinkingLabel, setThinkingLabel] = useState('está revisando el rider...');
+  const [highlightedLineId, setHighlightedLineId] = useState<string | null>(null);
+  const [appliedLineIds, setAppliedLineIds] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -142,6 +171,147 @@ export function ContraRiderClient({ showId, initialRiderData, initialContra }: C
     }
   };
 
+  const pushAssistant = (message: PromotorChatMessage) => {
+    setAssistantMessages((current) => [...current, message]);
+  };
+
+  const askAssistant = async (text: string) => {
+    if (isThinking) return;
+    const history = [
+      ...assistantMessages,
+      { sender: 'user' as const, text, createdAt: new Date().toISOString() },
+    ];
+    setAssistantMessages(history);
+    setMobileTab('assistant');
+    setThinkingLabel('está revisando el rider...');
+    setIsThinking(true);
+    try {
+      const response = await fetch(`/api/promotor/shows/${showId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          intent: 'message',
+          activeAgent,
+          sessionId: sessionId || undefined,
+          messages: history.map((message) => ({
+            role: message.sender === 'user' ? 'user' : 'assistant',
+            content: message.text,
+          })),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo consultar');
+      if (typeof data.sessionId === 'string') setSessionId(data.sessionId);
+      pushAssistant({
+        sender: 'ai',
+        text: data.reply || 'No encuentro ese dato en el rider.',
+        createdAt: new Date().toISOString(),
+        roleName: data.roleName,
+        roleAvatar: data.roleAvatar,
+        review: data.review || null,
+      });
+    } catch (error) {
+      pushAssistant({
+        sender: 'ai',
+        text: 'No pude consultar el rider. Intenta de nuevo.',
+        createdAt: new Date().toISOString(),
+      });
+      showToast(error instanceof Error ? error.message : 'No se pudo consultar');
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  const uploadContraFile = async (file: File) => {
+    if (isThinking) return;
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (extension === 'doc') {
+      showToast('El formato .doc no se puede leer. Guárdalo como .docx, PDF o texto.');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      showToast('El archivo supera el límite de 8 MB.');
+      return;
+    }
+    if (assistantFile && !window.confirm('Reemplazar el contra-rider actual y generar otra revisión?')) return;
+
+    setMobileTab('assistant');
+    pushAssistant({
+      sender: 'user',
+      text: `Revisa el contra-rider «${file.name}».`,
+      createdAt: new Date().toISOString(),
+    });
+    setThinkingLabel('está comparando el archivo...');
+    setIsThinking(true);
+    try {
+      const form = new FormData();
+      form.set('intent', 'review');
+      form.set('file', file);
+      form.set('activeAgent', activeAgent);
+      if (sessionId) form.set('sessionId', sessionId);
+      const response = await fetch(`/api/promotor/shows/${showId}/chat`, { method: 'POST', body: form });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo leer el archivo');
+      if (typeof data.sessionId === 'string') setSessionId(data.sessionId);
+      if (data.file) setAssistantFile(data.file);
+      pushAssistant({
+        sender: 'ai',
+        text: data.reply || 'No pude revisar el archivo.',
+        createdAt: new Date().toISOString(),
+        roleName: data.roleName,
+        roleAvatar: data.roleAvatar,
+        review: data.review || null,
+      });
+    } catch (error) {
+      pushAssistant({
+        sender: 'ai',
+        text: error instanceof Error ? error.message : 'No se pudo leer el archivo.',
+        createdAt: new Date().toISOString(),
+      });
+      showToast(error instanceof Error ? error.message : 'No se pudo leer el archivo');
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  const clearContraFile = async () => {
+    if (isThinking || !assistantFile) return;
+    if (!window.confirm('Quitar el archivo? El hilo se conserva, pero las próximas respuestas ya no lo verán.')) return;
+    setAssistantFile(null);
+    const response = await fetch(`/api/promotor/shows/${showId}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intent: 'clear' }),
+    });
+    if (!response.ok) {
+      setAssistantFile(assistantFile);
+      showToast('No se pudo quitar el archivo');
+    }
+  };
+
+  const applyFinding = (finding: ContraFinding) => {
+    const line = linesRef.current.find((item) => item.id === finding.lineId);
+    if (!line) {
+      showToast('Ese pedido no está en este rider.');
+      return;
+    }
+    if (line.response && !window.confirm('Esta fila ya tiene respuesta. ¿Reemplazarla?')) return;
+    updateLine(finding.lineId, {
+      response: finding.suggestedResponse,
+      offer: finding.suggestedResponse === 'alternativa' ? finding.suggestedText : line.offer,
+      note: finding.suggestedResponse === 'no_puedo' || finding.suggestedResponse === 'pregunta'
+        ? finding.suggestedText
+        : line.note,
+    });
+    setAppliedLineIds((current) => current.includes(finding.lineId) ? current : [...current, finding.lineId]);
+    setHighlightedLineId(finding.lineId);
+    window.setTimeout(() => setHighlightedLineId((current) => current === finding.lineId ? null : current), 2500);
+    if (window.matchMedia('(max-width: 1279px)').matches) setMobileTab('contra');
+    window.setTimeout(() => {
+      document.getElementById(`contra-${finding.lineId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+  };
+
   return (
     <div className="h-dvh max-h-dvh overflow-hidden bg-[#f8f9fa] text-slate-900 flex flex-col">
       <Toast message={toastMessage} />
@@ -158,7 +328,7 @@ export function ContraRiderClient({ showId, initialRiderData, initialContra }: C
       />
 
       <div className="flex-1 flex overflow-hidden">
-        <section className={`h-full min-w-0 flex-col pb-16 xl:pb-0 ${mobileTab === 'contra' ? 'flex flex-1' : 'hidden'} xl:flex xl:flex-1 xl:max-w-[58%]`}>
+        <section className={`h-full min-w-0 flex-col pb-16 xl:pb-0 ${mobileTab === 'contra' ? 'flex flex-1' : 'hidden'} xl:flex xl:flex-1 xl:min-w-0`}>
           <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-full">
@@ -210,7 +380,11 @@ export function ContraRiderClient({ showId, initialRiderData, initialContra }: C
                   ? 'Por qué no se puede cumplir'
                   : 'Qué dato te falta para responder';
               return (
-                <article key={line.id} className="px-4 sm:px-5 py-5">
+                <article
+                  key={line.id}
+                  id={`contra-${line.id}`}
+                  className={`px-4 sm:px-5 py-5 ${highlightedLineId === line.id ? 'bg-violet-50/80' : ''}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       <span className="mt-0.5 text-[11px] font-black tabular-nums text-slate-300">
@@ -295,7 +469,7 @@ export function ContraRiderClient({ showId, initialRiderData, initialContra }: C
           </div>
         </section>
 
-        <section className={`h-full min-w-0 border-l border-slate-200/80 bg-[#f8f9fa] ${mobileTab === 'document' ? 'flex flex-1' : 'hidden'} xl:flex xl:flex-1`}>
+        <section className={`h-full min-w-0 border-l border-slate-200/80 bg-[#f8f9fa] ${mobileTab === 'document' ? 'flex flex-1' : 'hidden'} xl:flex xl:flex-1 xl:min-w-0`}>
           <DocumentEditorPanel
             readOnly
             riderTitle={rider.title}
@@ -317,6 +491,26 @@ export function ContraRiderClient({ showId, initialRiderData, initialContra }: C
             onExport={() => {}}
             onOpenStagePlot={() => {}}
             stagePlot={rider.stagePlot}
+          />
+        </section>
+
+        <section className={`h-full min-w-0 ${mobileTab === 'assistant' ? 'flex flex-1' : 'hidden'} xl:flex xl:w-auto`}>
+          <PromotorAssistant
+            artistName={rider.artistName}
+            version={rider.version}
+            activeAgent={activeAgent}
+            onSelectAgent={setActiveAgent}
+            messages={assistantMessages}
+            file={assistantFile}
+            isThinking={isThinking}
+            thinkingLabel={thinkingLabel}
+            isCollapsed={isChatCollapsed}
+            onToggleCollapse={() => setIsChatCollapsed((current) => !current)}
+            onSendMessage={askAssistant}
+            onUpload={uploadContraFile}
+            onClearFile={clearContraFile}
+            onApplyFinding={applyFinding}
+            appliedLineIds={appliedLineIds}
           />
         </section>
       </div>
@@ -344,6 +538,16 @@ export function ContraRiderClient({ showId, initialRiderData, initialContra }: C
         >
           <Icon name="fileText" className="w-4 h-4" />
           <span className="text-[10px]">Rider</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('assistant')}
+          className={`flex-1 py-1.5 rounded-2xl flex flex-col items-center gap-0.5 ${
+            mobileTab === 'assistant' ? 'text-violet-600 bg-violet-50 font-bold' : 'text-slate-400 font-medium'
+          }`}
+        >
+          <Icon name="sparkles" className="w-4 h-4" />
+          <span className="text-[10px]">Asistente</span>
         </button>
       </nav>
     </div>
