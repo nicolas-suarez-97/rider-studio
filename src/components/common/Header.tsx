@@ -38,6 +38,13 @@ export function Header({
   onExport,
   onOpenExportModal
 }: HeaderProps) {
+  const openExport = () => {
+    if (onOpenExportModal) {
+      onOpenExportModal('master');
+    } else if (onExport) {
+      onExport();
+    }
+  };
 
   return (
     <div className="sticky top-0 z-40 shrink-0 w-full flex flex-col">
@@ -108,22 +115,10 @@ export function Header({
           2. SUBHEADER: Herramientas contextuales de Workspace
          ======================================================== */}
       {pageType === 'workspace' && (
-        <div className="h-12 px-3 sm:px-6 md:px-10 flex items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-sm text-xs gap-2 overflow-x-auto no-scrollbar shrink-0">
-          {/* Lado Izquierdo: Breadcrumb & Selector de Plantilla */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <Link
-              href="/"
-              prefetch={false}
-              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 font-medium px-2 py-1 rounded-lg hover:bg-slate-100 transition-all active:scale-95"
-              title="Volver al inicio"
-            >
-              <Icon name="arrowLeft" className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Inicio</span>
-            </Link>
-            <span className="text-slate-300 hidden sm:inline">/</span>
-
-            {/* Selector de Tipo de Rider en Subheader con Progreso Departamental */}
-            {onSelectRiderType && (
+        <>
+        <div className="h-12 px-3 sm:px-6 md:px-10 flex items-center justify-center md:justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-sm text-xs gap-2 overflow-x-auto no-scrollbar shrink-0">
+          {/* Selector de Tipo de Rider */}
+          {onSelectRiderType && (
               <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/70">
                 {(['tecnico', 'hospitality', 'seguridad'] as RiderType[]).map((type) => {
                   const active = riderType === type;
@@ -164,11 +159,10 @@ export function Header({
                   );
                 })}
               </div>
-            )}
-          </div>
+          )}
 
-          {/* Lado Derecho: Progreso Master, Guardado, Stage Plot y Exportación */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Progreso y exportación: solo escritorio. En móvil, Exportar es un botón flotante. */}
+          <div className="hidden md:flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Indicador de Progreso del Módulo Activo */}
             <div className="hidden md:flex items-center gap-2 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200/60 text-xs">
               <div className="w-12 bg-slate-200 h-1.5 rounded-full overflow-hidden">
@@ -206,13 +200,7 @@ export function Header({
             {/* Botón de Exportación Directo */}
             <button 
               type="button"
-              onClick={() => {
-                if (onOpenExportModal) {
-                  onOpenExportModal('master');
-                } else if (onExport) {
-                  onExport();
-                }
-              }}
+              onClick={openExport}
               className="bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-1 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
               title="Abrir centro de exportación para imprimir o guardar PDF"
             >
@@ -221,6 +209,16 @@ export function Header({
             </button>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={openExport}
+          className="md:hidden fixed z-30 right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] w-11 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center active:scale-95 cursor-pointer"
+          aria-label="Exportar"
+          title="Exportar"
+        >
+          <Icon name="download" className="w-4 h-4" />
+        </button>
+        </>
       )}
 
 
