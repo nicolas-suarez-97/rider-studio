@@ -29,7 +29,7 @@ export function HeroSection({ onSubmitPrompt }: HeroSectionProps) {
   };
 
   return (
-    <div className="flex flex-col items-center text-center space-y-3.5 sm:space-y-4 max-w-3xl mx-auto pt-2 sm:pt-6 px-1">
+    <div className="flex flex-col items-center text-center space-y-3.5 sm:space-y-4 max-w-3xl mx-auto py-10 sm:py-16 lg:py-24 px-1">
       {/* Eyebrow badge */}
       <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 py-1 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-xs font-bold shadow-xs">
         <Icon name="sparkles" className="w-3.5 h-3.5 text-violet-600 shrink-0" />
