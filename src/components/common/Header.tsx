@@ -172,7 +172,7 @@ export function Header({
               </div>
           )}
 
-          {/* Progreso y exportación: solo escritorio. En móvil, Exportar es un botón flotante. */}
+          {/* Progreso y acciones: solo escritorio. En móvil, Compartir es el botón flotante principal. */}
           <div className="hidden md:flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Indicador de Progreso del Módulo Activo */}
             <div className="hidden md:flex items-center gap-2 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200/60 text-xs">
@@ -208,29 +208,29 @@ export function Header({
 
 
 
-            {pageType === 'workspace' && onShare && (
-              <button
-                type="button"
-                onClick={onShare}
-                disabled={isSharing}
-                className="bg-white hover:bg-violet-50 text-violet-700 border border-violet-200 px-3.5 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0 disabled:opacity-60"
-                title="Generar un enlace de solo lectura"
-              >
-                <Icon name="share" className="w-3.5 h-3.5" />
-                <span>{isSharing ? 'Compartiendo...' : 'Compartir'}</span>
-              </button>
-            )}
-
             {pageType === 'workspace' && (
-            <button 
+            <button
               type="button"
               onClick={openExport}
-              className="bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-1 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
+              className="bg-white hover:bg-violet-50 text-violet-700 border border-violet-200 px-3.5 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
               title="Abrir centro de exportación para imprimir o guardar PDF"
             >
               <Icon name="download" className="w-3.5 h-3.5" />
               <span>Exportar</span>
             </button>
+            )}
+
+            {pageType === 'workspace' && onShare && (
+              <button
+                type="button"
+                onClick={onShare}
+                disabled={isSharing}
+                className="bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-1 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0 disabled:opacity-60"
+                title="Generar un enlace de solo lectura"
+              >
+                <Icon name="share" className="w-3.5 h-3.5" />
+                <span>{isSharing ? 'Compartiendo...' : 'Compartir'}</span>
+              </button>
             )}
             {pageType === 'view' && (
               <span className="bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1 rounded-full text-[11px] font-bold shrink-0">
@@ -241,27 +241,27 @@ export function Header({
         </div>
         {pageType === 'workspace' && (
         <div className="md:hidden fixed z-30 right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={openExport}
+            className="w-11 h-11 rounded-full bg-white text-violet-700 border border-violet-200 shadow-lg flex items-center justify-center active:scale-95 cursor-pointer"
+            aria-label="Exportar"
+            title="Exportar"
+          >
+            <Icon name="download" className="w-4 h-4" />
+          </button>
           {onShare && (
             <button
               type="button"
               onClick={onShare}
               disabled={isSharing}
-              className="w-11 h-11 rounded-full bg-white text-violet-700 border border-violet-200 shadow-lg flex items-center justify-center active:scale-95 cursor-pointer disabled:opacity-60"
+              className="w-11 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center active:scale-95 cursor-pointer disabled:opacity-60"
               aria-label="Compartir"
               title="Compartir"
             >
               <Icon name="share" className="w-4 h-4" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={openExport}
-            className="w-11 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center active:scale-95 cursor-pointer"
-            aria-label="Exportar"
-            title="Exportar"
-          >
-            <Icon name="download" className="w-4 h-4" />
-          </button>
         </div>
         )}
         </>
