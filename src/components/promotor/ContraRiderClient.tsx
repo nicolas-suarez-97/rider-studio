@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Header } from '@/components/common/Header';
 import { Icon } from '@/components/common/Icon';
 import { Toast } from '@/components/common/Toast';
-import { ContraCross } from '@/components/promotor/ContraCross';
 import { InventoryStep } from '@/components/promotor/InventoryStep';
 import { PromotorAssistant } from '@/components/promotor/PromotorAssistant';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
@@ -19,11 +18,9 @@ import {
 } from '@/core/types/contra-rider.types';
 import { RiderType } from '@/core/types/rider.types';
 import { answersFromLines, sendBlockReason } from '@/lib/promotor/contra-rider';
-import { downloadContraRiderFile, sourcesFromGeneratePrompt, sourcesFromReviewPrompt } from '@/lib/promotor/contra-file';
-import { formatAttachmentSize } from '@/core/utils/chat-attachments';
 
-type MobileTab = 'contra' | 'cross' | 'document' | 'assistant';
-type SidePanel = 'none' | 'cross' | 'document' | 'chat';
+type MobileTab = 'contra' | 'document' | 'assistant';
+type SidePanel = 'none' | 'document' | 'chat';
 
 interface ContraMeta {
   status: 'draft' | 'sent';
@@ -63,19 +60,6 @@ function lineGap(line: Pick<ContraLine, 'response' | 'offer' | 'note'>): 'oferta
   return null;
 }
 
-function crossFromMessages(messages: PromotorChatMessage[]) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const review = messages[index]?.review;
-    if (!review?.findings?.length) continue;
-    const previous = messages[index - 1]?.text;
-    return {
-      review,
-      sources: [...sourcesFromGeneratePrompt(previous), ...sourcesFromReviewPrompt(previous)],
-    };
-  }
-  return null;
-}
-
 const MODULE_FILTERS: { id: 'todos' | RiderType; label: string }[] = [
   { id: 'todos', label: 'Todos' },
   { id: 'tecnico', label: 'Técnico' },
@@ -105,11 +89,9 @@ export function ContraRiderClient({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [keptNames, setKeptNames] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(initialAssistant.sessionId);
-  const [side, setSide] = useState<SidePanel>(() => (crossFromMessages(initialAssistant.messages) ? 'cross' : 'none'));
+  const [side, setSide] = useState<SidePanel>('chat');
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState('está revisando el rider...');
-  const [highlightedLineId, setHighlightedLineId] = useState<string | null>(null);
-  const [appliedLineIds, setAppliedLineIds] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -123,7 +105,6 @@ export function ContraRiderClient({
   const readableTypes = rider.getReadableTypes();
   const visibleLines = lines.filter((line) => moduleFilter === 'todos' || line.module === moduleFilter);
   const blockReason = sendBlockReason(lines);
-  const cross = useMemo(() => crossFromMessages(assistantMessages), [assistantMessages]);
   const answered = lines.filter((line) => line.response).length;
   const reviewedPercent = lines.length ? Math.round((answered / lines.length) * 100) : 0;
   const lineNumbers = useMemo(() => {
@@ -194,6 +175,31 @@ export function ContraRiderClient({
     saveTimer.current = window.setTimeout(() => {
       persist('draft', snapshot).catch(() => showToast('No se pudo guardar el borrador'));
     }, 700);
+  };
+
+  const applyFindings = (findings: ContraFinding[]) => {
+    const byId = new Map(findings.map((finding) => [finding.lineId, finding]));
+    const current = linesRef.current;
+    if (!current.some((line) => byId.has(line.id))) {
+      showToast('El cruce no coincide con las secciones de este rider.');
+      return;
+    }
+    const next = current.map((line) => {
+      const finding = byId.get(line.id);
+      if (!finding) return line;
+      const response = finding.suggestedResponse;
+      return {
+        ...line,
+        response,
+        offer: response === 'alternativa' ? finding.suggestedText : '',
+        note: response === 'no_puedo' || response === 'pregunta' ? finding.suggestedText : '',
+      };
+    });
+    setLines(next);
+    setContraStatus('draft');
+    scheduleSave(next);
+    setSide('chat');
+    setMobileTab('contra');
   };
 
   const updateLine = (id: string, patch: Partial<ContraLine>) => {
@@ -357,14 +363,14 @@ export function ContraRiderClient({
     const kept = assistantFiles.filter((file) => keptNames.includes(file.name));
     if (kept.length + pendingFiles.length === 0) return;
     if (
-      assistantFiles.length > 0
-      && !window.confirm('Esto arma otro archivo de contra-rider en el mismo hilo. Las pastillas que ya marcaste se quedan.')
+      (assistantFiles.length > 0 || linesRef.current.some((line) => line.response))
+      && !window.confirm('El cruce escribe las respuestas en las secciones. Las que ya marcaste se reemplazan.')
     ) return;
 
     const names = [...kept.map((file) => file.name), ...pendingFiles.map((file) => file.name)];
     setInventoryOpen(false);
-    setSide('cross');
-    setMobileTab('cross');
+    setSide('chat');
+    setMobileTab('assistant');
     pushAssistant({
       sender: 'user',
       text: `Genera el contra-rider con: ${names.join(', ')}.`,
@@ -384,14 +390,7 @@ export function ContraRiderClient({
       if (typeof data.sessionId === 'string') setSessionId(data.sessionId);
       if (Array.isArray(data.files)) setAssistantFiles(data.files);
       setPendingFiles([]);
-      if (data.review?.findings?.length) {
-        downloadContraRiderFile({
-          artistName: rider.artistName,
-          sources: names,
-          findings: data.review.findings,
-          summary: data.review.summary,
-        });
-      }
+      if (data.review?.findings?.length) applyFindings(data.review.findings);
       pushAssistant({
         sender: 'ai',
         text: data.reply || 'No pude armar la propuesta.',
@@ -428,12 +427,12 @@ export function ContraRiderClient({
       return;
     }
     if (
-      submittedFile
-      && !window.confirm('Reemplazar el contra-rider subido y revisar de nuevo? Las pastillas que ya marcaste se quedan.')
+      (submittedFile || linesRef.current.some((line) => line.response))
+      && !window.confirm('El cruce del archivo escribe las respuestas en las secciones. Las que ya marcaste se reemplazan.')
     ) return;
 
-    setSide('cross');
-    setMobileTab('cross');
+    setSide('chat');
+    setMobileTab('assistant');
     pushAssistant({
       sender: 'user',
       text: `Revisa el contra-rider «${file.name}».`,
@@ -452,6 +451,7 @@ export function ContraRiderClient({
       if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo leer el contra-rider');
       if (typeof data.sessionId === 'string') setSessionId(data.sessionId);
       setSubmittedFile(data.submitted ?? null);
+      if (data.review?.findings?.length) applyFindings(data.review.findings);
       pushAssistant({
         sender: 'ai',
         text: data.reply || 'No pude revisar el contra-rider.',
@@ -505,54 +505,6 @@ export function ContraRiderClient({
       return;
     }
     if (Array.isArray(data.files)) setAssistantFiles(data.files);
-  };
-
-  const applyFinding = (finding: ContraFinding) => {
-    const line = linesRef.current.find((item) => item.id === finding.lineId);
-    if (!line) {
-      showToast('Ese pedido no está en este rider.');
-      return;
-    }
-    if (line.response && !window.confirm('Esta fila ya tiene respuesta. ¿Reemplazarla?')) return;
-    updateLine(finding.lineId, {
-      response: finding.suggestedResponse,
-      offer: finding.suggestedResponse === 'alternativa' ? finding.suggestedText : line.offer,
-      note: finding.suggestedResponse === 'no_puedo' || finding.suggestedResponse === 'pregunta'
-        ? finding.suggestedText
-        : line.note,
-    });
-    setAppliedLineIds((current) => current.includes(finding.lineId) ? current : [...current, finding.lineId]);
-    setHighlightedLineId(finding.lineId);
-    window.setTimeout(() => setHighlightedLineId((current) => current === finding.lineId ? null : current), 2500);
-    if (window.matchMedia('(max-width: 1279px)').matches) setMobileTab('contra');
-    window.setTimeout(() => {
-      document.getElementById(`contra-${finding.lineId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 60);
-  };
-
-  const applyCovered = (findings: ContraFinding[]) => {
-    const targets = findings.filter((finding) => {
-      if (finding.verdict !== 'cumple' && finding.suggestedResponse !== 'cubro') return false;
-      const line = linesRef.current.find((item) => item.id === finding.lineId);
-      return Boolean(line && !line.response);
-    });
-    if (targets.length === 0) {
-      showToast('Las filas cubiertas ya tienen respuesta.');
-      return;
-    }
-    setLines((current) => {
-      const next = current.map((line) => {
-        const finding = targets.find((item) => item.lineId === line.id);
-        if (!finding || line.response) return line;
-        return { ...line, response: 'cubro' as const };
-      });
-      setContraStatus('draft');
-      scheduleSave(next);
-      return next;
-    });
-    setAppliedLineIds((current) => [...new Set([...current, ...targets.map((item) => item.lineId)])]);
-    if (window.matchMedia('(max-width: 1279px)').matches) setMobileTab('contra');
-    showToast(targets.length === 1 ? 'Marqué 1 fila como Aprobado.' : `Marqué ${targets.length} filas como Aprobado.`);
   };
 
   return (
@@ -753,13 +705,7 @@ export function ContraRiderClient({
                 <article
                   key={line.id}
                   id={`contra-${line.id}`}
-                  className={`px-4 sm:px-5 py-5 ${
-                    gap
-                      ? 'bg-rose-50/60 ring-1 ring-inset ring-rose-200'
-                      : highlightedLineId === line.id
-                        ? 'bg-violet-50/80'
-                        : ''
-                  }`}
+                  className={`px-4 sm:px-5 py-5 ${gap ? 'bg-rose-50/60 ring-1 ring-inset ring-rose-200' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
@@ -835,48 +781,21 @@ export function ContraRiderClient({
           )}
         </section>
 
-        <section className={`h-full min-w-0 min-h-0 border-l border-slate-200/80 bg-[#f8f9fa] pb-16 xl:pb-0 ${mobileTab === 'cross' ? 'flex flex-1' : 'hidden'} ${side === 'cross' ? 'xl:flex xl:flex-1 xl:max-w-[640px] xl:min-w-[360px]' : 'xl:hidden'}`}>
-          {cross ? (
-            <ContraCross
-              artistName={rider.artistName}
-              sources={cross.sources}
-              findings={cross.review.findings}
-              lineNumbers={lineNumbers}
-              appliedLineIds={appliedLineIds}
-              thinkingLabel={isThinking && side === 'cross' ? thinkingLabel : null}
-              onApplyFinding={applyFinding}
-              onApplyCovered={applyCovered}
-              onOpenDocument={() => {
-                setSide('document');
-                setMobileTab('document');
-              }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center px-6 text-center">
-              <p className="text-sm font-semibold text-slate-500">
-                {isThinking ? thinkingLabel : 'El cruce aparece aquí cuando generas el contra-rider.'}
-              </p>
-            </div>
-          )}
-        </section>
-
         {(side === 'document' || mobileTab === 'document') ? (
         <section className={`h-full min-w-0 min-h-0 flex-col border-l border-slate-200/80 bg-[#f8f9fa] pb-16 xl:pb-0 ${mobileTab === 'document' ? 'flex flex-1' : 'hidden'} ${side === 'document' ? 'xl:flex xl:flex-1 xl:max-w-[720px] xl:min-w-[360px]' : 'xl:hidden'}`}>
-          {cross ? (
-            <div className="shrink-0 px-4 py-2 border-b border-slate-200/80 bg-white/80 flex items-center justify-between gap-3">
-              <p className="text-[11px] font-semibold text-slate-500">Rider del artista, solo lectura</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSide('cross');
-                  setMobileTab('cross');
-                }}
-                className="text-xs font-bold text-violet-700 hover:text-violet-900 cursor-pointer"
-              >
-                Volver al cruce
-              </button>
-            </div>
-          ) : null}
+          <div className="shrink-0 px-4 py-2 border-b border-slate-200/80 bg-white/80 flex items-center justify-between gap-3">
+            <p className="text-[11px] font-semibold text-slate-500">Rider del artista, solo lectura</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSide('chat');
+                setMobileTab('contra');
+              }}
+              className="text-xs font-bold text-violet-700 hover:text-violet-900 cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
           <DocumentEditorPanel
             readOnly
             riderTitle={rider.title}
@@ -916,17 +835,13 @@ export function ContraRiderClient({
             isCollapsed={side !== 'chat'}
             onToggleCollapse={() => {
               if (side === 'chat') {
-                setSide(cross ? 'cross' : 'none');
+                setSide('none');
                 return;
               }
               setSide('chat');
               setMobileTab('assistant');
             }}
             onSendMessage={askAssistant}
-            onOpenCross={() => {
-              setSide('cross');
-              setMobileTab('cross');
-            }}
           />
         </section>
       </div>
@@ -945,21 +860,6 @@ export function ContraRiderClient({
           <Icon name="fileCheck" className="w-4 h-4" />
           <span className="text-[10px]">Contra-rider</span>
         </button>
-        {cross ? (
-          <button
-            type="button"
-            onClick={() => {
-              setSide('cross');
-              setMobileTab('cross');
-            }}
-            className={`flex-1 py-1.5 rounded-2xl flex flex-col items-center gap-0.5 ${
-              mobileTab === 'cross' ? 'text-violet-600 bg-violet-50 font-bold' : 'text-slate-400 font-medium'
-            }`}
-          >
-            <Icon name="list" className="w-4 h-4" />
-            <span className="text-[10px]">Cruce</span>
-          </button>
-        ) : null}
         <button
           type="button"
           onClick={() => {

@@ -38,7 +38,6 @@ interface PromotorAssistantProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onSendMessage: (text: string) => void;
-  onOpenCross: () => void;
 }
 
 function MessageTime({ value, light }: { value: string; light?: boolean }) {
@@ -64,7 +63,6 @@ export function PromotorAssistant({
   isCollapsed,
   onToggleCollapse,
   onSendMessage,
-  onOpenCross,
 }: PromotorAssistantProps) {
   const [inputText, setInputText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -123,7 +121,7 @@ export function PromotorAssistant({
             <p className="mt-3 text-xs font-black text-slate-700">Pregunta sobre este rider</p>
             <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
               {hasSources
-                ? 'El cruce queda en el documento. Aquí puedes preguntar por un pedido.'
+                ? 'El cruce queda en las respuestas del contra-rider. Aquí puedes preguntar por un pedido.'
                 : 'Genera el contra-rider desde la hoja de respuestas. Aquí puedes consultar el rider.'}
             </p>
             <div className="mt-4 space-y-1.5 text-left">
@@ -158,15 +156,6 @@ export function PromotorAssistant({
                     <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">{message.roleName}</span>
                   ) : null}
                   <p className="whitespace-pre-line">{message.text}</p>
-                  {message.review?.findings?.length ? (
-                    <button
-                      type="button"
-                      onClick={onOpenCross}
-                      className="mt-2 inline-flex items-center h-7 px-2.5 rounded-full bg-violet-50 text-[11px] font-bold text-violet-700 hover:bg-violet-100 cursor-pointer"
-                    >
-                      Ver el cruce
-                    </button>
-                  ) : null}
                   <MessageTime value={message.createdAt} light={!isAi} />
                 </div>
               </div>
