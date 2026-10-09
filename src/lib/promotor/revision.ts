@@ -138,7 +138,7 @@ Usa parcial si ofrece algo usable, pero incompleto o distinto.
 Usa no_aparece si el archivo no lo menciona.
 Usa contradice si el archivo lo niega o ofrece algo incompatible.
 No inventes equipos. No digas que editaste, guardaste o enviaste el rider.
-En reply y summary usa solo estas respuestas: Cubro igual, Alternativa y No puedo.
+En reply y summary usa solo estas respuestas: Aprobado, Alternativa y Rechazado.
 Responde en español.
 
 CATÁLOGO:
@@ -159,7 +159,7 @@ Usa parcial si ofrece algo usable, pero incompleto o distinto. suggestedText es 
 Usa no_aparece si el inventario no lo menciona. suggestedText: "El inventario no menciona este pedido."
 Usa contradice si el inventario lo niega o ofrece algo incompatible.
 No inventes equipos que no estén escritos. No digas que editaste, guardaste o enviaste el rider.
-En reply y summary usa solo estas respuestas: Cubro igual, Alternativa y No puedo.
+En reply y summary usa solo estas respuestas: Aprobado, Alternativa y Rechazado.
 Responde en español.
 
 CATÁLOGO:
@@ -198,9 +198,9 @@ function reviewVerdict(findings: ContraFinding[]): ReviewVerdict {
 }
 
 const VERDICT_LINE = {
-  cumple: 'Todos los pedidos quedan en Cubro igual.',
-  con_observaciones: 'Hay pedidos en Cubro igual, Alternativa y No puedo.',
-  no_cumple: 'La mayoría de los pedidos quedan en No puedo.',
+  cumple: 'Todos los pedidos quedan en Aprobado.',
+  con_observaciones: 'Hay pedidos en Aprobado, Alternativa y Rechazado.',
+  no_cumple: 'La mayoría de los pedidos quedan en Rechazado.',
 } as const;
 
 export function reviewFromFindings(

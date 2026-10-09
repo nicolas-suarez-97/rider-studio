@@ -50,9 +50,9 @@ interface ContraRiderClientProps {
 }
 
 const RESPONSE_CHOICES: { value: Exclude<ContraResponse, ''>; label: string; activeClass: string }[] = [
-  { value: 'cubro', label: 'Cubro igual', activeClass: 'bg-emerald-600 text-white border-emerald-600' },
+  { value: 'cubro', label: 'Aprobado', activeClass: 'bg-emerald-600 text-white border-emerald-600' },
   { value: 'alternativa', label: 'Alternativa', activeClass: 'bg-violet-600 text-white border-violet-600' },
-  { value: 'no_puedo', label: 'No puedo', activeClass: 'bg-rose-600 text-white border-rose-600' },
+  { value: 'no_puedo', label: 'Rechazado', activeClass: 'bg-rose-600 text-white border-rose-600' },
   { value: 'pregunta', label: 'Pregunta', activeClass: 'bg-amber-500 text-white border-amber-500' },
 ];
 
@@ -538,7 +538,7 @@ export function ContraRiderClient({
     });
     setAppliedLineIds((current) => [...new Set([...current, ...targets.map((item) => item.lineId)])]);
     if (window.matchMedia('(max-width: 1279px)').matches) setMobileTab('contra');
-    showToast(targets.length === 1 ? 'Marqué 1 fila como Cubro igual.' : `Marqué ${targets.length} filas como Cubro igual.`);
+    showToast(targets.length === 1 ? 'Marqué 1 fila como Aprobado.' : `Marqué ${targets.length} filas como Aprobado.`);
   };
 
   return (

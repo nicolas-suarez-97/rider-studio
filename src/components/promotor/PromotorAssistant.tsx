@@ -22,7 +22,7 @@ const ASK_SUGGESTIONS = [
 const FILE_SUGGESTIONS = [
   '¿Qué del inventario cubre el PA?',
   '¿Qué hospitality no está en el inventario?',
-  '¿Qué seguridad no puedo cubrir?',
+  '¿Qué seguridad queda rechazada?',
 ];
 
 interface PromotorAssistantProps {

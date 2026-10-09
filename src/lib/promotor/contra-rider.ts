@@ -273,7 +273,7 @@ export function sendBlockReason(lines: Pick<ContraLine, 'response' | 'offer' | '
     return 'Cada alternativa necesita una oferta.';
   }
   if (lines.some((line) => line.response === 'no_puedo' && !line.note.trim())) {
-    return 'Cada “No puedo” necesita una nota.';
+    return 'Cada “Rechazado” necesita una nota.';
   }
   return null;
 }

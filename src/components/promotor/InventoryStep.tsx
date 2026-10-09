@@ -130,7 +130,7 @@ export function InventoryStep({
           </button>
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-          Cada pedido del artista se cruza con estos datos. Si algo no aparece, el archivo lo deja como No puedo. Esto no envía el contra-rider.
+          Cada pedido del artista se cruza con estos datos. Si algo no aparece, el archivo lo deja como Rechazado. Esto no envía el contra-rider.
         </p>
       </div>
     </div>

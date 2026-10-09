@@ -1,17 +1,17 @@
 import { ContraFinding, FindingVerdict } from '@/core/types/contra-rider.types';
 
 export const FINDING_RESPONSE_LABEL: Record<FindingVerdict, string> = {
-  cumple: 'Cubro igual',
+  cumple: 'Aprobado',
   parcial: 'Alternativa',
-  no_aparece: 'No puedo',
-  contradice: 'No puedo',
+  no_aparece: 'Rechazado',
+  contradice: 'Rechazado',
 };
 
 export function verdictSummary(findings: ContraFinding[]): string {
   const cubro = findings.filter((finding) => finding.verdict === 'cumple').length;
   const alternativa = findings.filter((finding) => finding.verdict === 'parcial').length;
   const noPuedo = findings.filter((finding) => finding.verdict === 'no_aparece' || finding.verdict === 'contradice').length;
-  return `${cubro} Cubro igual, ${alternativa} Alternativa, ${noPuedo} No puedo.`;
+  return `${cubro} Aprobado, ${alternativa} Alternativa, ${noPuedo} Rechazado.`;
 }
 
 const GENERATE_MARKER = 'Genera el contra-rider con:';

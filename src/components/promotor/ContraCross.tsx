@@ -74,7 +74,7 @@ export function ContraCross({
               onClick={() => onApplyCovered(ordered)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-3.5 rounded-full text-xs font-bold cursor-pointer active:scale-95"
             >
-              Aplicar lo que cubro
+              Aplicar lo aprobado
             </button>
           ) : null}
           <button
