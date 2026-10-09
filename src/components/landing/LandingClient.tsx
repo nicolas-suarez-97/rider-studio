@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/common/Header';
 import { Toast } from '@/components/common/Toast';
 import { HeroSection } from '@/components/landing/HeroSection';
-import { TemplatePills } from '@/components/landing/TemplatePills';
 import { RecentChatsCard } from '@/components/landing/RecentChatsCard';
 import { SavedRidersGrid } from '@/components/landing/SavedRidersGrid';
 import { riderService } from '@/core/services/rider.service';
@@ -150,8 +149,6 @@ export function LandingClient({ initialRiders, initialConversations }: LandingCl
 
       <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-6 space-y-6 sm:space-y-8">
         <HeroSection onSubmitPrompt={handleSubmitPrompt} />
-        
-        <TemplatePills onSelectType={handleSelectType} />
 
         <RecentChatsCard
           conversations={conversations}
