@@ -4,7 +4,7 @@ import React from 'react';
 import { Icon } from '../common/Icon';
 import { InputListTable } from './InputListTable';
 import { StagePlotView } from './StagePlotView';
-import { SectionCommentThread } from '@/components/view/SectionCommentThread';
+import { SectionCommentAnchor } from '@/components/view/SectionCommentThread';
 import { SectionItem, RiderType, ChannelData, StagePlotConfig } from '@/core/types/rider.types';
 import { ChannelInput } from '@/core/models/ChannelInput';
 import { SectionCommentItem } from '@/lib/share/comments';
@@ -185,7 +185,6 @@ export function DocumentEditorPanel({
           const isInputListSection = section.id === 'tech-inputlist';
           const isStagePlotSection = section.id === 'tech-stageplot' || section.iconName === 'map';
           const sectionNotes = sectionComments.filter((comment) => comment.sectionId === section.id);
-          const notesOpen = openCommentSectionId === section.id;
 
           return (
             <div
@@ -222,29 +221,15 @@ export function DocumentEditorPanel({
 
                 <div className="flex items-center gap-1 shrink-0">
                   {onToggleSectionComments && (
-                    <button
-                      type="button"
-                      onClick={() => onToggleSectionComments(section.id)}
-                      className={`relative w-9 h-9 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
-                        sectionNotes.length > 0
-                          ? 'text-violet-700 bg-violet-50 border-violet-200'
-                          : 'text-violet-600 bg-white border-violet-200 hover:bg-violet-50'
-                      }`}
-                      title={sectionNotes.length > 0 ? `${sectionNotes.length} notas` : 'Notas de la sección'}
-                      aria-label={
-                        sectionNotes.length > 0
-                          ? `${sectionNotes.length} notas en "${section.title}"`
-                          : `Notas de "${section.title}"`
-                      }
-                      aria-expanded={notesOpen}
-                    >
-                      <Icon name="messageSquare" className="w-4 h-4" />
-                      {sectionNotes.length > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-violet-600 text-white text-[9px] font-bold leading-4 text-center">
-                          {sectionNotes.length}
-                        </span>
-                      )}
-                    </button>
+                    <SectionCommentAnchor
+                      open={openCommentSectionId === section.id}
+                      title={section.title}
+                      comments={sectionNotes}
+                      authorName={commentAuthorName}
+                      canWrite={Boolean(readOnly && onSubmitSectionComment)}
+                      onToggle={() => onToggleSectionComments(section.id)}
+                      onSubmit={(authorName, body) => onSubmitSectionComment?.(section.id, authorName, body) ?? Promise.resolve()}
+                    />
                   )}
                   {readOnly ? (
                     <button
@@ -319,15 +304,6 @@ export function DocumentEditorPanel({
                     + Redactar
                   </span>
                 </div>
-              )}
-
-              {notesOpen && onToggleSectionComments && (
-                <SectionCommentThread
-                  comments={sectionNotes}
-                  authorName={commentAuthorName}
-                  canWrite={Boolean(readOnly && onSubmitSectionComment)}
-                  onSubmit={(authorName, body) => onSubmitSectionComment?.(section.id, authorName, body) ?? Promise.resolve()}
-                />
               )}
 
               {/* Render de Input List interactivo para sección técnica 05 */}
