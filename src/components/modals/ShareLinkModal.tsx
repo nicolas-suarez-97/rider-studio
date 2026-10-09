@@ -1,28 +1,61 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 
 interface ShareLinkModalProps {
   url: string | null;
   onClose: () => void;
+  onNotify?: (message: string) => void;
 }
 
-export function ShareLinkModal({ url, onClose }: ShareLinkModalProps) {
-  const [copied, setCopied] = useState(false);
+function copyWithCommand(text: string) {
+  const field = document.createElement('textarea');
+  field.value = text;
+  field.setAttribute('readonly', '');
+  field.style.position = 'fixed';
+  field.style.top = '0';
+  field.style.left = '0';
+  field.style.opacity = '0';
+  document.body.appendChild(field);
+  field.focus();
+  field.select();
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } catch {
+    copied = false;
+  }
+  field.remove();
+  return copied;
+}
 
-  useEffect(() => {
+async function writeToClipboard(text: string) {
+  if (copyWithCommand(text)) return true;
+
+  try {
+    if (!navigator.clipboard?.writeText) return false;
+    await Promise.race([
+      navigator.clipboard.writeText(text),
+      new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error('clipboard-timeout')), 700);
+      }),
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function ShareLinkModal({ url, onClose, onNotify }: ShareLinkModalProps) {
+  const [status, setStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+
+  const copyLink = async () => {
     if (!url) return;
-    let active = true;
-    navigator.clipboard.writeText(url).then(() => {
-      if (active) setCopied(true);
-    }).catch(() => {
-      if (active) setCopied(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [url]);
+    const copied = await writeToClipboard(url);
+    setStatus(copied ? 'copied' : 'error');
+    onNotify?.(copied ? 'Enlace copiado' : 'No se pudo copiar el enlace');
+  };
 
   return (
     <AnimatePresence>
@@ -66,14 +99,18 @@ export function ShareLinkModal({ url, onClose }: ShareLinkModalProps) {
               />
               <button
                 type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(url).then(() => setCopied(true)).catch(() => setCopied(false));
-                }}
+                onClick={copyLink}
                 className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0"
               >
-                {copied ? 'Copiado' : 'Copiar'}
+                Copiar
               </button>
             </div>
+            {status === 'copied' && (
+              <p className="mt-3 text-xs font-semibold text-emerald-600">Enlace copiado</p>
+            )}
+            {status === 'error' && (
+              <p className="mt-3 text-xs font-semibold text-rose-600">No se pudo copiar el enlace</p>
+            )}
           </motion.div>
         </motion.div>
       )}

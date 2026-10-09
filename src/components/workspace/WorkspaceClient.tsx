@@ -80,10 +80,12 @@ export function WorkspaceClient({
   const [isAgentThinking, setIsAgentThinking] = useState(false);
 
   const isFirstMount = useRef(true);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMessage(null), 3500);
   }, []);
 
   // Persistir en local storage el último rider visto
@@ -614,7 +616,11 @@ export function WorkspaceClient({
         onUpdateStagePlot={handleUpdateStagePlot}
       />
 
-      <ShareLinkModal url={shareUrl} onClose={() => setShareUrl(null)} />
+      <ShareLinkModal
+        url={shareUrl}
+        onClose={() => setShareUrl(null)}
+        onNotify={showToast}
+      />
     </div>
   );
 }
