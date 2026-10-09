@@ -97,7 +97,7 @@ export function Header({
             <Link
               href="/workspace?type=tecnico"
               prefetch={false}
-              className="bg-violet-600 hover:bg-violet-700 text-white px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1 sm:gap-1.5 active:scale-95 shrink-0"
+              className="bg-violet-600 hover:bg-violet-700 text-white h-8 px-2.5 sm:px-4 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1 sm:gap-1.5 active:scale-95 shrink-0"
             >
               <Icon name="plus" className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Nuevo Rider</span>
