@@ -164,7 +164,7 @@ export function WorkspaceClient({
 
     const sessionQuery = currentSessionId ? `&session=${currentSessionId}` : '';
     const idQuery = updated.id ? `&id=${updated.id}` : '';
-    router.replace(`/workspace?type=${type}${idQuery}${sessionQuery}`);
+    router.replace(`/artista/workspace?type=${type}${idQuery}${sessionQuery}`);
     showToast(`✨ Cambiado a Módulo ${type.toUpperCase()} (${updated.artistName || 'Mismo Artista'})`);
   };
 
@@ -197,7 +197,7 @@ export function WorkspaceClient({
       }
 
       const sessionQuery = currentSessionId ? `&session=${currentSessionId}` : '';
-      const newUrl = `/workspace?id=${saved.id}${sessionQuery}`;
+      const newUrl = `/artista/workspace?id=${saved.id}${sessionQuery}`;
       if (typeof window !== 'undefined') {
         window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
       }

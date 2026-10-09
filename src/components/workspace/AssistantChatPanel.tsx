@@ -138,7 +138,7 @@ export function AssistantChatPanel({
             </div>
             {!consultMode && (
             <Link
-              href={sessionId ? `/chat?session=${sessionId}` : rider.id ? `/chat?riderId=${rider.id}` : '/chat'}
+              href={sessionId ? `/artista/chat?session=${sessionId}` : rider.id ? `/artista/chat?riderId=${rider.id}` : '/artista/chat'}
               className="text-[10px] font-bold text-violet-700 hover:text-violet-900 bg-white hover:bg-violet-100 px-2.5 py-1 rounded-xl border border-violet-200/60 transition-colors shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
               title="Abrir esta conversación en pantalla completa"
             >

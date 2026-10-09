@@ -18,7 +18,7 @@ export function SavedRidersGrid({
   onDeleteRider,
   onNewRider
 }: SavedRidersGridProps) {
-  const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed'>('in_progress');
 
   const filteredRiders = riders.filter((r) => {
     if (filter === 'all') return true;
@@ -79,13 +79,13 @@ export function SavedRidersGrid({
               + Crear Rider Técnico
             </button>
             <Link
-              href="/workspace?type=hospitality"
+              href="/artista/workspace?type=hospitality"
               className="bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200/80 px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer active:scale-95"
             >
               + Hospitality
             </Link>
             <Link
-              href="/workspace?type=seguridad"
+              href="/artista/workspace?type=seguridad"
               className="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/80 px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer active:scale-95"
             >
               + Seguridad
@@ -151,7 +151,7 @@ export function SavedRidersGrid({
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                     {rider.linkedSessions && rider.linkedSessions.length > 0 ? (
                       <Link
-                        href={`/chat?session=${rider.linkedSessions[0].id}`}
+                        href={`/artista/chat?session=${rider.linkedSessions[0].id}`}
                         onClick={(e) => e.stopPropagation()}
                         className="text-xs font-bold text-violet-700 hover:text-violet-900 bg-violet-50 hover:bg-violet-100 px-2.5 py-1 rounded-xl transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer border border-violet-200/50"
                         title="Ver conversación asociada"
@@ -162,7 +162,7 @@ export function SavedRidersGrid({
                       </Link>
                     ) : (
                       <Link
-                        href={`/chat?riderId=${rider.id}`}
+                        href={`/artista/chat?riderId=${rider.id}`}
                         onClick={(e) => e.stopPropagation()}
                         className="text-xs font-bold text-slate-500 hover:text-violet-600 hover:bg-violet-50 px-2 py-1 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
                         title="Iniciar nueva consulta sobre este rider"

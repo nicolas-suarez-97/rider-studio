@@ -266,8 +266,8 @@ export function buildContraLines(rider: Rider, answers: Record<string, ContraAns
 }
 
 export function sendBlockReason(lines: Pick<ContraLine, 'response' | 'offer' | 'note'>[]): string | null {
-  if (!lines.some((line) => line.response)) {
-    return 'Responde al menos un pedido antes de enviar.';
+  if (!lines.length || lines.some((line) => !line.response)) {
+    return 'Responde todas las secciones antes de enviar.';
   }
   if (lines.some((line) => line.response === 'alternativa' && !line.offer.trim())) {
     return 'Cada alternativa necesita una oferta.';

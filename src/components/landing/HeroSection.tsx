@@ -5,6 +5,7 @@ import { Icon } from '../common/Icon';
 
 interface HeroSectionProps {
   onSubmitPrompt: (prompt: string) => void;
+  onPromptChange?: (prompt: string) => void;
 }
 
 const QUICK_PROMPTS = [
@@ -14,8 +15,13 @@ const QUICK_PROMPTS = [
   { label: '🛡️ Seguridad Masivo', query: 'Protocolo de seguridad, aforos, salidas de emergencia y ambulancias para festival de 5.000 personas.' },
 ];
 
-export function HeroSection({ onSubmitPrompt }: HeroSectionProps) {
+export function HeroSection({ onSubmitPrompt, onPromptChange }: HeroSectionProps) {
   const [prompt, setPrompt] = useState('');
+
+  const updatePrompt = (value: string) => {
+    setPrompt(value);
+    onPromptChange?.(value);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +30,7 @@ export function HeroSection({ onSubmitPrompt }: HeroSectionProps) {
   };
 
   const handleQuickPrompt = (query: string) => {
-    setPrompt(query);
+    updatePrompt(query);
     onSubmitPrompt(query);
   };
 
@@ -58,7 +64,7 @@ export function HeroSection({ onSubmitPrompt }: HeroSectionProps) {
           <input
             type="text"
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) => updatePrompt(e.target.value)}
             placeholder="Describe tu banda o requerimiento técnico (ej: 5 integrantes, in-ears, backline)..."
             className="flex-1 bg-transparent text-base sm:text-sm text-slate-800 placeholder-slate-400 outline-none font-medium min-w-0"
           />

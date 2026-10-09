@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/common/Header';
+import { Icon } from '@/components/common/Icon';
 import { Toast } from '@/components/common/Toast';
-import { HeroSection } from '@/components/landing/HeroSection';
 import { RecentChatsCard } from '@/components/landing/RecentChatsCard';
 import { SavedRidersGrid } from '@/components/landing/SavedRidersGrid';
 import { riderService } from '@/core/services/rider.service';
@@ -83,12 +83,12 @@ export function LandingClient({ initialRiders, initialConversations }: LandingCl
 
   const handleSelectType = (type: RiderType) => {
     showToast(`✨ Abriendo plantilla en blanco de Rider ${type.toUpperCase()}...`);
-    router.push(`/workspace?type=${type}`);
+    router.push(`/artista/workspace?type=${type}`);
   };
 
   const handleOpenRider = (rider: SavedRiderSummary) => {
     showToast(`Cargando rider de "${rider.artist}"...`);
-    router.push(`/workspace?id=${rider.id}`);
+    router.push(`/artista/workspace?id=${rider.id}`);
   };
 
   const handleDeleteRider = async (riderId: string, e?: React.MouseEvent) => {
@@ -106,11 +106,11 @@ export function LandingClient({ initialRiders, initialConversations }: LandingCl
   };
 
   const handleSelectConversation = (convId: string) => {
-    router.push(`/chat?session=${convId}`);
+    router.push(`/artista/chat?session=${convId}`);
   };
 
   const handleNewConversation = () => {
-    router.push('/chat');
+    router.push('/artista/chat');
   };
 
   const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
@@ -131,10 +131,6 @@ export function LandingClient({ initialRiders, initialConversations }: LandingCl
     }
   };
 
-  const handleSubmitPrompt = (prompt: string) => {
-    router.push(`/chat?prompt=${encodeURIComponent(prompt)}`);
-  };
-
   return (
     <div className="min-h-dvh bg-[#f8f9fa] text-zinc-900 flex flex-col font-sans antialiased pb-12 relative overflow-hidden">
       {/* Sutil halo de iluminación ambiental de escenario */}
@@ -148,7 +144,22 @@ export function LandingClient({ initialRiders, initialConversations }: LandingCl
       <Header pageType="landing" />
 
       <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-6 space-y-6 sm:space-y-8">
-        <HeroSection onSubmitPrompt={handleSubmitPrompt} />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">En curso</h1>
+            <p className="text-sm text-slate-500 font-medium">
+              Asistente, riders en progreso y conversaciones recientes.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleNewConversation}
+            className="bg-violet-600 hover:bg-violet-700 text-white h-9 px-4 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1.5 active:scale-95 shrink-0 w-fit cursor-pointer"
+          >
+            <Icon name="sparkles" className="w-3.5 h-3.5" />
+            Asistente
+          </button>
+        </div>
 
         <RecentChatsCard
           conversations={conversations}

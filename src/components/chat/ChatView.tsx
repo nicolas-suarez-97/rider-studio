@@ -305,7 +305,7 @@ export function ChatView({
                     </span>
                   </div>
                   <Link
-                    href={`/workspace?id=${activeSession.riderInfo.id}${currentSessionId ? `&session=${currentSessionId}` : ''}`}
+                    href={`/artista/workspace?id=${activeSession.riderInfo.id}${currentSessionId ? `&session=${currentSessionId}` : ''}`}
                     className="ml-0.5 sm:ml-1 text-[10px] sm:text-[11px] font-bold text-violet-700 hover:text-violet-900 bg-white hover:bg-violet-100 px-1.5 sm:px-2 py-0.5 rounded-lg transition-all flex items-center gap-0.5 shadow-xs border border-violet-200/60 shrink-0"
                     title="Abrir este rider en Workspace 3 Paneles"
                   >

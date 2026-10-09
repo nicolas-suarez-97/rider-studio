@@ -14,11 +14,13 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 interface PageProps {
   params: Promise<{ showId: string }>;
+  searchParams: Promise<{ prompt?: string }>;
 }
 
-async function ContraRiderServer({ params }: PageProps) {
+async function ContraRiderServer({ params, searchParams }: PageProps) {
   await connection();
   const { showId } = await params;
+  const { prompt } = await searchParams;
   if (!UUID_PATTERN.test(showId)) notFound();
 
   const show = await loadPromotorShow(showId);
@@ -31,6 +33,7 @@ async function ContraRiderServer({ params }: PageProps) {
       initialRiderData={show.rider}
       initialContra={show.contra}
       initialAssistant={show.assistant}
+      initialPrompt={prompt?.trim() || null}
     />
   );
 }

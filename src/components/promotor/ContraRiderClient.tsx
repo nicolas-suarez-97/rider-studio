@@ -47,6 +47,7 @@ interface ContraRiderClientProps {
   initialRiderData: ConstructorParameters<typeof Rider>[0];
   initialContra: ContraMeta;
   initialAssistant: AssistantMeta;
+  initialPrompt?: string | null;
 }
 
 const RESPONSE_CHOICES: { value: Exclude<ContraResponse, ''>; label: string; activeClass: string }[] = [
@@ -87,6 +88,7 @@ export function ContraRiderClient({
   initialRiderData,
   initialContra,
   initialAssistant,
+  initialPrompt = null,
 }: ContraRiderClientProps) {
   const [rider, setRider] = useState<Rider>(() => new Rider(initialRiderData));
   const [lines, setLines] = useState<ContraLine[]>(initialContra.lines);
@@ -115,6 +117,7 @@ export function ContraRiderClient({
   const requestId = useRef(0);
   const linesRef = useRef(lines);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const prompted = useRef(false);
   linesRef.current = lines;
 
   const readableTypes = rider.getReadableTypes();
@@ -122,6 +125,7 @@ export function ContraRiderClient({
   const blockReason = sendBlockReason(lines);
   const cross = useMemo(() => crossFromMessages(assistantMessages), [assistantMessages]);
   const answered = lines.filter((line) => line.response).length;
+  const reviewedPercent = lines.length ? Math.round((answered / lines.length) * 100) : 0;
   const lineNumbers = useMemo(() => {
     const map: Record<string, string> = {};
     lines.forEach((line, index) => {
@@ -290,6 +294,16 @@ export function ContraRiderClient({
       setIsThinking(false);
     }
   };
+
+  useEffect(() => {
+    if (!initialPrompt || prompted.current) return;
+    prompted.current = true;
+    const clean = `/promotor/shows/${showId}/contra-rider`;
+    window.history.replaceState({ ...window.history.state, as: clean, url: clean }, '', clean);
+    void askAssistant(initialPrompt);
+    // Se consume una sola vez al entrar con ?prompt=
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt, showId]);
 
   const openInventory = () => {
     if (isThinking || inventoryOpen) return;
@@ -569,9 +583,11 @@ export function ContraRiderClient({
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full">
                     {statusLabel}
                   </span>
-                  <span className="text-[11px] font-semibold text-slate-400">
-                    {saveState === 'saving' ? 'Guardando…' : saveState === 'saved' ? 'Borrador guardado' : saveState === 'error' ? 'Sin guardar' : `${answered}/${lines.length} respondidos`}
-                  </span>
+                  {saveState !== 'idle' ? (
+                    <span className="text-[11px] font-semibold text-slate-400">
+                      {saveState === 'saving' ? 'Guardando…' : saveState === 'saved' ? 'Borrador guardado' : 'Sin guardar'}
+                    </span>
+                  ) : null}
                 </div>
                 <h1 className="mt-2 text-xl sm:text-2xl font-black tracking-tight text-slate-900 truncate">
                   {rider.artistName || 'Artista'}
@@ -668,22 +684,37 @@ export function ContraRiderClient({
                 El envío congela esta versión. El rider del artista no cambia.
               </p>
             )}
-            {!inventoryOpen ? <div className="mt-3 flex gap-1.5 overflow-x-auto no-scrollbar">
-              {MODULE_FILTERS.filter((filter) => filter.id === 'todos' || readableTypes.includes(filter.id)).map((filter) => (
-                <button
-                  key={filter.id}
-                  type="button"
-                  onClick={() => setModuleFilter(filter.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold border shrink-0 cursor-pointer active:scale-95 transition-all ${
-                    moduleFilter === filter.id
-                      ? 'bg-slate-900 text-white border-slate-900'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div> : null}
+            {!inventoryOpen ? (
+              <div className="mt-3 flex items-center gap-3">
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+                  {MODULE_FILTERS.filter((filter) => filter.id === 'todos' || readableTypes.includes(filter.id)).map((filter) => (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => setModuleFilter(filter.id)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border shrink-0 cursor-pointer active:scale-95 transition-all ${
+                        moduleFilter === filter.id
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="ml-auto flex items-center gap-2 min-w-0 w-36 sm:w-48" aria-label="Secciones revisadas">
+                  <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${reviewedPercent === 100 ? 'bg-emerald-500' : 'bg-violet-600'}`}
+                      style={{ width: `${reviewedPercent}%` }}
+                    />
+                  </div>
+                  <span className={`text-[11px] font-bold whitespace-nowrap ${reviewedPercent === 100 ? 'text-emerald-700' : 'text-slate-600'}`}>
+                    {answered}/{lines.length}
+                  </span>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {inventoryOpen ? (

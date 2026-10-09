@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Rider Studio — Stage & Production Intelligence",
-  description: "Plataforma inteligente para la creación y gestión de Riders Técnicos, Hospitality y Seguridad para eventos en vivo.",
+  description: "Crea, valida y estandariza riders técnicos, hospitality y protocolos de seguridad con agentes de producción especializados.",
 };
 
 export const viewport: Viewport = {

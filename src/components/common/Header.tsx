@@ -7,7 +7,7 @@ import { Icon } from './Icon';
 import { RiderType, ExportScope } from '@/core/types/rider.types';
 
 interface HeaderProps {
-  pageType: 'landing' | 'workspace' | 'chat' | 'view' | 'promotor';
+  pageType: 'gate' | 'landing' | 'workspace' | 'chat' | 'view' | 'promotor' | 'promotor-home';
   riderType?: RiderType;
   onSelectRiderType?: (type: RiderType) => void;
   completedCount?: number;
@@ -53,6 +53,13 @@ export function Header({
     }
   };
 
+  const homeHref =
+    pageType === 'promotor' || pageType === 'promotor-home'
+      ? '/promotor'
+      : pageType === 'gate' || pageType === 'view'
+        ? '/'
+        : '/artista';
+
   return (
     <div className="sticky top-0 z-40 shrink-0 w-full flex flex-col">
       {/* ========================================================
@@ -61,7 +68,7 @@ export function Header({
       <header className="h-14 sm:h-16 px-3 sm:px-6 md:px-10 flex items-center justify-between border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
         {/* Logo de Marca */}
         <Link 
-          href="/"
+          href={homeHref}
           prefetch={false}
           className="flex items-center gap-2 group active:scale-95 transition-transform shrink-0"
         >
@@ -104,15 +111,15 @@ export function Header({
                 </Link>
               ) : null}
             </div>
-          ) : pageType === 'promotor' ? (
+          ) : pageType === 'promotor' || pageType === 'promotor-home' ? (
             <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
               Promotor
             </span>
-          ) : (
+          ) : pageType === 'gate' ? null : (
             <>
           <nav className="flex items-center gap-1 sm:gap-2 mr-0.5 sm:mr-1" aria-label="Navegación principal">
             <Link
-              href="/chat"
+              href="/artista/chat"
               prefetch={false}
               aria-label="Asistente IA"
               title="Asistente IA"
@@ -125,7 +132,7 @@ export function Header({
               <Icon name="sparkles" className="w-4 h-4" />
             </Link>
             <Link
-              href="/workspace?type=tecnico"
+              href="/artista/workspace?type=tecnico"
               prefetch={false}
               className="bg-violet-600 hover:bg-violet-700 text-white h-7 sm:h-8 px-2.5 sm:px-4 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1 sm:gap-1.5 active:scale-95 shrink-0"
             >

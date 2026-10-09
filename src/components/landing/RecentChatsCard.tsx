@@ -42,7 +42,7 @@ export function RecentChatsCard({
   const router = useRouter();
 
   const handleLaunchPrompt = (prompt: string) => {
-    router.push(`/chat?prompt=${encodeURIComponent(prompt)}`);
+    router.push(`/artista/chat?prompt=${encodeURIComponent(prompt)}`);
   };
 
   return (

@@ -57,6 +57,10 @@ export async function getChatSessions(): Promise<DbChatSessionWithRider[]> {
   return chatRepository.getSessions();
 }
 
+export async function getConsultSessions(): Promise<DbChatSessionWithRider[]> {
+  return chatRepository.getConsultSessions();
+}
+
 export async function updateChatSession(
   id: string,
   updates: UpdateChatSessionInput

@@ -33,6 +33,7 @@ export interface UpdateChatSessionInput {
 
 export interface IChatRepository {
   getSessions(): Promise<DbChatSessionWithRider[]>;
+  getConsultSessions(): Promise<DbChatSessionWithRider[]>;
   updateSession(id: string, updates: UpdateChatSessionInput): Promise<DbChatSessionWithRider | null>;
   getOrCreateSession(sessionId?: string, riderId?: string, title?: string, activeAgent?: string): Promise<DbChatSession>;
   openConsultSession(sessionId: string | undefined, riderId: string, title: string, activeAgent: string): Promise<DbChatSession>;
@@ -72,6 +73,27 @@ export class ChatRepository implements IChatRepository {
       }
     }
     return Object.values(memorySessions).filter((session) => isOwnerChatSession(session));
+  }
+
+  public async getConsultSessions(): Promise<DbChatSessionWithRider[]> {
+    if (isSupabaseServerConfigured()) {
+      const supabase = await createServerSupabaseClient();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('chat_sessions')
+          .select('*, riders(id, title, artist_name, rider_type)')
+          .like('title', 'consulta:%')
+          .neq('active_agent', 'archived')
+          .order('updated_at', { ascending: false });
+
+        if (!error && data) {
+          return data as unknown as DbChatSessionWithRider[];
+        }
+      }
+    }
+    return Object.values(memorySessions).filter(
+      (session) => session.title?.startsWith('consulta:') && session.active_agent !== 'archived'
+    );
   }
 
   public async updateSession(

@@ -141,7 +141,7 @@ export function ChatClient({
 
       if (data.sessionId && data.sessionId !== currentSessionId) {
         setCurrentSessionId(data.sessionId);
-        router.replace(`/chat?session=${data.sessionId}`);
+        router.replace(`/artista/chat?session=${data.sessionId}`);
       }
 
       const refreshed = await chatService.getSessions();
@@ -214,7 +214,7 @@ export function ChatClient({
 
   const handleSelectSession = (sessionId: string) => {
     setCurrentSessionId(sessionId);
-    router.replace(`/chat?session=${sessionId}`);
+    router.replace(`/artista/chat?session=${sessionId}`);
     showToast('Cargando conversación...');
   };
 
@@ -227,7 +227,7 @@ export function ChatClient({
       setSessions(prev => [newSession, ...prev.filter(s => s.id !== newSession.id)]);
       setCurrentSessionId(newSession.id);
       setMessages([]);
-      router.replace(`/chat?session=${newSession.id}`);
+      router.replace(`/artista/chat?session=${newSession.id}`);
       showToast('✨ Nueva conversación creada');
     } catch (err) {
       console.error('Error creating new session', err);
@@ -270,7 +270,7 @@ export function ChatClient({
         });
         targetSessionId = newSession.id;
         setCurrentSessionId(newSession.id);
-        router.replace(`/chat?session=${newSession.id}`);
+        router.replace(`/artista/chat?session=${newSession.id}`);
       } catch (e) {
         console.warn('Could not auto-create session', e);
       }
@@ -305,7 +305,7 @@ export function ChatClient({
           });
           targetSessionId = newSession.id;
           setCurrentSessionId(newSession.id);
-          router.replace(`/chat?session=${newSession.id}`);
+          router.replace(`/artista/chat?session=${newSession.id}`);
         } else {
           await chatService.linkRider(targetSessionId, saved.id);
         }
