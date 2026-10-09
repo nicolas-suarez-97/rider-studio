@@ -46,30 +46,29 @@ export function RecentChatsCard({
   };
 
   return (
-    <div className="w-full pt-1">
-      <div className="bg-white/90 backdrop-blur-md rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] space-y-4">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center font-bold shrink-0">
-              <Icon name="messageSquare" className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900 leading-tight">
-                Conversaciones y Consultas IA
-              </h3>
-              <p className="text-xs text-slate-500 font-medium">
-                Retoma una conversación con los agentes de producción ({conversations.length})
-              </p>
-            </div>
+    <div className="w-full space-y-4 pt-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200/90 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-xs shrink-0">
+            <Icon name="messageSquare" className="w-4 h-4" />
           </div>
-          <button
-            onClick={onNewConversation}
-            className="text-xs font-bold text-violet-700 hover:text-violet-900 bg-violet-50 hover:bg-violet-100 px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-xs border border-violet-200/60"
-          >
-            <Icon name="plus" className="w-3.5 h-3.5" />
-            <span>Nuevo Chat</span>
-          </button>
+          <h2 className="text-base sm:text-lg font-black text-slate-900">
+            Conversaciones Recientes
+          </h2>
+          <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200/60">
+            {conversations.length}
+          </span>
         </div>
+        <button
+          onClick={onNewConversation}
+          className="text-xs font-bold text-violet-700 hover:text-violet-900 bg-violet-50 hover:bg-violet-100 px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-xs border border-violet-200/60"
+        >
+          <Icon name="plus" className="w-3.5 h-3.5" />
+          <span>Nuevo Chat</span>
+        </button>
+      </div>
+
+      <div className="bg-white/90 backdrop-blur-md rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] space-y-4">
 
         {conversations.length === 0 ? (
           <div className="space-y-3 pt-1">
