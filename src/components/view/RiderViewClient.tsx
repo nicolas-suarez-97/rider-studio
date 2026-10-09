@@ -264,7 +264,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
             mobileTab === 'assistant' ? 'text-violet-600 bg-violet-50 font-bold' : 'text-slate-400 font-medium'
           }`}
         >
-          <Icon name="messageSquare" className="w-4 h-4" />
+          <Icon name="sparkles" className="w-4 h-4" />
           <span className="text-[10px] leading-tight">Consulta</span>
         </button>
       </nav>

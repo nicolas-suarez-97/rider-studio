@@ -225,10 +225,10 @@ export function DocumentEditorPanel({
                     <button
                       type="button"
                       onClick={() => onToggleSectionComments(section.id)}
-                      className={`relative w-9 h-9 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                      className={`relative w-9 h-9 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                         sectionNotes.length > 0
-                          ? 'text-violet-600 bg-violet-50'
-                          : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
+                          ? 'text-violet-700 bg-violet-50 border-violet-200'
+                          : 'text-violet-600 bg-white border-violet-200 hover:bg-violet-50'
                       }`}
                       title={sectionNotes.length > 0 ? `${sectionNotes.length} notas` : 'Notas de la sección'}
                       aria-label={

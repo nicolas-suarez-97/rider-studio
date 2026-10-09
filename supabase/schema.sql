@@ -51,6 +51,12 @@ BEGIN
 
     ALTER TABLE public.rider_section_comments ENABLE ROW LEVEL SECURITY;
 
+    EXECUTE 'DROP POLICY IF EXISTS "Public Read Section Comments" ON public.rider_section_comments';
+    EXECUTE 'CREATE POLICY "Public Read Section Comments" ON public.rider_section_comments FOR SELECT USING (true)';
+
+    EXECUTE 'DROP POLICY IF EXISTS "Public Insert Section Comments" ON public.rider_section_comments';
+    EXECUTE 'CREATE POLICY "Public Insert Section Comments" ON public.rider_section_comments FOR INSERT WITH CHECK (true)';
+
     -- 3. Tabla de Sesiones de Chat
     CREATE TABLE IF NOT EXISTS public.chat_sessions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
