@@ -24,6 +24,7 @@ interface HeaderProps {
   onOpenStagePlot?: () => void;
   onShare?: () => void;
   isSharing?: boolean;
+  contraRiderHref?: string;
   chatSessionId?: string | null;
   riderId?: string | null;
 }
@@ -41,7 +42,8 @@ export function Header({
   onExport,
   onOpenExportModal,
   onShare,
-  isSharing = false
+  isSharing = false,
+  contraRiderHref
 }: HeaderProps) {
   const openExport = () => {
     if (onOpenExportModal) {
@@ -59,7 +61,7 @@ export function Header({
       <header className="h-14 sm:h-16 px-3 sm:px-6 md:px-10 flex items-center justify-between border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
         {/* Logo de Marca */}
         <Link 
-          href={pageType === 'promotor' ? '/promotor' : '/'}
+          href="/"
           prefetch={false}
           className="flex items-center gap-2 group active:scale-95 transition-transform shrink-0"
         >
@@ -86,17 +88,26 @@ export function Header({
         {/* Acciones y Navegación Global */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {pageType === 'view' ? (
-            <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
-              Vista compartida
-            </span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
+                Vista compartida
+              </span>
+              {contraRiderHref ? (
+                <Link
+                  href={contraRiderHref}
+                  prefetch={false}
+                  className="bg-violet-600 hover:bg-violet-700 text-white h-7 sm:h-8 px-2.5 sm:px-4 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1.5 active:scale-95 shrink-0"
+                >
+                  <Icon name="fileCheck" className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Generar contra-rider</span>
+                  <span className="sm:hidden">Contra-rider</span>
+                </Link>
+              ) : null}
+            </div>
           ) : pageType === 'promotor' ? (
-            <Link
-              href="/promotor"
-              prefetch={false}
-              className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full"
-            >
+            <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
               Promotor
-            </Link>
+            </span>
           ) : (
             <>
           <nav className="flex items-center gap-1 sm:gap-2 mr-0.5 sm:mr-1" aria-label="Navegación principal">

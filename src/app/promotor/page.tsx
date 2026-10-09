@@ -1,11 +1,5 @@
-import type { Metadata } from 'next';
-import { PromotorInbox } from '@/components/promotor/PromotorInbox';
-
-export const metadata: Metadata = {
-  title: 'Promotor — Rider Studio',
-  robots: { index: false, follow: false },
-};
+import { redirect } from 'next/navigation';
 
 export default function PromotorPage() {
-  return <PromotorInbox />;
+  redirect('/');
 }

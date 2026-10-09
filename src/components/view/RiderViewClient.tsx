@@ -173,6 +173,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
         completedCount={readCount}
         totalCount={rider.sections.length}
         progressPercent={readPercent}
+        contraRiderHref={rider.id ? `/promotor/shows/${rider.id}/contra-rider` : undefined}
       />
 
       <div className="flex-1 flex overflow-hidden relative">

@@ -8,13 +8,7 @@ import {
   sendBlockReason,
 } from '@/lib/promotor/contra-rider';
 import { readShareLink } from '@/lib/repositories/rider.repository';
-import { getRiderById, getRiderByShareToken, saveContraRider } from '@/lib/services/rider-storage';
-
-export async function openShowFromShareToken(token: string) {
-  const row = await getRiderByShareToken(token);
-  if (!row) return null;
-  return { showId: row.id };
-}
+import { getRiderById, saveContraRider } from '@/lib/services/rider-storage';
 
 export async function loadPromotorShow(showId: string) {
   const row = await getRiderById(showId);

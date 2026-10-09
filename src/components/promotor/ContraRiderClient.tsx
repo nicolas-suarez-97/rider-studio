@@ -25,12 +25,11 @@ interface ContraRiderClientProps {
   initialContra: ContraMeta;
 }
 
-const RESPONSE_OPTIONS: { value: ContraResponse; label: string }[] = [
-  { value: '', label: 'Sin respuesta' },
-  { value: 'cubro', label: 'Cubro igual' },
-  { value: 'alternativa', label: 'Alternativa' },
-  { value: 'no_puedo', label: 'No puedo' },
-  { value: 'pregunta', label: 'Pregunta' },
+const RESPONSE_CHOICES: { value: Exclude<ContraResponse, ''>; label: string; activeClass: string }[] = [
+  { value: 'cubro', label: 'Cubro igual', activeClass: 'bg-emerald-600 text-white border-emerald-600' },
+  { value: 'alternativa', label: 'Alternativa', activeClass: 'bg-violet-600 text-white border-violet-600' },
+  { value: 'no_puedo', label: 'No puedo', activeClass: 'bg-rose-600 text-white border-rose-600' },
+  { value: 'pregunta', label: 'Pregunta', activeClass: 'bg-amber-500 text-white border-amber-500' },
 ];
 
 const MODULE_FILTERS: { id: 'todos' | RiderType; label: string }[] = [
@@ -39,14 +38,6 @@ const MODULE_FILTERS: { id: 'todos' | RiderType; label: string }[] = [
   { id: 'hospitality', label: 'Hospitality' },
   { id: 'seguridad', label: 'Seguridad' },
 ];
-
-function responseClass(response: ContraResponse): string {
-  if (response === 'cubro') return 'border-emerald-300 bg-emerald-50 text-emerald-800';
-  if (response === 'alternativa') return 'border-violet-300 bg-violet-50 text-violet-800';
-  if (response === 'no_puedo') return 'border-rose-300 bg-rose-50 text-rose-800';
-  if (response === 'pregunta') return 'border-amber-300 bg-amber-50 text-amber-800';
-  return 'border-slate-200 bg-white text-slate-700';
-}
 
 export function ContraRiderClient({ showId, initialRiderData, initialContra }: ContraRiderClientProps) {
   const [rider, setRider] = useState<Rider>(() => new Rider(initialRiderData));
@@ -204,82 +195,88 @@ export function ContraRiderClient({ showId, initialRiderData, initialContra }: C
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-3">
-            {visibleLines.map((line) => {
-              const needsOffer = line.response === 'alternativa' && !line.offer.trim();
-              const needsNote = line.response === 'no_puedo' && !line.note.trim();
+          <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4">
+            <div className="bg-white border border-slate-200/80 rounded-[28px] shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] divide-y divide-slate-100">
+            {visibleLines.map((line, index) => {
+              const detailLabel = line.response === 'alternativa'
+                ? 'Oferta'
+                : line.response === 'no_puedo'
+                  ? 'Motivo'
+                  : 'Pregunta';
+              const detailValue = line.response === 'alternativa' ? line.offer : line.note;
+              const detailPlaceholder = line.response === 'alternativa'
+                ? 'El equipo o la condición que propones'
+                : line.response === 'no_puedo'
+                  ? 'Por qué no se puede cumplir'
+                  : 'Qué dato te falta para responder';
               return (
-                <article
-                  key={line.id}
-                  className="bg-white border border-slate-200/80 rounded-3xl shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] p-4"
-                >
+                <article key={line.id} className="px-4 sm:px-5 py-5">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                        {line.moduleLabel}
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span className="mt-0.5 text-[11px] font-black tabular-nums text-slate-300">
+                        {String(index + 1).padStart(2, '0')}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => focusSection(line)}
-                        className="block text-left text-sm font-extrabold text-slate-900 hover:text-violet-700 cursor-pointer"
-                      >
-                        {line.sectionTitle}
-                      </button>
+                      <div className="min-w-0">
+                        <h2 className="text-sm font-extrabold text-slate-900 leading-snug">
+                          {line.sectionTitle}
+                        </h2>
+                        <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          {line.moduleLabel}
+                        </p>
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => focusSection(line)}
-                      className="shrink-0 text-[11px] font-bold text-violet-700 bg-violet-50 border border-violet-100 px-2.5 py-1 rounded-full cursor-pointer active:scale-95"
+                      className="shrink-0 mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-violet-700 cursor-pointer"
                     >
-                      Ver pedido
+                      <Icon name="eye" className="w-3.5 h-3.5" />
+                      Documento
                     </button>
                   </div>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-600 whitespace-pre-wrap line-clamp-4">
+                  <p className="mt-3 sm:ml-8 text-[13px] leading-relaxed text-slate-600 whitespace-pre-wrap line-clamp-3">
                     {line.pedido}
                   </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-[180px_1fr_1fr]">
-                    <label className="block">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Respuesta</span>
-                      <select
-                        value={line.response}
-                        onChange={(event) => updateLine(line.id, { response: event.target.value as ContraResponse })}
-                        className={`mt-1 w-full rounded-xl border px-2.5 py-2 text-xs font-bold outline-none cursor-pointer ${responseClass(line.response)}`}
-                      >
-                        {RESPONSE_OPTIONS.map((option) => (
-                          <option key={option.value || 'empty'} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="block">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Oferta</span>
-                      <textarea
-                        value={line.offer}
-                        onChange={(event) => updateLine(line.id, { offer: event.target.value })}
-                        rows={2}
-                        placeholder={line.response === 'alternativa' ? 'Qué ofreces en su lugar' : 'Opcional'}
-                        className={`mt-1 w-full resize-none rounded-xl border px-2.5 py-2 text-xs font-medium text-slate-800 outline-none focus:border-violet-500 ${
-                          needsOffer ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50/60'
-                        }`}
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Nota</span>
-                      <textarea
-                        value={line.note}
-                        onChange={(event) => updateLine(line.id, { note: event.target.value })}
-                        rows={2}
-                        placeholder={line.response === 'no_puedo' ? 'Por qué no se puede cumplir' : 'Opcional'}
-                        className={`mt-1 w-full resize-none rounded-xl border px-2.5 py-2 text-xs font-medium text-slate-800 outline-none focus:border-violet-500 ${
-                          needsNote ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50/60'
-                        }`}
-                      />
-                    </label>
+                  <div className="mt-4 sm:ml-8 flex flex-wrap gap-1.5">
+                    {RESPONSE_CHOICES.map((choice) => {
+                      const selected = line.response === choice.value;
+                      return (
+                        <button
+                          key={choice.value}
+                          type="button"
+                          onClick={() => updateLine(line.id, { response: selected ? '' : choice.value })}
+                          className={`h-8 px-3 rounded-full border text-xs font-bold cursor-pointer active:scale-95 transition-colors ${
+                            selected
+                              ? choice.activeClass
+                              : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-800'
+                          }`}
+                        >
+                          {choice.label}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {line.response && line.response !== 'cubro' ? (
+                    <label className="mt-3 sm:ml-8 block">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{detailLabel}</span>
+                      <textarea
+                        value={detailValue}
+                        onChange={(event) => updateLine(
+                          line.id,
+                          line.response === 'alternativa'
+                            ? { offer: event.target.value }
+                            : { note: event.target.value }
+                        )}
+                        rows={2}
+                        placeholder={detailPlaceholder}
+                        className="mt-1.5 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm font-medium text-slate-800 outline-none focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10"
+                      />
+                    </label>
+                  ) : null}
                 </article>
               );
             })}
+            </div>
           </div>
 
           <div className="shrink-0 border-t border-slate-200/80 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
