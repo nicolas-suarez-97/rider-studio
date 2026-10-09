@@ -40,6 +40,7 @@ export interface IRiderRepository {
   getById(id: string): Promise<DbRiderWithSessions | null>;
   getByShareToken(token: string): Promise<DbRider | null>;
   publishShare(id: string): Promise<ShareLink | null>;
+  saveContraRider(id: string, contraRider: Json): Promise<DbRider | null>;
   save(rider: SaveRiderInput): Promise<DbRider>;
   delete(id: string): Promise<boolean>;
 }
@@ -254,14 +255,53 @@ export class RiderRepository implements IRiderRepository {
     };
   }
 
+  public async saveContraRider(id: string, contraRider: Json): Promise<DbRider | null> {
+    const rider = await this.getById(id);
+    if (!rider || !readShareLink(rider)?.enabled) return null;
+
+    const now = new Date().toISOString();
+    const base = asMetadataRecord(rider.metadata) ?? {};
+    const metadata: Json = { ...base, contraRider };
+    const next: DbRider = { ...rider, metadata, updated_at: now };
+
+    if (isSupabaseServerConfigured()) {
+      const supabase = await createServerSupabaseClient();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('riders')
+          .update({ metadata, updated_at: now })
+          .eq('id', id)
+          .select('*')
+          .maybeSingle();
+
+        if (!error && data) {
+          const existingIdx = memoryRiders.findIndex((row) => row.id === id);
+          if (existingIdx >= 0) memoryRiders[existingIdx] = data;
+          return data;
+        }
+        if (error) console.warn('[Supabase saveContraRider]', error);
+      }
+    }
+
+    const existingIdx = memoryRiders.findIndex((row) => row.id === id);
+    if (existingIdx < 0) return null;
+    memoryRiders[existingIdx] = next;
+    return next;
+  }
+
   public async save(rider: SaveRiderInput): Promise<DbRider> {
     const now = new Date().toISOString();
     const id = rider.id || crypto.randomUUID();
     const existing = rider.id ? await this.getById(rider.id) : null;
     const existingShare = existing ? readShareLink(existing) : null;
-    const metadata = existingShare
-      ? metadataWithShare(rider.metadata ?? {}, existingShare)
+    const previousMeta = asMetadataRecord(existing?.metadata);
+    const incomingMeta = asMetadataRecord(rider.metadata ?? {}) ?? {};
+    const metadataBase: Json = previousMeta?.contraRider
+      ? { ...incomingMeta, contraRider: previousMeta.contraRider }
       : (rider.metadata ?? {});
+    const metadata = existingShare
+      ? metadataWithShare(metadataBase, existingShare)
+      : metadataBase;
 
     const record: DbRider = {
       id,

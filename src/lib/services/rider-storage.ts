@@ -4,6 +4,7 @@ import {
   DbRiderWithSessions,
   SaveRiderInput
 } from '@/lib/repositories/rider.repository';
+import { Json } from '@/lib/supabase/database.types';
 import {
   chatRepository,
   DbChatSession,
@@ -38,6 +39,10 @@ export async function getRiderByShareToken(token: string): Promise<DbRider | nul
 
 export async function publishRiderShare(id: string) {
   return riderRepository.publishShare(id);
+}
+
+export async function saveContraRider(id: string, contraRider: Json) {
+  return riderRepository.saveContraRider(id, contraRider);
 }
 
 export async function saveRider(rider: SaveRiderInput): Promise<DbRider> {

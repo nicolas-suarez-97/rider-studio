@@ -7,7 +7,7 @@ import { Icon } from './Icon';
 import { RiderType, ExportScope } from '@/core/types/rider.types';
 
 interface HeaderProps {
-  pageType: 'landing' | 'workspace' | 'chat' | 'view';
+  pageType: 'landing' | 'workspace' | 'chat' | 'view' | 'promotor';
   riderType?: RiderType;
   onSelectRiderType?: (type: RiderType) => void;
   completedCount?: number;
@@ -59,7 +59,7 @@ export function Header({
       <header className="h-14 sm:h-16 px-3 sm:px-6 md:px-10 flex items-center justify-between border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
         {/* Logo de Marca */}
         <Link 
-          href="/"
+          href={pageType === 'promotor' ? '/promotor' : '/'}
           prefetch={false}
           className="flex items-center gap-2 group active:scale-95 transition-transform shrink-0"
         >
@@ -89,6 +89,14 @@ export function Header({
             <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
               Vista compartida
             </span>
+          ) : pageType === 'promotor' ? (
+            <Link
+              href="/promotor"
+              prefetch={false}
+              className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full"
+            >
+              Promotor
+            </Link>
           ) : (
             <>
           <nav className="flex items-center gap-1 sm:gap-2 mr-0.5 sm:mr-1" aria-label="Navegación principal">
@@ -127,7 +135,7 @@ export function Header({
       {/* ========================================================
           2. SUBHEADER: Herramientas contextuales de Workspace
          ======================================================== */}
-      {(pageType === 'workspace' || pageType === 'view') && (
+      {(pageType === 'workspace' || pageType === 'view' || pageType === 'promotor') && (
         <>
         <div className="h-12 px-3 sm:px-6 md:px-10 flex items-center justify-center md:justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-sm text-xs gap-2 overflow-x-auto no-scrollbar shrink-0">
           {/* Selector de Tipo de Rider */}
@@ -193,7 +201,7 @@ export function Header({
 
           {/* Progreso y acciones: solo escritorio. En móvil, Compartir es el botón flotante principal. */}
           <div className="hidden md:flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {pageType !== 'view' && (
+            {pageType === 'workspace' && (
             <div className="hidden md:flex items-center gap-2 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200/60 text-xs">
               <div className="w-12 bg-slate-200 h-1.5 rounded-full overflow-hidden">
                 <div 
@@ -208,7 +216,7 @@ export function Header({
             )}
 
             {/* Progreso Global del Rider General */}
-            {pageType !== 'view' && masterProgress && (
+            {pageType === 'workspace' && masterProgress && (
               <div 
                 className="hidden xl:flex items-center gap-2 bg-violet-50/80 px-3 py-1 rounded-full border border-violet-200/70 text-xs"
                 title="Progreso consolidado de los 3 módulos del Rider de Producción"
@@ -252,9 +260,9 @@ export function Header({
                 <span>{isSharing ? 'Compartiendo...' : 'Compartir'}</span>
               </button>
             )}
-            {pageType === 'view' && (
+            {(pageType === 'view' || pageType === 'promotor') && (
               <span className="bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1 rounded-full text-[11px] font-bold shrink-0">
-                Solo lectura
+                {pageType === 'promotor' ? 'Documento en solo lectura' : 'Solo lectura'}
               </span>
             )}
           </div>
