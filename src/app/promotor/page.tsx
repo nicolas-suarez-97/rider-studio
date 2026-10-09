@@ -3,6 +3,7 @@ import { connection } from 'next/server';
 import { redirect } from 'next/navigation';
 import { PromotorHomeClient } from '@/components/promotor/PromotorHomeClient';
 import { loadPromotorHome } from '@/lib/promotor/home';
+import { pickHomeSuggestions, PROMOTOR_PROGRESS, STARTER_SUGGESTIONS } from '@/lib/home-suggestions';
 
 interface PageProps {
   searchParams: Promise<{ prompt?: string }>;
@@ -24,6 +25,8 @@ async function PromotorServer({ searchParams }: PageProps) {
     <PromotorHomeClient
       shows={home.shows}
       conversations={home.conversations}
+      suggestions={pickHomeSuggestions(STARTER_SUGGESTIONS)}
+      progressQuestions={pickHomeSuggestions(PROMOTOR_PROGRESS, 3)}
       pendingPrompt={pendingPrompt}
     />
   );

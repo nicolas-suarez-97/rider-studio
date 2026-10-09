@@ -9,12 +9,14 @@ interface PageProps {
     session?: string;
     riderId?: string;
     prompt?: string;
+    fresh?: string;
   }>;
 }
 
 async function ChatServer({ searchParams }: PageProps) {
   await connection();
-  const { session: sessionIdParam, riderId: riderIdParam, prompt: promptParam } = await searchParams;
+  const { session: sessionIdParam, riderId: riderIdParam, prompt: promptParam, fresh } = await searchParams;
+  const isFresh = fresh === '1';
 
   const [rawSessions, rawRiders] = await Promise.all([
     getChatSessions(),
@@ -50,16 +52,12 @@ async function ChatServer({ searchParams }: PageProps) {
   }));
 
   // Resolver sesión activa en el servidor
-  let activeSessionId = sessionIdParam || '';
+  let activeSessionId = isFresh ? '' : (sessionIdParam || '');
 
-  if (!activeSessionId && riderIdParam) {
+  if (!isFresh && !activeSessionId && riderIdParam) {
     const matching = sessions.find((s) => s.riderId === riderIdParam);
-    if (matching) {
-      activeSessionId = matching.id;
-    }
-  }
-
-  if (!activeSessionId && sessions.length > 0) {
+    if (matching) activeSessionId = matching.id;
+  } else if (!isFresh && !activeSessionId && sessions.length > 0) {
     activeSessionId = sessions[0].id;
   }
 
@@ -81,11 +79,12 @@ async function ChatServer({ searchParams }: PageProps) {
 
   return (
     <ChatClient
-      key={activeSessionId || 'chat-root'}
+      key={isFresh ? `fresh-${promptParam || 'new'}` : (activeSessionId || riderIdParam || 'chat-root')}
       initialSessions={sessions}
       initialSessionId={activeSessionId}
       initialMessages={messages}
       initialAvailableRiders={availableRiders}
+      initialRiderId={isFresh ? null : (riderIdParam || null)}
       initialPrompt={promptParam ? decodeURIComponent(promptParam) : null}
     />
   );

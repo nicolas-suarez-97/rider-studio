@@ -46,6 +46,7 @@ export interface SavedRiderSummary {
   sectionsCompleted: number;
   totalSections: number;
   status: 'completed' | 'in_progress';
+  updatedAt: string;
   lastEdited: string;
   channels?: ChannelData[];
   sections?: SectionItem[];

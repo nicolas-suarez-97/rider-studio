@@ -601,6 +601,7 @@ export class Rider {
       sectionsCompleted: this.completedSectionIds.length,
       totalSections: this.sections.length,
       status: this.status,
+      updatedAt: this.updatedAt,
       lastEdited: new Date(this.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       channels: this.channels.map(c => c.toJSON()),
       sections: this.sections,

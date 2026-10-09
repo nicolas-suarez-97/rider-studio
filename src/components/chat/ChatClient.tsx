@@ -19,6 +19,7 @@ interface ChatClientProps {
   initialSessionId: string;
   initialMessages: ChatMessageItem[];
   initialAvailableRiders: Array<{ id: string; title: string; artist: string; type: string }>;
+  initialRiderId?: string | null;
   initialPrompt?: string | null;
 }
 
@@ -27,6 +28,7 @@ export function ChatClient({
   initialSessionId,
   initialMessages,
   initialAvailableRiders,
+  initialRiderId = null,
   initialPrompt
 }: ChatClientProps) {
   const router = useRouter();
@@ -125,7 +127,7 @@ export function ChatClient({
         riderType: activeSession?.riderInfo?.riderType || 'tecnico',
         activeAgent,
         sessionId: currentSessionId || undefined,
-        riderId: activeSession?.riderId || undefined
+        riderId: activeSession?.riderId || initialRiderId || undefined
       });
 
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -162,7 +164,7 @@ export function ChatClient({
     } finally {
       setIsAgentThinking(false);
     }
-  }, [activeAgent, currentSessionId, messages, router, sessions]);
+  }, [activeAgent, currentSessionId, initialRiderId, messages, router, sessions]);
 
   // Cargar historial de la sesión solo cuando el usuario cambia de conversación en el cliente
   useEffect(() => {

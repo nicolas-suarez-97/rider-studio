@@ -5,6 +5,7 @@ import { Rider } from '@/core/models/Rider';
 import { ChatSessionSummary } from '@/core/types/chat.types';
 import { SavedRiderSummary } from '@/core/types/rider.types';
 import { LandingClient } from '@/components/landing/LandingClient';
+import { ARTIST_PROGRESS, pickHomeSuggestions, STARTER_SUGGESTIONS } from '@/lib/home-suggestions';
 
 async function HomeServer() {
   await connection();
@@ -43,6 +44,8 @@ async function HomeServer() {
     <LandingClient
       initialRiders={savedRiders}
       initialConversations={conversations}
+      suggestions={pickHomeSuggestions(STARTER_SUGGESTIONS)}
+      progressQuestions={pickHomeSuggestions(ARTIST_PROGRESS, 3)}
     />
   );
 }
