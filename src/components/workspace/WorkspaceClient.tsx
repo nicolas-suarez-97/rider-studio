@@ -19,6 +19,7 @@ import { chatService } from '@/core/services/chat.service';
 import { RiderType, SectionItem, ChannelData, ExportScope, StagePlotConfig } from '@/core/types/rider.types';
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
+import { SectionCommentItem } from '@/lib/share/comments';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 
 type MobileTab = 'sections' | 'document' | 'assistant';
@@ -72,6 +73,8 @@ export function WorkspaceClient({
   const [showStagePlotModal, setShowStagePlotModal] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [sectionComments, setSectionComments] = useState<SectionCommentItem[]>([]);
+  const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
 
   // Chat & Sesión Asociada
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(initialSessionId);
@@ -81,6 +84,20 @@ export function WorkspaceClient({
 
   const isFirstMount = useRef(true);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!rider.id) return;
+    let cancelled = false;
+    fetch(`/api/riders/${rider.id}/comments`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!cancelled && Array.isArray(data.comments)) setSectionComments(data.comments);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [rider.id]);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -466,6 +483,10 @@ export function WorkspaceClient({
             dbSyncStatus={dbSyncStatus}
             riderType={rider.type}
             onSelectRiderType={handleSelectRiderType}
+            commentCounts={sectionComments.reduce<Record<string, number>>((counts, comment) => {
+              counts[comment.sectionId] = (counts[comment.sectionId] || 0) + 1;
+              return counts;
+            }, {})}
           />
         </div>
 
@@ -494,6 +515,11 @@ export function WorkspaceClient({
             onUpdateSeason={handleUpdateSeason}
             stagePlot={rider.stagePlot}
             onUpdateStagePlot={handleUpdateStagePlot}
+            sectionComments={sectionComments}
+            openCommentSectionId={openCommentSectionId}
+            onToggleSectionComments={(sectionId) => {
+              setOpenCommentSectionId((current) => current === sectionId ? null : sectionId);
+            }}
           />
         </div>
 

@@ -15,6 +15,7 @@ interface HeaderProps {
   progressPercent?: number;
   moduleStats?: Record<RiderType, { completed: number; total: number; percent: number }>;
   masterProgress?: { completed: number; total: number; percent: number };
+  visibleModuleTypes?: RiderType[];
   onSaveRider?: () => void;
   isSaving?: boolean;
   dbSyncStatus?: 'idle' | 'saving' | 'saved' | 'error';
@@ -36,6 +37,7 @@ export function Header({
   progressPercent = 0,
   moduleStats,
   masterProgress,
+  visibleModuleTypes,
   onExport,
   onOpenExportModal,
   onShare,
@@ -131,7 +133,7 @@ export function Header({
           {/* Selector de Tipo de Rider */}
           {onSelectRiderType && (
               <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/70">
-                {(['tecnico', 'hospitality', 'seguridad'] as RiderType[]).map((type) => {
+                {(visibleModuleTypes ?? (['tecnico', 'hospitality', 'seguridad'] as RiderType[])).map((type) => {
                   const active = riderType === type;
                   const titles = { tecnico: 'Técnico', hospitality: 'Hospitality', seguridad: 'Seguridad' };
                   const stat = moduleStats?.[type];
@@ -153,7 +155,7 @@ export function Header({
                         />
                       )}
                       <span className="relative z-10">{titles[type]}</span>
-                      {stat && (
+                      {pageType !== 'view' && stat && (
                         <span 
                           className={`relative z-10 text-[9px] font-black px-1.5 py-0.2 rounded-full transition-colors ${
                             is100
@@ -172,9 +174,26 @@ export function Header({
               </div>
           )}
 
+          {pageType === 'view' && (
+            <div
+              className="flex items-center gap-2 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200/60 text-xs shrink-0"
+              title="Secciones que marcaste como leídas. Solo existe en esta pantalla."
+            >
+              <div className="w-12 bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-full transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <span className="font-bold text-slate-700 whitespace-nowrap text-[11px]">
+                {completedCount}/{totalCount}
+              </span>
+            </div>
+          )}
+
           {/* Progreso y acciones: solo escritorio. En móvil, Compartir es el botón flotante principal. */}
           <div className="hidden md:flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Indicador de Progreso del Módulo Activo */}
+            {pageType !== 'view' && (
             <div className="hidden md:flex items-center gap-2 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200/60 text-xs">
               <div className="w-12 bg-slate-200 h-1.5 rounded-full overflow-hidden">
                 <div 
@@ -186,9 +205,10 @@ export function Header({
                 {completedCount}/{totalCount}
               </span>
             </div>
+            )}
 
             {/* Progreso Global del Rider General */}
-            {masterProgress && (
+            {pageType !== 'view' && masterProgress && (
               <div 
                 className="hidden xl:flex items-center gap-2 bg-violet-50/80 px-3 py-1 rounded-full border border-violet-200/70 text-xs"
                 title="Progreso consolidado de los 3 módulos del Rider de Producción"

@@ -23,6 +23,7 @@ interface SectionsNavPanelProps {
   riderType?: RiderType;
   onSelectRiderType?: (type: RiderType) => void;
   readOnly?: boolean;
+  commentCounts?: Record<string, number>;
 }
 
 export function SectionsNavPanel({
@@ -38,7 +39,8 @@ export function SectionsNavPanel({
   onSaveRider,
   isSaving = false,
   dbSyncStatus = 'idle',
-  readOnly = false
+  readOnly = false,
+  commentCounts
 }: SectionsNavPanelProps) {
   return (
     <aside className="w-full xl:w-80 xl:border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden">
@@ -48,11 +50,13 @@ export function SectionsNavPanel({
         {/* Subheader de la lista de secciones activas */}
         <div className="flex items-center justify-between pt-1">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            Secciones ({completedSectionIds.length}/{sections.length})
+            {readOnly ? `Secciones (${sections.length})` : `Secciones (${completedSectionIds.length}/${sections.length})`}
           </span>
+          {!readOnly && (
           <span className="text-[11px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
             {progressPercent}% Módulo
           </span>
+          )}
         </div>
       </div>
 
@@ -62,23 +66,44 @@ export function SectionsNavPanel({
           <div className="space-y-1.5">
             {sections.map((section) => {
               const isActive = activeSectionId === section.id;
+              const isRead = completedSectionIds.includes(section.id);
               return (
-                <button
+                <div
                   key={section.id}
-                  type="button"
-                  onClick={() => onSelectSection(section.id)}
-                  className={`w-full text-left p-3 rounded-2xl border transition-colors cursor-pointer ${
+                  className={`w-full text-left p-3 rounded-2xl border transition-colors flex items-center gap-2 ${
                     isActive
                       ? 'bg-violet-50/70 border-violet-200 shadow-xs ring-1 ring-violet-200/60'
                       : 'bg-white hover:bg-slate-50/80 border-slate-200/70'
                   }`}
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-slate-400 shrink-0">{section.num}</span>
-                    <span className="text-xs font-bold text-slate-800 truncate">{section.title}</span>
-                  </span>
-                  <span className="block text-[10px] text-slate-400 truncate mt-0.5">{section.subtitle}</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectSection(section.id)}
+                    className="flex-1 min-w-0 text-left cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-[10px] font-black text-slate-400 shrink-0">{section.num}</span>
+                      <span className="text-xs font-bold text-slate-800 truncate">{section.title}</span>
+                      {(commentCounts?.[section.id] ?? 0) > 0 && (
+                        <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCounts?.[section.id]}</span>
+                      )}
+                    </span>
+                    <span className="block text-[10px] text-slate-400 truncate mt-0.5">{section.subtitle}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleComplete(section.id)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 cursor-pointer ${
+                      isRead
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-400'
+                    }`}
+                    title={isRead ? 'Leída' : 'Marcar como leída'}
+                    aria-label={isRead ? `Quitar leída "${section.title}"` : `Marcar como leída "${section.title}"`}
+                  >
+                    <Icon name="check" className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -121,6 +146,9 @@ export function SectionsNavPanel({
                     <h4 className="text-xs sm:text-xs font-bold text-slate-800 truncate">
                       {section.title}
                     </h4>
+                    {(commentCounts?.[section.id] ?? 0) > 0 && (
+                      <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCounts?.[section.id]}</span>
+                    )}
                   </div>
                   <p className="text-[10px] text-slate-400 truncate mt-0.5">
                     {section.subtitle}

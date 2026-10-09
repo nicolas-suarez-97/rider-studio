@@ -4,8 +4,10 @@ import React from 'react';
 import { Icon } from '../common/Icon';
 import { InputListTable } from './InputListTable';
 import { StagePlotView } from './StagePlotView';
+import { SectionCommentThread } from '@/components/view/SectionCommentThread';
 import { SectionItem, RiderType, ChannelData, StagePlotConfig } from '@/core/types/rider.types';
 import { ChannelInput } from '@/core/models/ChannelInput';
+import { SectionCommentItem } from '@/lib/share/comments';
 
 interface DocumentEditorPanelProps {
   riderTitle: string;
@@ -31,6 +33,11 @@ interface DocumentEditorPanelProps {
   stagePlot: StagePlotConfig;
   onUpdateStagePlot?: (newConfig: StagePlotConfig) => void;
   readOnly?: boolean;
+  sectionComments?: SectionCommentItem[];
+  openCommentSectionId?: string | null;
+  onToggleSectionComments?: (sectionId: string) => void;
+  commentAuthorName?: string;
+  onSubmitSectionComment?: (sectionId: string, authorName: string, body: string) => Promise<void>;
 }
 
 export function DocumentEditorPanel({
@@ -56,7 +63,12 @@ export function DocumentEditorPanel({
   onUpdateSeason,
   stagePlot,
   onUpdateStagePlot,
-  readOnly = false
+  readOnly = false,
+  sectionComments = [],
+  openCommentSectionId = null,
+  onToggleSectionComments,
+  commentAuthorName = '',
+  onSubmitSectionComment,
 }: DocumentEditorPanelProps) {
   return (
     <main className="flex-1 h-full overflow-y-auto p-3.5 sm:p-6 md:p-10 space-y-4 sm:space-y-6 pb-28 xl:pb-10 overscroll-contain">
@@ -172,6 +184,8 @@ export function DocumentEditorPanel({
           const isCompleted = completedSectionIds.includes(section.id);
           const isInputListSection = section.id === 'tech-inputlist';
           const isStagePlotSection = section.id === 'tech-stageplot' || section.iconName === 'map';
+          const sectionNotes = sectionComments.filter((comment) => comment.sectionId === section.id);
+          const notesOpen = openCommentSectionId === section.id;
 
           return (
             <div
@@ -207,7 +221,46 @@ export function DocumentEditorPanel({
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  {!readOnly && (
+                  {onToggleSectionComments && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleSectionComments(section.id)}
+                      className={`relative w-9 h-9 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                        sectionNotes.length > 0
+                          ? 'text-violet-600 bg-violet-50'
+                          : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
+                      }`}
+                      title={sectionNotes.length > 0 ? `${sectionNotes.length} notas` : 'Notas de la sección'}
+                      aria-label={
+                        sectionNotes.length > 0
+                          ? `${sectionNotes.length} notas en "${section.title}"`
+                          : `Notas de "${section.title}"`
+                      }
+                      aria-expanded={notesOpen}
+                    >
+                      <Icon name="messageSquare" className="w-4 h-4" />
+                      {sectionNotes.length > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-violet-600 text-white text-[9px] font-bold leading-4 text-center">
+                          {sectionNotes.length}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                  {readOnly ? (
+                    <button
+                      type="button"
+                      onClick={(event) => onToggleComplete(section.id, event)}
+                      className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                        isCompleted
+                          ? 'text-emerald-600 bg-emerald-50 active:bg-emerald-100'
+                          : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100 active:bg-slate-200'
+                      }`}
+                      title={isCompleted ? 'Leída' : 'Marcar como leída'}
+                      aria-label={isCompleted ? `Quitar leída "${section.title}"` : `Marcar como leída "${section.title}"`}
+                    >
+                      <Icon name="check" className="w-4 h-4" />
+                    </button>
+                  ) : (
                     <>
                   <button
                     type="button"
@@ -266,6 +319,15 @@ export function DocumentEditorPanel({
                     + Redactar
                   </span>
                 </div>
+              )}
+
+              {notesOpen && onToggleSectionComments && (
+                <SectionCommentThread
+                  comments={sectionNotes}
+                  authorName={commentAuthorName}
+                  canWrite={Boolean(readOnly && onSubmitSectionComment)}
+                  onSubmit={(authorName, body) => onSubmitSectionComment?.(section.id, authorName, body) ?? Promise.resolve()}
+                />
               )}
 
               {/* Render de Input List interactivo para sección técnica 05 */}

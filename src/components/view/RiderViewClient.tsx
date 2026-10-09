@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Header } from '@/components/common/Header';
 import { Toast } from '@/components/common/Toast';
 import { Icon } from '@/components/common/Icon';
@@ -12,6 +12,7 @@ import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { RiderType } from '@/core/types/rider.types';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
+import { SectionCommentItem } from '@/lib/share/comments';
 
 type MobileTab = 'sections' | 'document' | 'assistant';
 
@@ -32,6 +33,60 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('document');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [readSectionIds, setReadSectionIds] = useState<string[]>([]);
+  const [sectionComments, setSectionComments] = useState<SectionCommentItem[]>([]);
+  const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
+  const [commentAuthorName, setCommentAuthorName] = useState('');
+
+  const readableTypes = rider.getReadableTypes();
+  const readCount = rider.sections.filter((section) => readSectionIds.includes(section.id)).length;
+  const readPercent = rider.sections.length === 0
+    ? 0
+    : Math.round((readCount / rider.sections.length) * 100);
+
+  const toggleReadSection = (id: string) => {
+    setReadSectionIds((current) => (
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    ));
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/share/${shareToken}/comments`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!cancelled && Array.isArray(data.comments)) setSectionComments(data.comments);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [shareToken]);
+
+  const toggleSectionComments = (sectionId: string) => {
+    setOpenCommentSectionId((current) => current === sectionId ? null : sectionId);
+  };
+
+  const submitSectionComment = async (sectionId: string, authorName: string, body: string) => {
+    const response = await fetch(`/api/share/${shareToken}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sectionId, authorName, body }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.comment) {
+      setToastMessage(typeof data.error === 'string' ? data.error : 'No se pudo guardar la nota');
+      window.setTimeout(() => setToastMessage(null), 3500);
+      throw new Error('comment');
+    }
+    setCommentAuthorName(authorName);
+    setSectionComments((current) => [...current, data.comment]);
+  };
+
+  const commentCounts = sectionComments.reduce<Record<string, number>>((counts, comment) => {
+    counts[comment.sectionId] = (counts[comment.sectionId] || 0) + 1;
+    return counts;
+  }, {});
 
   const handleSelectRiderType = (type: RiderType) => {
     const updated = new Rider(rider);
@@ -113,12 +168,11 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
       <Header
         pageType="view"
         riderType={rider.type}
-        onSelectRiderType={handleSelectRiderType}
-        completedCount={rider.completedSectionIds.length}
+        onSelectRiderType={readableTypes.length > 1 ? handleSelectRiderType : undefined}
+        visibleModuleTypes={readableTypes}
+        completedCount={readCount}
         totalCount={rider.sections.length}
-        progressPercent={rider.getProgress()}
-        moduleStats={rider.getModuleStats()}
-        masterProgress={rider.getMasterProgress()}
+        progressPercent={readPercent}
       />
 
       <div className="flex-1 flex overflow-hidden relative">
@@ -129,11 +183,12 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
             onReorderSections={() => {}}
             activeSectionId={activeSectionId}
             onSelectSection={handleSelectSection}
-            completedSectionIds={rider.completedSectionIds}
-            onToggleComplete={() => {}}
+            completedSectionIds={readSectionIds}
+            onToggleComplete={toggleReadSection}
             onOpenAddSection={() => {}}
             onResetBlank={() => {}}
             progressPercent={rider.getProgress()}
+            commentCounts={commentCounts}
           />
         </div>
 
@@ -146,8 +201,8 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
             riderType={rider.type}
             sections={rider.sections}
             channels={rider.channels}
-            completedSectionIds={rider.completedSectionIds}
-            onToggleComplete={() => {}}
+            completedSectionIds={readSectionIds}
+            onToggleComplete={toggleReadSection}
             onEditSection={() => {}}
             onUpdateChannel={() => {}}
             onAddChannel={() => {}}
@@ -155,6 +210,11 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
             onExport={() => {}}
             onOpenStagePlot={() => {}}
             stagePlot={rider.stagePlot}
+            sectionComments={sectionComments}
+            openCommentSectionId={openCommentSectionId}
+            onToggleSectionComments={toggleSectionComments}
+            commentAuthorName={commentAuthorName}
+            onSubmitSectionComment={submitSectionComment}
           />
         </div>
 

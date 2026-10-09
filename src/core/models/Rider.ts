@@ -191,6 +191,29 @@ export class Rider {
   }
 
   /**
+   * Un módulo cuenta como escrito si alguna sección tiene texto o, en técnico, hay canales.
+   * La plantilla en blanco y el plano por defecto no cuentan como contenido.
+   */
+  public hasModuleContent(type: RiderType): boolean {
+    const data = this.type === type
+      ? { sections: this.sections, channels: this.channels }
+      : this.modules[type];
+    if (!data) return false;
+
+    const hasText = (data.sections || []).some((section) => (section.content || '').trim().length > 0);
+    const hasChannels = (data.channels || []).length > 0;
+    return hasText || hasChannels;
+  }
+
+  /**
+   * Módulos visibles al leer. Técnico se mantiene; hospitality y seguridad solo si tienen texto o canales.
+   */
+  public getReadableTypes(): RiderType[] {
+    const optional: RiderType[] = ['hospitality', 'seguridad'];
+    return ['tecnico', ...optional.filter((type) => this.hasModuleContent(type))];
+  }
+
+  /**
    * Porcentaje de completado de las secciones del rider activo
    */
   public getProgress(): number {

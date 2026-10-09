@@ -151,6 +151,41 @@ export interface Database {
           }
         ];
       };
+      rider_section_comments: {
+        Row: {
+          id: string;
+          rider_id: string;
+          section_id: string;
+          author_name: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          rider_id: string;
+          section_id: string;
+          author_name: string;
+          body: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          rider_id?: string;
+          section_id?: string;
+          author_name?: string;
+          body?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "rider_section_comments_rider_id_fkey";
+            columns: ["rider_id"];
+            isOneToOne: false;
+            referencedRelation: "riders";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
