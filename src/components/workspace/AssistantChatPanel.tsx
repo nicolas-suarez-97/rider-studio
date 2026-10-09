@@ -19,6 +19,7 @@ interface AssistantChatPanelProps {
   rider?: Rider;
   sessionId?: string | null;
   sessionTitle?: string | null;
+  consultMode?: boolean;
 }
 
 export function AssistantChatPanel({
@@ -31,7 +32,8 @@ export function AssistantChatPanel({
   onToggleCollapse,
   rider,
   sessionId,
-  sessionTitle
+  sessionTitle,
+  consultMode = false
 }: AssistantChatPanelProps) {
   const [inputText, setInputText] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -56,6 +58,13 @@ export function AssistantChatPanel({
 
   const profile = AGENT_PROFILES[activeAgent];
   const info = AGENT_INFO[activeAgent];
+  const suggestions = consultMode
+    ? [
+        '¿Qué pide el rider para la voz principal?',
+        '¿Qué requisitos de hospitality están escritos?',
+        '¿Qué medidas de seguridad aparecen en el documento?'
+      ]
+    : SAMPLE_FAQS.slice(0, 3);
 
   if (isCollapsed) {
     return (
@@ -80,7 +89,7 @@ export function AssistantChatPanel({
             {info.icon}
           </div>
           <span className="text-[10px] font-black uppercase text-slate-400 group-hover:text-violet-600 transition-colors [writing-mode:vertical-rl] rotate-180 tracking-widest">
-            Copilot IA
+            {consultMode ? 'Consulta' : 'Copilot IA'}
           </span>
         </div>
         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -120,13 +129,14 @@ export function AssistantChatPanel({
               <span className="text-xs shrink-0">🎸</span>
               <div className="truncate">
                 <span className="block text-[9px] font-black uppercase text-violet-600 leading-none">
-                  {sessionId ? 'Conversación & Rider Vinculados' : 'Vinculado a este Rider'}
+                  {consultMode ? 'Consulta sobre este rider' : sessionId ? 'Conversación & Rider Vinculados' : 'Vinculado a este Rider'}
                 </span>
                 <span className="block text-xs font-bold text-slate-800 truncate leading-tight mt-0.5">
                   {sessionTitle ? `${rider.artistName} · ${sessionTitle}` : rider.artistName}
                 </span>
               </div>
             </div>
+            {!consultMode && (
             <Link
               href={sessionId ? `/chat?session=${sessionId}` : rider.id ? `/chat?riderId=${rider.id}` : '/chat'}
               className="text-[10px] font-bold text-violet-700 hover:text-violet-900 bg-white hover:bg-violet-100 px-2.5 py-1 rounded-xl border border-violet-200/60 transition-colors shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
@@ -135,6 +145,7 @@ export function AssistantChatPanel({
               <span>Chat Completo</span>
               <span>↗</span>
             </Link>
+            )}
           </div>
         )}
       </div>
@@ -158,7 +169,7 @@ export function AssistantChatPanel({
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                 Sugerencias rápidas:
               </span>
-              {SAMPLE_FAQS.slice(0, 3).map((faq, idx) => (
+              {suggestions.map((faq, idx) => (
                 <button
                   key={idx}
                   type="button"
@@ -210,7 +221,7 @@ export function AssistantChatPanel({
           <div className="flex items-center gap-2 text-slate-400 text-xs py-2">
             <span className="w-2 h-2 rounded-full bg-violet-600 animate-ping" />
             <span className="text-[11px] font-semibold text-slate-500">
-              {profile.name} está redactando respuesta técnica...
+              {profile.name} {consultMode ? 'está revisando el rider...' : 'está redactando respuesta técnica...'}
             </span>
           </div>
         )}
@@ -223,7 +234,7 @@ export function AssistantChatPanel({
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder={`Consulta a ${profile.name}...`}
+            placeholder={consultMode ? 'Pregunta sobre este rider...' : `Consulta a ${profile.name}...`}
             className="w-full bg-transparent text-base sm:text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 outline-none font-medium"
             disabled={isThinking}
           />

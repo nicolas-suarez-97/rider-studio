@@ -35,6 +35,7 @@ export interface IChatRepository {
   getSessions(): Promise<DbChatSessionWithRider[]>;
   updateSession(id: string, updates: UpdateChatSessionInput): Promise<DbChatSessionWithRider | null>;
   getOrCreateSession(sessionId?: string, riderId?: string, title?: string, activeAgent?: string): Promise<DbChatSession>;
+  openConsultSession(sessionId: string | undefined, riderId: string, title: string, activeAgent: string): Promise<DbChatSession>;
   deleteSession(id: string): Promise<boolean>;
   saveMessage(params: SaveChatMessageInput): Promise<DbChatMessage>;
   getMessages(sessionId: string): Promise<DbChatMessage[]>;
@@ -43,6 +44,11 @@ export interface IChatRepository {
 function isValidUuid(id?: string | null): boolean {
   if (!id) return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+function isOwnerChatSession(session: { title?: string | null; active_agent?: string | null }): boolean {
+  if (session.active_agent === 'archived') return false;
+  return !session.title?.startsWith('consulta:');
 }
 
 // Almacenamiento seguro en memoria para modo demo / fallback
@@ -61,11 +67,11 @@ export class ChatRepository implements IChatRepository {
           .order('updated_at', { ascending: false });
 
         if (!error && data) {
-          return data as unknown as DbChatSessionWithRider[];
+          return (data as unknown as DbChatSessionWithRider[]).filter((session) => isOwnerChatSession(session));
         }
       }
     }
-    return Object.values(memorySessions).filter(s => s.active_agent !== 'archived');
+    return Object.values(memorySessions).filter((session) => isOwnerChatSession(session));
   }
 
   public async updateSession(
@@ -201,6 +207,38 @@ export class ChatRepository implements IChatRepository {
     };
     memorySessions[sid] = sessionObj;
     return sessionObj;
+  }
+
+  public async openConsultSession(
+    sessionId: string | undefined,
+    riderId: string,
+    title: string,
+    activeAgent: string
+  ): Promise<DbChatSession> {
+    const consultTitle = `consulta: ${title.replace(/^consulta:\s*/, '')}`.slice(0, 255);
+    if (sessionId && isValidUuid(sessionId)) {
+      const existing = await this.findSession(sessionId);
+      if (existing && existing.rider_id === riderId && existing.title.startsWith('consulta:')) {
+        return existing;
+      }
+    }
+    return this.getOrCreateSession(undefined, riderId, consultTitle, activeAgent);
+  }
+
+  private async findSession(id: string): Promise<DbChatSession | null> {
+    if (!isValidUuid(id)) return null;
+    if (isSupabaseServerConfigured()) {
+      const supabase = await createServerSupabaseClient();
+      if (supabase) {
+        const { data } = await supabase
+          .from('chat_sessions')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+        if (data) return data;
+      }
+    }
+    return memorySessions[id] || null;
   }
 
   public async deleteSession(id: string): Promise<boolean> {

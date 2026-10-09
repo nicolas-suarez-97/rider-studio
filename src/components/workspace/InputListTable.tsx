@@ -10,14 +10,62 @@ interface InputListTableProps {
   onUpdateChannel: (chId: string, field: keyof ChannelData, val: string | boolean) => void;
   onAddChannel: () => void;
   onDeleteChannel: (chId: string) => void;
+  readOnly?: boolean;
 }
 
 export function InputListTable({
   channels,
   onUpdateChannel,
   onAddChannel,
-  onDeleteChannel
+  onDeleteChannel,
+  readOnly = false
 }: InputListTableProps) {
+  if (readOnly) {
+    return (
+      <div className="mt-4 border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-xs">
+        <div className="bg-slate-50/90 px-3.5 sm:px-4 py-2.5 border-b border-slate-200/80 flex items-center gap-2">
+          <Icon name="list" className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          <span className="text-xs font-black text-slate-700 tracking-wide uppercase">
+            Input List & Stage Patch
+          </span>
+          <span className="text-[10px] font-extrabold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+            {channels.length} {channels.length === 1 ? 'Canal' : 'Canales'}
+          </span>
+        </div>
+        {channels.length === 0 ? (
+          <div className="py-6 px-4 text-center text-xs text-slate-400 font-medium">
+            No hay canales en este rider.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-white text-[10px] uppercase tracking-wider text-slate-400">
+                <tr>
+                  <th className="py-2 px-3 font-bold">Ch</th>
+                  <th className="py-2 px-3 font-bold">Fuente</th>
+                  <th className="py-2 px-3 font-bold">Micrófono</th>
+                  <th className="py-2 px-3 font-bold">Atril</th>
+                  <th className="py-2 px-3 font-bold">+48V</th>
+                </tr>
+              </thead>
+              <tbody>
+                {channels.map((ch) => (
+                  <tr key={ch.id} className="border-t border-slate-100">
+                    <td className="py-2 px-3 font-black text-slate-500">{ch.ch}</td>
+                    <td className="py-2 px-3 font-bold text-slate-800">{ch.name}</td>
+                    <td className="py-2 px-3 text-slate-600">{ch.mic || '—'}</td>
+                    <td className="py-2 px-3 text-slate-600">{ch.stand || '—'}</td>
+                    <td className="py-2 px-3 text-slate-600">{ch.phantom ? 'Sí' : 'No'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="mt-4 border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-xs">
       {/* Header */}

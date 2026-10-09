@@ -32,6 +32,14 @@ export async function getRiderById(id: string): Promise<DbRiderWithSessions | nu
   return riderRepository.getById(id);
 }
 
+export async function getRiderByShareToken(token: string): Promise<DbRider | null> {
+  return riderRepository.getByShareToken(token);
+}
+
+export async function publishRiderShare(id: string) {
+  return riderRepository.publishShare(id);
+}
+
 export async function saveRider(rider: SaveRiderInput): Promise<DbRider> {
   return riderRepository.save(rider);
 }
@@ -58,6 +66,15 @@ export async function getOrCreateChatSession(
   activeAgent?: string
 ): Promise<DbChatSession> {
   return chatRepository.getOrCreateSession(sessionId, riderId, title, activeAgent);
+}
+
+export async function openConsultChatSession(
+  sessionId: string | undefined,
+  riderId: string,
+  title: string,
+  activeAgent: string
+): Promise<DbChatSession> {
+  return chatRepository.openConsultSession(sessionId, riderId, title, activeAgent);
 }
 
 export async function deleteChatSession(id: string): Promise<boolean> {

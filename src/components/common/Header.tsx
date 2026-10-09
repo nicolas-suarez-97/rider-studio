@@ -7,7 +7,7 @@ import { Icon } from './Icon';
 import { RiderType, ExportScope } from '@/core/types/rider.types';
 
 interface HeaderProps {
-  pageType: 'landing' | 'workspace' | 'chat';
+  pageType: 'landing' | 'workspace' | 'chat' | 'view';
   riderType?: RiderType;
   onSelectRiderType?: (type: RiderType) => void;
   completedCount?: number;
@@ -22,6 +22,7 @@ interface HeaderProps {
   onOpenExportModal?: (scope?: ExportScope) => void;
   onOpenStagePlot?: () => void;
   onShare?: () => void;
+  isSharing?: boolean;
   chatSessionId?: string | null;
   riderId?: string | null;
 }
@@ -36,7 +37,9 @@ export function Header({
   moduleStats,
   masterProgress,
   onExport,
-  onOpenExportModal
+  onOpenExportModal,
+  onShare,
+  isSharing = false
 }: HeaderProps) {
   const openExport = () => {
     if (onOpenExportModal) {
@@ -80,6 +83,12 @@ export function Header({
 
         {/* Acciones y Navegación Global */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {pageType === 'view' ? (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
+              Vista compartida
+            </span>
+          ) : (
+            <>
           <nav className="flex items-center gap-1 sm:gap-2 mr-0.5 sm:mr-1" aria-label="Navegación principal">
             <Link
               href="/chat"
@@ -105,17 +114,18 @@ export function Header({
             </Link>
           </nav>
 
-          {/* Avatar de Usuario */}
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-[11px] sm:text-xs flex items-center justify-center border-2 border-white shadow-xs shrink-0">
             NS
           </div>
+            </>
+          )}
         </div>
       </header>
 
       {/* ========================================================
           2. SUBHEADER: Herramientas contextuales de Workspace
          ======================================================== */}
-      {pageType === 'workspace' && (
+      {(pageType === 'workspace' || pageType === 'view') && (
         <>
         <div className="h-12 px-3 sm:px-6 md:px-10 flex items-center justify-center md:justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-sm text-xs gap-2 overflow-x-auto no-scrollbar shrink-0">
           {/* Selector de Tipo de Rider */}
@@ -198,7 +208,20 @@ export function Header({
 
 
 
-            {/* Botón de Exportación Directo */}
+            {pageType === 'workspace' && onShare && (
+              <button
+                type="button"
+                onClick={onShare}
+                disabled={isSharing}
+                className="bg-white hover:bg-violet-50 text-violet-700 border border-violet-200 px-3.5 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0 disabled:opacity-60"
+                title="Generar un enlace de solo lectura"
+              >
+                <Icon name="share" className="w-3.5 h-3.5" />
+                <span>{isSharing ? 'Compartiendo...' : 'Compartir'}</span>
+              </button>
+            )}
+
+            {pageType === 'workspace' && (
             <button 
               type="button"
               onClick={openExport}
@@ -208,17 +231,39 @@ export function Header({
               <Icon name="download" className="w-3.5 h-3.5" />
               <span>Exportar</span>
             </button>
+            )}
+            {pageType === 'view' && (
+              <span className="bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1 rounded-full text-[11px] font-bold shrink-0">
+                Solo lectura
+              </span>
+            )}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={openExport}
-          className="md:hidden fixed z-30 right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] w-11 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center active:scale-95 cursor-pointer"
-          aria-label="Exportar"
-          title="Exportar"
-        >
-          <Icon name="download" className="w-4 h-4" />
-        </button>
+        {pageType === 'workspace' && (
+        <div className="md:hidden fixed z-30 right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] flex flex-col gap-2">
+          {onShare && (
+            <button
+              type="button"
+              onClick={onShare}
+              disabled={isSharing}
+              className="w-11 h-11 rounded-full bg-white text-violet-700 border border-violet-200 shadow-lg flex items-center justify-center active:scale-95 cursor-pointer disabled:opacity-60"
+              aria-label="Compartir"
+              title="Compartir"
+            >
+              <Icon name="share" className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={openExport}
+            className="w-11 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center active:scale-95 cursor-pointer"
+            aria-label="Exportar"
+            title="Exportar"
+          >
+            <Icon name="download" className="w-4 h-4" />
+          </button>
+        </div>
+        )}
         </>
       )}
 

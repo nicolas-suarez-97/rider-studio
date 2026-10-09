@@ -22,6 +22,7 @@ interface SectionsNavPanelProps {
   dbSyncStatus?: 'idle' | 'saving' | 'saved' | 'error';
   riderType?: RiderType;
   onSelectRiderType?: (type: RiderType) => void;
+  readOnly?: boolean;
 }
 
 export function SectionsNavPanel({
@@ -36,7 +37,8 @@ export function SectionsNavPanel({
   progressPercent,
   onSaveRider,
   isSaving = false,
-  dbSyncStatus = 'idle'
+  dbSyncStatus = 'idle',
+  readOnly = false
 }: SectionsNavPanelProps) {
   return (
     <aside className="w-full xl:w-80 xl:border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden">
@@ -56,6 +58,31 @@ export function SectionsNavPanel({
 
       {/* Lista de Secciones Reordenables */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1 overscroll-contain">
+        {readOnly ? (
+          <div className="space-y-1.5">
+            {sections.map((section) => {
+              const isActive = activeSectionId === section.id;
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => onSelectSection(section.id)}
+                  className={`w-full text-left p-3 rounded-2xl border transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-violet-50/70 border-violet-200 shadow-xs ring-1 ring-violet-200/60'
+                      : 'bg-white hover:bg-slate-50/80 border-slate-200/70'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-slate-400 shrink-0">{section.num}</span>
+                    <span className="text-xs font-bold text-slate-800 truncate">{section.title}</span>
+                  </span>
+                  <span className="block text-[10px] text-slate-400 truncate mt-0.5">{section.subtitle}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
         <Reorder.Group 
           axis="y" 
           values={sections} 
@@ -117,9 +144,11 @@ export function SectionsNavPanel({
             );
           })}
         </Reorder.Group>
+        )}
       </div>
 
       {/* Acciones Inferiores del Panel */}
+      {!readOnly && (
       <div className="p-3 border-t border-slate-200/60 bg-white/50 space-y-2 shrink-0 pb-20 xl:pb-3">
         {onSaveRider && (
           <button
@@ -166,6 +195,7 @@ export function SectionsNavPanel({
           <span>Empezar de Ceros</span>
         </button>
       </div>
+      )}
     </aside>
   );
 }

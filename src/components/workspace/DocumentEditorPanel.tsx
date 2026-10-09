@@ -30,6 +30,7 @@ interface DocumentEditorPanelProps {
   onUpdateSeason?: (val: string) => void;
   stagePlot: StagePlotConfig;
   onUpdateStagePlot?: (newConfig: StagePlotConfig) => void;
+  readOnly?: boolean;
 }
 
 export function DocumentEditorPanel({
@@ -54,7 +55,8 @@ export function DocumentEditorPanel({
   onUpdateArtistName,
   onUpdateSeason,
   stagePlot,
-  onUpdateStagePlot
+  onUpdateStagePlot,
+  readOnly = false
 }: DocumentEditorPanelProps) {
   return (
     <main className="flex-1 h-full overflow-y-auto p-3.5 sm:p-6 md:p-10 space-y-4 sm:space-y-6 pb-28 xl:pb-10 overscroll-contain">
@@ -204,8 +206,9 @@ export function DocumentEditorPanel({
                   </div>
                 </div>
 
-                {/* Acciones de sección táctiles */}
                 <div className="flex items-center gap-1 shrink-0">
+                  {!readOnly && (
+                    <>
                   <button
                     type="button"
                     onClick={() => onEditSection(section)}
@@ -236,6 +239,8 @@ export function DocumentEditorPanel({
                   >
                     <Icon name="check" className="w-4 h-4" />
                   </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -243,6 +248,10 @@ export function DocumentEditorPanel({
               {section.content && section.content.trim() !== '' ? (
                 <div className="mt-3.5 sm:mt-4 pt-3.5 sm:pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed font-normal whitespace-pre-line bg-slate-50/50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100">
                   {section.content}
+                </div>
+              ) : readOnly ? (
+                <div className="mt-3.5 sm:mt-4 pt-3.5 sm:pt-4 border-t border-slate-100 text-xs text-slate-400 font-medium italic px-1">
+                  Esta sección no tiene contenido.
                 </div>
               ) : (
                 <div
@@ -266,6 +275,7 @@ export function DocumentEditorPanel({
                   onUpdateChannel={onUpdateChannel}
                   onAddChannel={onAddChannel}
                   onDeleteChannel={onDeleteChannel}
+                  readOnly={readOnly}
                 />
               )}
 
@@ -274,12 +284,12 @@ export function DocumentEditorPanel({
                 <div className="mt-4 pt-4 border-t border-slate-100">
                   <StagePlotView
                     stagePlot={stagePlot}
-                    onUpdateStagePlot={onUpdateStagePlot}
+                    onUpdateStagePlot={readOnly ? undefined : onUpdateStagePlot}
                     artistName={artistName}
                     riderTitle={riderTitle}
                     season={season}
                     channels={channels}
-                    onOpenModal={onOpenStagePlot}
+                    onOpenModal={readOnly ? undefined : onOpenStagePlot}
                   />
                 </div>
               )}
@@ -293,6 +303,7 @@ export function DocumentEditorPanel({
         <p className="text-xs text-slate-400 font-medium text-center md:text-left">
           Rider Studio • Cumple con normativas internacionales de audio y seguridad.
         </p>
+        {!readOnly && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           {onSaveRider && (
             <button
@@ -340,6 +351,7 @@ export function DocumentEditorPanel({
             <span>Exportar</span>
           </button>
         </div>
+        )}
       </div>
     </main>
   );

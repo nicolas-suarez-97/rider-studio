@@ -12,6 +12,7 @@ import { AddSectionModal } from '@/components/modals/AddSectionModal';
 import { EditSectionModal } from '@/components/modals/EditSectionModal';
 import { MasterExportModal } from '@/components/modals/MasterExportModal';
 import { StagePlotModal } from '@/components/modals/StagePlotModal';
+import { ShareLinkModal } from '@/components/modals/ShareLinkModal';
 import { Rider } from '@/core/models/Rider';
 import { riderService } from '@/core/services/rider.service';
 import { chatService } from '@/core/services/chat.service';
@@ -69,6 +70,8 @@ export function WorkspaceClient({
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportScope, setExportScope] = useState<ExportScope>('master');
   const [showStagePlotModal, setShowStagePlotModal] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   // Chat & Sesión Asociada
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(initialSessionId);
@@ -147,7 +150,7 @@ export function WorkspaceClient({
   };
 
   // Guardar en base de datos Supabase
-  const handleSaveRider = async (customRider?: Rider) => {
+  const handleSaveRider = async (customRider?: Rider, options?: { silent?: boolean }) => {
     const targetRider = customRider ? new Rider(customRider) : new Rider(rider);
     const hasArtist = Boolean(targetRider.artistName && targetRider.artistName.trim() !== '');
 
@@ -166,7 +169,9 @@ export function WorkspaceClient({
       }
       setRider(saved);
       setDbSyncStatus('saved');
-      showToast('✅ Rider sincronizado y guardado en Supabase');
+      if (!options?.silent) {
+        showToast('✅ Rider sincronizado y guardado en Supabase');
+      }
 
       if (currentSessionId && saved.id) {
         await chatService.linkRider(currentSessionId, saved.id);
@@ -185,6 +190,26 @@ export function WorkspaceClient({
       showToast('⚠️ Error al guardar el rider');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleShare = async () => {
+    setIsSharing(true);
+    try {
+      const saved = await handleSaveRider(undefined, { silent: true });
+      if (!saved?.id) return;
+
+      const response = await fetch(`/api/riders/${saved.id}/share`, { method: 'POST' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || typeof data.url !== 'string') {
+        throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo generar el enlace');
+      }
+      setShareUrl(data.url);
+    } catch (err) {
+      console.error(err);
+      showToast(err instanceof Error ? err.message : 'No se pudo generar el enlace');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -404,6 +429,8 @@ export function WorkspaceClient({
         onExport={() => handleOpenExportModal('master')}
         onOpenExportModal={handleOpenExportModal}
         onOpenStagePlot={handleOpenStagePlot}
+        onShare={handleShare}
+        isSharing={isSharing || isSaving}
         chatSessionId={currentSessionId}
         riderId={rider.id}
       />
@@ -586,6 +613,8 @@ export function WorkspaceClient({
         stagePlot={rider.stagePlot}
         onUpdateStagePlot={handleUpdateStagePlot}
       />
+
+      <ShareLinkModal url={shareUrl} onClose={() => setShareUrl(null)} />
     </div>
   );
 }

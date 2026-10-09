@@ -23,6 +23,9 @@ export interface Database {
           channels: Json;
           sections: Json;
           metadata: Json;
+          share_token?: string | null;
+          share_enabled?: boolean | null;
+          shared_at?: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -39,6 +42,9 @@ export interface Database {
           channels?: Json;
           sections?: Json;
           metadata?: Json;
+          share_token?: string | null;
+          share_enabled?: boolean | null;
+          shared_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -55,6 +61,9 @@ export interface Database {
           channels?: Json;
           sections?: Json;
           metadata?: Json;
+          share_token?: string | null;
+          share_enabled?: boolean | null;
+          shared_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -30,6 +30,11 @@ BEGIN
     CREATE INDEX IF NOT EXISTS idx_riders_type ON public.riders (rider_type);
     CREATE INDEX IF NOT EXISTS idx_riders_user_id ON public.riders (user_id);
 
+    ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS share_token TEXT;
+    ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS share_enabled BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS shared_at TIMESTAMPTZ;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_riders_share_token ON public.riders (share_token) WHERE share_token IS NOT NULL;
+
     -- 3. Tabla de Sesiones de Chat
     CREATE TABLE IF NOT EXISTS public.chat_sessions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
