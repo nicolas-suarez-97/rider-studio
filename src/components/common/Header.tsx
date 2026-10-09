@@ -84,14 +84,15 @@ export function Header({
             <Link
               href="/chat"
               prefetch={false}
-              className={`text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-full transition-all active:scale-95 shrink-0 ${
+              aria-label="Asistente IA"
+              title="Asistente IA"
+              className={`w-8 h-8 rounded-xl bg-violet-100/90 text-violet-600 flex items-center justify-center transition-all active:scale-95 shrink-0 ${
                 pageType === 'chat'
-                  ? 'bg-violet-50 text-violet-700 font-bold border border-violet-200/60'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'ring-2 ring-violet-500'
+                  : 'hover:bg-violet-200'
               }`}
             >
-              <span className="hidden sm:inline">Asistente IA</span>
-              <span className="sm:hidden">Chat</span>
+              <Icon name="sparkles" className="w-4 h-4" />
             </Link>
             <Link
               href="/workspace?type=tecnico"
