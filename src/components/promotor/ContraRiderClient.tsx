@@ -531,9 +531,9 @@ export function ContraRiderClient({
         visibleModuleTypes={readableTypes}
       />
 
-      <div className="flex-1 flex overflow-hidden">
-        <section className={`h-full min-w-0 flex-col pb-16 xl:pb-0 ${mobileTab === 'contra' ? 'flex flex-1' : 'hidden'} xl:flex xl:flex-[1.4] xl:min-w-0`}>
-          <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        <section className={`h-full min-h-0 min-w-0 overflow-y-auto overscroll-contain xl:overflow-hidden xl:flex xl:flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] xl:pb-0 ${mobileTab === 'contra' ? 'block flex-1' : 'hidden'} xl:flex xl:flex-[1.4] xl:min-w-0`}>
+          <div className="xl:shrink-0 px-4 sm:px-6 pt-4 pb-3 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex items-start gap-3">
                 <RiderThumb
@@ -696,7 +696,7 @@ export function ContraRiderClient({
               onGenerate={generateInventory}
             />
           ) : (
-          <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4">
+          <div className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto px-3 sm:px-6 py-4">
             <div className="bg-white border border-slate-200/80 rounded-[28px] shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] divide-y divide-slate-100">
             {visibleLines.map((line) => {
               const gap = lineGap(line);

@@ -37,7 +37,7 @@ export function InventoryStep({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4">
+    <div className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto px-3 sm:px-6 py-4">
       <div className="bg-white border border-slate-200/80 rounded-[28px] shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] px-5 sm:px-8 py-6 sm:py-8">
         <p className="text-[10px] font-black uppercase tracking-wider text-violet-700">Generar contra-rider</p>
         <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900">Sube los datos que tengas</h2>

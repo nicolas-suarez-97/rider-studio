@@ -68,8 +68,33 @@ export function RiderGallery({
         <div className="flex-1 min-w-0">{children}</div>
       </div>
 
-      {media.length > 0 ? (
+      {editable || media.length > 0 ? (
         <div className="space-y-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[11px] font-black uppercase tracking-wider text-slate-400">Carrusel de fotos</p>
+            {editable ? (
+              <p className="text-[11px] font-semibold text-slate-400">{media.length} de {MAX_GALLERY_IMAGES}</p>
+            ) : null}
+          </div>
+          {media.length === 0 ? (
+            <button
+              type="button"
+              onClick={openPicker}
+              disabled={busy}
+              className="w-full rounded-2xl border border-dashed border-violet-300 bg-violet-50/50 px-4 py-4 text-left cursor-pointer disabled:opacity-50"
+            >
+              <span className="flex items-center gap-2 overflow-x-auto">
+                <span className="w-24 h-16 shrink-0 rounded-xl border border-dashed border-violet-300 bg-white text-violet-700 text-xs font-bold flex items-center justify-center">
+                  + Foto
+                </span>
+                <span className="w-24 h-16 shrink-0 rounded-xl border border-slate-200 bg-white" />
+                <span className="w-24 h-16 shrink-0 rounded-xl border border-slate-200 bg-white" />
+              </span>
+              <span className="mt-3 block text-sm font-bold text-violet-700">Agregar fotos</span>
+              <span className="mt-0.5 block text-xs font-medium text-slate-500">Hasta 8. La primera queda como foto principal.</span>
+            </button>
+          ) : (
+          <>
           <div className="relative rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
             <img
               src={active?.url}
@@ -152,6 +177,8 @@ export function RiderGallery({
               </button>
             ) : null}
           </div>
+          </>
+          )}
         </div>
       ) : null}
 
