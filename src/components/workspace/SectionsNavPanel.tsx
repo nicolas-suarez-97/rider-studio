@@ -1,9 +1,23 @@
 "use client";
 
-import React from 'react';
-import { Reorder } from 'motion/react';
+import React, { useEffect, useState } from 'react';
+import { Reorder, useDragControls } from 'motion/react';
 import { Icon } from '../common/Icon';
 import { SectionItem, RiderType } from '@/core/types/rider.types';
+
+function useCoarsePointer() {
+  const [coarse, setCoarse] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia('(pointer: coarse)');
+    const update = () => setCoarse(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+
+  return coarse;
+}
 
 interface SectionsNavPanelProps {
   sections: SectionItem[];
@@ -26,6 +40,81 @@ interface SectionsNavPanelProps {
   commentCounts?: Record<string, number>;
 }
 
+function SortableSection({
+  section,
+  isActive,
+  isCompleted,
+  commentCount,
+  handleOnly,
+  onSelectSection,
+  onToggleComplete,
+}: {
+  section: SectionItem;
+  isActive: boolean;
+  isCompleted: boolean;
+  commentCount: number;
+  handleOnly: boolean;
+  onSelectSection: (id: string) => void;
+  onToggleComplete: (id: string, e?: React.MouseEvent) => void;
+}) {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      value={section}
+      dragListener={!handleOnly}
+      dragControls={dragControls}
+      className={`group relative p-3 rounded-2xl border transition-colors cursor-pointer flex items-center gap-3 ${
+        isActive
+          ? 'bg-violet-50/70 border-violet-200 shadow-xs ring-1 ring-violet-200/60'
+          : 'bg-white hover:bg-slate-50/80 border-slate-200/70'
+      }`}
+      onClick={() => onSelectSection(section.id)}
+    >
+      <div
+        className="text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing touch-none p-1 shrink-0"
+        title="Arrastrar para reordenar"
+        onPointerDown={(event) => {
+          if (!handleOnly) return;
+          dragControls.start(event);
+        }}
+      >
+        <Icon name="grip" className="w-3.5 h-3.5" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black text-slate-400 shrink-0">
+            {section.num}
+          </span>
+          <h4 className="text-xs sm:text-xs font-bold text-slate-800 truncate">
+            {section.title}
+          </h4>
+          {commentCount > 0 && (
+            <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCount}</span>
+          )}
+        </div>
+        <p className="text-[10px] text-slate-400 truncate mt-0.5">
+          {section.subtitle}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={(e) => onToggleComplete(section.id, e)}
+        className={`w-8 h-8 sm:w-6 sm:h-6 rounded-full flex items-center justify-center transition-colors shrink-0 cursor-pointer ${
+          isCompleted
+            ? 'bg-emerald-500 text-white shadow-xs'
+            : 'bg-slate-100 hover:bg-slate-200 text-slate-400'
+        }`}
+        title={isCompleted ? 'Marcado como completo' : 'Marcar como completado'}
+      >
+        <Icon name="check" className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+      </button>
+    </Reorder.Item>
+  );
+}
+
 export function SectionsNavPanel({
   sections,
   onReorderSections,
@@ -42,6 +131,8 @@ export function SectionsNavPanel({
   readOnly = false,
   commentCounts
 }: SectionsNavPanelProps) {
+  const handleOnly = useCoarsePointer();
+
   return (
     <aside className="w-full xl:w-80 xl:border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden">
       {/* Header del Outline: Artista, Gira y Conteo de Secciones */}
@@ -114,63 +205,18 @@ export function SectionsNavPanel({
           onReorder={onReorderSections}
           className="space-y-1.5"
         >
-          {sections.map((section) => {
-            const isActive = activeSectionId === section.id;
-            const isCompleted = completedSectionIds.includes(section.id);
-
-            return (
-              <Reorder.Item
-                key={section.id}
-                value={section}
-                className={`group relative p-3 rounded-2xl border transition-colors cursor-pointer flex items-center gap-3 ${
-                  isActive
-                    ? 'bg-violet-50/70 border-violet-200 shadow-xs ring-1 ring-violet-200/60'
-                    : 'bg-white hover:bg-slate-50/80 border-slate-200/70'
-                }`}
-                onClick={() => onSelectSection(section.id)}
-              >
-                {/* Drag Handle con touch-none para permitir scroll natural en móvil */}
-                <div 
-                  className="text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing touch-none p-1 shrink-0"
-                  title="Arrastrar para reordenar"
-                >
-                  <Icon name="grip" className="w-3.5 h-3.5" />
-                </div>
-
-                {/* Número y Título */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-slate-400 shrink-0">
-                      {section.num}
-                    </span>
-                    <h4 className="text-xs sm:text-xs font-bold text-slate-800 truncate">
-                      {section.title}
-                    </h4>
-                    {(commentCounts?.[section.id] ?? 0) > 0 && (
-                      <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCounts?.[section.id]}</span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                    {section.subtitle}
-                  </p>
-                </div>
-
-                {/* Botón de Completado táctil (mínimo 32px para dedos) */}
-                <button
-                  type="button"
-                  onClick={(e) => onToggleComplete(section.id, e)}
-                  className={`w-8 h-8 sm:w-6 sm:h-6 rounded-full flex items-center justify-center transition-colors shrink-0 cursor-pointer ${
-                    isCompleted
-                      ? 'bg-emerald-500 text-white shadow-xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-400'
-                  }`}
-                  title={isCompleted ? 'Marcado como completo' : 'Marcar como completado'}
-                >
-                  <Icon name="check" className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                </button>
-              </Reorder.Item>
-            );
-          })}
+          {sections.map((section) => (
+            <SortableSection
+              key={section.id}
+              section={section}
+              isActive={activeSectionId === section.id}
+              isCompleted={completedSectionIds.includes(section.id)}
+              commentCount={commentCounts?.[section.id] ?? 0}
+              handleOnly={handleOnly}
+              onSelectSection={onSelectSection}
+              onToggleComplete={onToggleComplete}
+            />
+          ))}
         </Reorder.Group>
         )}
       </div>
