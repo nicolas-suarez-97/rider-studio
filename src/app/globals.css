@@ -309,3 +309,28 @@ html:active-view-transition-type(backward)::view-transition-new(root) {
     display: block !important;
   }
 }
+
+@keyframes timeline-draw-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes timeline-draw-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.timeline-draw-y {
+  animation: timeline-draw-y 0.55s ease-out both;
+}
+
+.timeline-draw-x {
+  animation: timeline-draw-x 0.55s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-draw-y,
+  .timeline-draw-x {
+    animation: none;
+  }
+}

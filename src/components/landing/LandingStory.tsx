@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Icon } from '@/components/common/Icon';
 import type { LandingRole } from '@/components/landing/HeroSection';
 
@@ -65,6 +66,47 @@ const REASONS = [
     body: 'No se da por listo hasta que cada pedido está confirmado o tiene una alternativa escrita.',
   },
 ];
+
+function StepsTimeline() {
+  const reduce = useReducedMotion();
+
+  return (
+    <ol className="grid grid-cols-1 md:grid-cols-3 md:gap-6">
+      {STEPS.map((item, index) => (
+        <motion.li
+          key={item.title}
+          className="relative flex gap-4 pb-8 last:pb-0 md:block md:pb-0 md:text-center"
+          initial={reduce ? false : { opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.4, delay: index * 0.12, ease: 'easeOut' }}
+        >
+          {index < STEPS.length - 1 ? (
+            <>
+              <span
+                className="timeline-draw-y absolute left-[15px] top-8 bottom-0 w-0.5 origin-top bg-violet-400 md:hidden"
+                style={{ animationDelay: `${index * 0.16}s` }}
+                aria-hidden="true"
+              />
+              <span
+                className="timeline-draw-x hidden md:block absolute top-[15px] left-1/2 h-0.5 w-[calc(100%+1.5rem)] origin-left bg-violet-400"
+                style={{ animationDelay: `${index * 0.16}s` }}
+                aria-hidden="true"
+              />
+            </>
+          ) : null}
+          <span className="relative z-10 w-8 h-8 rounded-full bg-violet-600 text-white text-xs font-black inline-flex items-center justify-center shrink-0 shadow-md shadow-violet-500/30 md:mx-auto md:mb-4">
+            {index + 1}
+          </span>
+          <div className="min-w-0 pt-0.5 md:px-3 md:pt-0">
+            <p className="text-base font-black text-slate-900">{item.title}</p>
+            <p className="mt-1 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
+          </div>
+        </motion.li>
+      ))}
+    </ol>
+  );
+}
 
 function RiderDemo() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -145,15 +187,7 @@ export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Cómo se evitan</h2>
           <p className="mt-1 text-sm sm:text-base font-medium text-slate-500">El artista pide, el organizador confirma y todo queda en el rider.</p>
         </div>
-        <ol className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {STEPS.map((item, index) => (
-            <li key={item.title} className="space-y-1">
-              <p className="text-[11px] font-black tracking-wider text-violet-600">0{index + 1}</p>
-              <p className="text-base font-black text-slate-900">{item.title}</p>
-              <p className="text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
-            </li>
-          ))}
-        </ol>
+        <StepsTimeline />
       </section>
 
       <section className="space-y-4">
