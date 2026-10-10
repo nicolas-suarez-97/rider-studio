@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/common/Header';
 import { HeroSection, type LandingRole } from '@/components/landing/HeroSection';
@@ -8,9 +8,15 @@ import { LandingStory } from '@/components/landing/LandingStory';
 
 export function LandingGate() {
   const router = useRouter();
+  const [prompt, setPrompt] = useState('');
 
   const enter = (role: LandingRole) => {
-    router.push(role === 'artista' ? '/artista' : '/promotor');
+    const text = prompt.trim();
+    if (role === 'artista') {
+      router.push(text ? `/artista/chat?prompt=${encodeURIComponent(text)}` : '/artista');
+      return;
+    }
+    router.push(text ? `/promotor?prompt=${encodeURIComponent(text)}` : '/promotor');
   };
 
   return (
@@ -23,7 +29,13 @@ export function LandingGate() {
       <Header pageType="gate" />
 
       <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-6">
-        <HeroSection onEnter={enter} />
+        <HeroSection
+          onEnter={enter}
+          onPromptChange={setPrompt}
+          onSubmitPrompt={(text) => {
+            router.push(`/artista/chat?prompt=${encodeURIComponent(text)}`);
+          }}
+        />
         <LandingStory onEnter={enter} />
       </main>
     </div>

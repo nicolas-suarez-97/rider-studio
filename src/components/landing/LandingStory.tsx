@@ -22,15 +22,15 @@ const SURPRISES = [
 const STEPS = [
   {
     title: 'El artista pide',
-    body: 'Arma su rider: sonido, camerino y seguridad, cada cosa en su sección.',
+    body: 'Describe el show. El rider queda armado en secciones: sonido, camerino y seguridad.',
   },
   {
     title: 'Lo comparte',
-    body: 'Envía un enlace. El organizador lo lee, pero no cambia lo que pidió el artista.',
+    body: 'El organizador abre el mismo rider. Lo que pidió el artista sigue escrito igual.',
   },
   {
     title: 'El organizador confirma',
-    body: 'Revisa cada pedido y lo confirma o propone una alternativa. Todo queda en el rider.',
+    body: 'Cada pedido se confirma o lleva una alternativa escrita. Si falta uno, el show no está listo.',
   },
 ];
 
@@ -48,18 +48,18 @@ const DEMO_CHOICES = [
 const REASONS = [
   {
     icon: 'fileCheck',
-    title: 'Un solo rider',
-    body: 'El pedido y la confirmación están en el mismo lugar. No hay otra versión dando vueltas.',
+    title: 'Se acaba el rider viejo',
+    body: 'Hay uno solo. El pedido del artista y la confirmación del organizador viven ahí.',
   },
   {
     icon: 'send',
-    title: 'Nada queda a medias',
-    body: 'La confirmación no se envía hasta que cada pedido tenga respuesta.',
+    title: 'Se acaba el correo perdido',
+    body: 'La confirmación queda junto al pedido, no en un mensaje que después nadie encuentra.',
   },
   {
     icon: 'lock',
-    title: 'Lo que pidió el artista no cambia',
-    body: 'El organizador confirma o propone. El pedido original sigue igual.',
+    title: 'Se acaba lo que nadie revisó',
+    body: 'No se da por listo hasta que cada pedido está confirmado o tiene una alternativa escrita.',
   },
 ];
 
@@ -76,9 +76,12 @@ function RiderDemo() {
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
         >
           <div className="min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-wider text-violet-700">{line.tag}</span>
-            <p className="mt-1 text-sm font-black text-slate-900">{line.title}</p>
+            <p className="text-sm font-black text-slate-900">{line.title}</p>
             <p className="text-sm font-medium text-slate-500">{line.body}</p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{line.tag}</p>
+            {answers[line.id] === 'alternativa' ? (
+              <p className="mt-1 text-xs font-medium text-violet-700">La alternativa queda escrita junto al pedido.</p>
+            ) : null}
           </div>
           <div className="flex gap-1.5 shrink-0">
             {DEMO_CHOICES.map((choice) => {
@@ -124,13 +127,13 @@ export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void
       <section className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-6 lg:gap-10 items-center">
         <img
           src="/landing/landing-mail.jpg"
-          alt="Un documento pasando entre un computador y un teléfono"
+          alt="Documentos y mensajes repartidos entre un computador y un teléfono"
           className="w-full aspect-[4/3] object-cover rounded-[28px] border border-slate-200/80 bg-slate-50"
         />
         <div className="space-y-4">
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Las sorpresas de siempre</h2>
           <p className="text-sm sm:text-base font-medium text-slate-600 leading-relaxed">
-            El rider sale del artista y la confirmación vuelve por otro lado. Las sorpresas aparecen el día del show.
+            El rider es lo que el artista necesita para su show. Hoy el pedido sale por un lado y la confirmación vuelve por otro.
           </p>
           <div className="space-y-3">
             {SURPRISES.map((item) => (
@@ -144,7 +147,10 @@ export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Cómo se evitan</h2>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Cómo se evitan</h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">El artista pide, el organizador confirma y todo queda en el rider.</p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {STEPS.map((item, index) => (
             <div key={item.title} className="bg-white rounded-[28px] border border-slate-200/80 p-5 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)]">
@@ -161,7 +167,7 @@ export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void
       <section className="space-y-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Pruébalo como organizador</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">Este es un rider de ejemplo. Revisa cada pedido.</p>
+          <p className="mt-1 text-sm font-medium text-slate-500">El pedido del artista a un lado. Tu confirmación, al lado. Revisa los tres.</p>
         </div>
         <RiderDemo />
       </section>
