@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Icon } from '@/components/common/Icon';
 import type { LandingRole } from '@/components/landing/HeroSection';
@@ -37,17 +36,6 @@ const STEPS = [
     body: 'Cada pedido se confirma o lleva una alternativa escrita. Si falta uno, el show no está listo.',
   },
 ];
-
-const DEMO_LINES = [
-  { id: 'sonido', title: 'Sonido' },
-  { id: 'camerino', title: 'Camerino' },
-  { id: 'seguridad', title: 'Seguridad' },
-];
-
-const DEMO_CHOICES = [
-  { value: 'confirmado', label: 'Confirmado' },
-  { value: 'alternativa', label: 'Alternativa' },
-] as const;
 
 const REASONS = [
   {
@@ -108,57 +96,6 @@ function StepsTimeline() {
   );
 }
 
-function RiderDemo() {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const reviewed = DEMO_LINES.filter((line) => answers[line.id]).length;
-  const ready = reviewed === DEMO_LINES.length;
-
-  return (
-    <div className="bg-white rounded-[28px] border border-slate-200/90 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] px-4 sm:px-6">
-      {DEMO_LINES.map((line) => (
-        <div
-          key={line.id}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 border-b border-slate-100"
-        >
-          <p className="text-sm font-black text-slate-900">{line.title}</p>
-          <div className="flex gap-1.5 shrink-0">
-            {DEMO_CHOICES.map((choice) => {
-              const active = answers[line.id] === choice.value;
-              return (
-                <button
-                  key={choice.value}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setAnswers((prev) => ({ ...prev, [line.id]: choice.value }))}
-                  className={`h-8 px-3 rounded-full text-xs font-bold inline-flex items-center cursor-pointer active:scale-95 transition-colors ${
-                    active
-                      ? 'bg-violet-600 text-white'
-                      : 'border border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-700'
-                  }`}
-                >
-                  {choice.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-
-      <div className="flex items-center gap-3 py-4" aria-live="polite">
-        <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${ready ? 'bg-emerald-500' : 'bg-violet-600'}`}
-            style={{ width: `${(reviewed / DEMO_LINES.length) * 100}%` }}
-          />
-        </div>
-        <span className={`text-xs font-bold whitespace-nowrap ${ready ? 'text-emerald-700' : 'text-slate-700'}`}>
-          {ready ? 'Sin sorpresas: todo revisado' : `${reviewed} de ${DEMO_LINES.length} revisados`}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void }) {
   return (
     <div className="mt-6 sm:mt-10 space-y-14 sm:space-y-20">
@@ -188,14 +125,6 @@ export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void
           <p className="mt-1 text-sm sm:text-base font-medium text-slate-500">El artista pide, el organizador confirma y todo queda en el rider.</p>
         </div>
         <StepsTimeline />
-      </section>
-
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Pruébalo como organizador</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">Marca cada pedido.</p>
-        </div>
-        <RiderDemo />
       </section>
 
       <section className="space-y-4">
