@@ -1,64 +1,105 @@
 import { Icon } from '@/components/common/Icon';
 
 const PROBLEMS = [
-  { image: '/landing/landing-pdf.jpg', title: 'El PDF se queda viejo', alt: 'Una pila de documentos impresos' },
-  { image: '/landing/landing-mail.jpg', title: 'La respuesta se pierde en el correo', alt: 'Un documento flotando entre un computador y un teléfono' },
-  { image: '/landing/landing-show.jpg', title: 'El día del show falta una sección', alt: 'Un escenario vacío con un cable suelto' },
+  {
+    title: 'El PDF se queda viejo',
+    body: 'Cada fecha circula un archivo distinto. Producción, venue y artista no miran el mismo rider.',
+  },
+  {
+    title: 'La respuesta se pierde en el correo',
+    body: 'El promotor contesta en un mensaje. No queda escrito qué se aprobó, qué se cambia y qué no se puede cubrir.',
+  },
+  {
+    title: 'El día del show falta una sección',
+    body: 'Potencia, hospitality o aforo siguen abiertos porque nadie los marcó antes de llegar a la tarima.',
+  },
 ];
 
 const STEPS = [
-  { image: '/landing/landing-build.jpg', title: 'Armas el rider', alt: 'Un músico junto a tarjetas de un documento' },
-  { image: '/landing/landing-share.jpg', title: 'Lo compartes', alt: 'Un documento pasando de un computador a una tablet' },
-  { image: '/landing/landing-answer.jpg', title: 'El venue responde', alt: 'Una persona en cabina revisando una tablet' },
+  {
+    title: 'El artista arma el rider',
+    body: 'Describe el show y el documento queda por secciones: técnico, hospitality y seguridad.',
+  },
+  {
+    title: 'Lo comparte',
+    body: 'El promotor lo abre en solo lectura. El rider del artista no se edita.',
+  },
+  {
+    title: 'El venue responde',
+    body: 'Cada sección se marca Aprobado, Alternativa o Rechazado. No se envía si falta una.',
+  },
 ];
 
 const REASONS = [
-  { icon: 'fileCheck', title: 'El cruce queda en las secciones' },
-  { icon: 'send', title: 'No se envía si falta una respuesta' },
-  { icon: 'lock', title: 'El rider del artista no se edita' },
+  {
+    icon: 'fileCheck',
+    title: 'El cruce queda en las secciones',
+    body: 'El inventario del venue se escribe sobre el rider, no en un archivo aparte.',
+  },
+  {
+    icon: 'send',
+    title: 'No se envía a medias',
+    body: 'Si falta una respuesta, una oferta o un motivo, el contra-rider no sale.',
+  },
+  {
+    icon: 'lock',
+    title: 'El original no cambia',
+    body: 'El promotor responde. El documento que armó el artista sigue igual.',
+  },
 ];
 
 export function LandingStory({ onEnter }: { onEnter: (role: 'artista' | 'promotor') => void }) {
   return (
     <div className="mt-14 sm:mt-20 space-y-14 sm:space-y-20">
-      <section className="space-y-4">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Hoy se pierde en el camino</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {PROBLEMS.map((item) => (
-            <figure key={item.title} className="bg-white rounded-[28px] border border-slate-200/80 overflow-hidden shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)]">
-              <img src={item.image} alt={item.alt} className="w-full aspect-[4/3] object-cover bg-slate-50" />
-              <figcaption className="px-4 py-3.5 text-sm font-black text-slate-900">{item.title}</figcaption>
-            </figure>
-          ))}
+      <section className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-6 lg:gap-10 items-center">
+        <img
+          src="/landing/landing-mail.jpg"
+          alt="Un documento pasando entre un computador y un teléfono"
+          className="w-full aspect-[4/3] object-cover rounded-[28px] border border-slate-200/80 bg-slate-50"
+        />
+        <div className="space-y-4">
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Hoy se pierde en el camino</h2>
+          <p className="text-sm sm:text-base font-medium text-slate-600 leading-relaxed">
+            El rider sale del artista y la respuesta del venue vuelve por otro lado. El día del show no hay una versión cerrada.
+          </p>
+          <div className="space-y-3">
+            {PROBLEMS.map((item) => (
+              <div key={item.title}>
+                <p className="text-sm font-black text-slate-900">{item.title}</p>
+                <p className="mt-0.5 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className="space-y-4">
         <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">De la idea al contra-rider</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {STEPS.map((item, index) => (
-            <figure key={item.title} className="bg-white rounded-[28px] border border-slate-200/80 overflow-hidden shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)]">
-              <img src={item.image} alt={item.alt} className="w-full aspect-[4/3] object-cover bg-slate-50" />
-              <figcaption className="px-4 py-3.5 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-[11px] font-black inline-flex items-center justify-center shrink-0">
-                  {index + 1}
-                </span>
-                <span className="text-sm font-black text-slate-900">{item.title}</span>
-              </figcaption>
-            </figure>
+            <div key={item.title} className="bg-white rounded-[28px] border border-slate-200/80 p-5 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)]">
+              <span className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-[11px] font-black inline-flex items-center justify-center">
+                {index + 1}
+              </span>
+              <p className="mt-3 text-sm font-black text-slate-900">{item.title}</p>
+              <p className="mt-1 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
+            </div>
           ))}
         </div>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Así queda una sección</h2>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Así queda una sección</h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">El pedido del artista a un lado. La respuesta del venue, al lado.</p>
+        </div>
         <div className="bg-white rounded-[28px] border border-slate-200/90 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] p-5 sm:p-6 grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-5 items-center">
           <div className="min-w-0">
             <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-full">
               Rider técnico
             </span>
             <h3 className="mt-3 text-lg font-black tracking-tight text-slate-900">Sistema de PA</h3>
-            <p className="mt-1 text-sm font-medium text-slate-500">Line array, cobertura y consola FOH.</p>
+            <p className="mt-1 text-sm font-medium text-slate-500 leading-relaxed">Line array, cobertura y consola FOH. Eso es lo que pide el artista.</p>
           </div>
           <div className="space-y-3">
             <div className="flex flex-wrap gap-1.5">
@@ -66,6 +107,7 @@ export function LandingStory({ onEnter }: { onEnter: (role: 'artista' | 'promoto
               <span className="h-8 px-3 rounded-full border border-slate-200 text-slate-500 text-xs font-bold inline-flex items-center">Alternativa</span>
               <span className="h-8 px-3 rounded-full border border-slate-200 text-slate-500 text-xs font-bold inline-flex items-center">Rechazado</span>
             </div>
+            <p className="text-sm font-medium text-slate-500 leading-relaxed">El promotor elige una. Si ofrece otra cosa, deja la alternativa. Si no puede, deja el motivo.</p>
             <div className="flex items-center gap-3">
               <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
                 <div className="h-full w-1/3 rounded-full bg-violet-600" />
@@ -76,13 +118,14 @@ export function LandingStory({ onEnter }: { onEnter: (role: 'artista' | 'promoto
         </div>
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {REASONS.map((item) => (
-          <div key={item.title} className="bg-white rounded-2xl border border-slate-200/80 px-4 py-4 flex items-center gap-3">
-            <span className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 inline-flex items-center justify-center shrink-0">
+          <div key={item.title} className="bg-white rounded-2xl border border-slate-200/80 px-4 py-4">
+            <span className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 inline-flex items-center justify-center">
               <Icon name={item.icon} className="w-4 h-4" />
             </span>
-            <p className="text-sm font-black text-slate-900 leading-snug">{item.title}</p>
+            <p className="mt-3 text-sm font-black text-slate-900 leading-snug">{item.title}</p>
+            <p className="mt-1 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
           </div>
         ))}
       </section>
@@ -91,24 +134,18 @@ export function LandingStory({ onEnter }: { onEnter: (role: 'artista' | 'promoto
         <button
           type="button"
           onClick={() => onEnter('artista')}
-          className="text-left bg-white rounded-[28px] border border-slate-200/80 overflow-hidden shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] hover:border-violet-300 cursor-pointer active:scale-[0.99]"
+          className="text-left bg-white rounded-[28px] border border-slate-200/80 p-5 sm:p-6 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] hover:border-violet-300 cursor-pointer active:scale-[0.99]"
         >
-          <img src="/landing/landing-artist.jpg" alt="Una banda en un escenario" className="w-full aspect-[4/3] object-cover bg-slate-50" />
-          <span className="block px-4 py-3.5">
-            <span className="block text-sm font-black text-slate-900">Para el artista</span>
-            <span className="block text-xs font-medium text-slate-500 mt-0.5">Arma el rider y compártelo.</span>
-          </span>
+          <span className="block text-sm font-black text-slate-900">Para el artista</span>
+          <span className="block mt-1 text-sm font-medium text-slate-500 leading-relaxed">Dejas de reenviar el PDF. Armas el rider y lo compartes en cada fecha.</span>
         </button>
         <button
           type="button"
           onClick={() => onEnter('promotor')}
-          className="text-left bg-white rounded-[28px] border border-slate-200/80 overflow-hidden shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] hover:border-violet-300 cursor-pointer active:scale-[0.99]"
+          className="text-left bg-white rounded-[28px] border border-slate-200/80 p-5 sm:p-6 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] hover:border-violet-300 cursor-pointer active:scale-[0.99]"
         >
-          <img src="/landing/landing-promoter.jpg" alt="Una persona revisando el show desde la cabina" className="w-full aspect-[4/3] object-cover bg-slate-50" />
-          <span className="block px-4 py-3.5">
-            <span className="block text-sm font-black text-slate-900">Para el promotor</span>
-            <span className="block text-xs font-medium text-slate-500 mt-0.5">Responde y envía el contra-rider.</span>
-          </span>
+          <span className="block text-sm font-black text-slate-900">Para el promotor</span>
+          <span className="block mt-1 text-sm font-medium text-slate-500 leading-relaxed">Recibes el rider y respondes con lo que el venue sí puede cubrir.</span>
         </button>
       </section>
 
