@@ -66,6 +66,47 @@ const REASONS = [
   },
 ];
 
+const FRAME_LINES = ['Sonido', 'Camerino', 'Seguridad'];
+
+function StepFrame({ step }: { step: number }) {
+  if (step === 2) {
+    const marks = ['Confirmado', 'Alternativa', 'Confirmado'];
+    return (
+      <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3 space-y-1.5" aria-hidden="true">
+        <div className="px-0.5">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Cada pedido</span>
+        </div>
+        {FRAME_LINES.map((line, index) => (
+          <div key={line} className="h-8 rounded-lg bg-white border border-slate-200 px-2 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold text-slate-700">{line}</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${index === 1 ? 'bg-white text-slate-500 border border-slate-200' : 'bg-violet-600 text-white'}`}>
+              {marks[index]}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3 space-y-1.5" aria-hidden="true">
+      <div className="flex items-center justify-between gap-2 px-0.5">
+        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+          {step === 0 ? 'Rider del artista' : 'El mismo rider'}
+        </span>
+        {step === 1 ? (
+          <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-100 px-1.5 py-0.5 rounded-full">Solo lectura</span>
+        ) : null}
+      </div>
+      {FRAME_LINES.map((line) => (
+        <div key={line} className="h-8 rounded-lg bg-white border border-slate-200 px-2 flex items-center text-[11px] font-bold text-slate-700">
+          {line}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function RiderDemo() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const reviewed = DEMO_LINES.filter((line) => answers[line.id]).length;
@@ -155,7 +196,8 @@ export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {STEPS.map((item, index) => (
             <div key={item.title} className="bg-white rounded-[28px] border border-slate-200/80 p-5 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)]">
-              <span className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-[11px] font-black inline-flex items-center justify-center">
+              <StepFrame step={index} />
+              <span className="mt-4 w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-[11px] font-black inline-flex items-center justify-center">
                 {index + 1}
               </span>
               <p className="mt-3 text-sm font-black text-slate-900">{item.title}</p>
