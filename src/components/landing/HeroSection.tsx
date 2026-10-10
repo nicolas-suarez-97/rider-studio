@@ -47,7 +47,8 @@ export function HeroSection({ onEnter, onSubmitPrompt, onPromptChange }: HeroSec
         El artista pide, el organizador confirma y todo queda en el rider.
       </p>
 
-      <form onSubmit={handleSubmit} className="w-full pt-1 sm:pt-2">
+      <div className="w-full flex flex-col items-center gap-3 py-6 sm:py-8">
+      <form onSubmit={handleSubmit} className="w-full">
         <div className="bg-white rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 border border-slate-200/90 shadow-[0_12px_36px_-10px_rgba(99,102,241,0.12)] flex items-center gap-2 sm:gap-3 focus-within:border-violet-500 focus-within:ring-4 focus-within:ring-violet-500/10 transition-all">
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-violet-100/90 text-violet-700 flex items-center justify-center ml-1 shrink-0" title="Generador IA">
             <Icon name="sparkles" className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-violet-600" />
@@ -73,7 +74,7 @@ export function HeroSection({ onEnter, onSubmitPrompt, onPromptChange }: HeroSec
         </div>
       </form>
 
-      <div className="w-full flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap pt-0.5">
+      <div className="w-full flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap">
         <span className="text-xs font-semibold text-slate-400 mr-1 hidden sm:inline">
           Prueba rápida:
         </span>
@@ -88,8 +89,9 @@ export function HeroSection({ onEnter, onSubmitPrompt, onPromptChange }: HeroSec
           </button>
         ))}
       </div>
+      </div>
 
-      <div className="w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+      <div className="w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => onEnter('artista')}
