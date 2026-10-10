@@ -69,38 +69,27 @@ const REASONS = [
 const FRAME_LINES = ['Sonido', 'Camerino', 'Seguridad'];
 
 function StepFrame({ step }: { step: number }) {
-  if (step === 2) {
-    const marks = ['Confirmado', 'Alternativa', 'Confirmado'];
-    return (
-      <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3 space-y-1.5" aria-hidden="true">
-        <div className="px-0.5">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Cada pedido</span>
-        </div>
-        {FRAME_LINES.map((line, index) => (
-          <div key={line} className="h-8 rounded-lg bg-white border border-slate-200 px-2 flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold text-slate-700">{line}</span>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${index === 1 ? 'bg-white text-slate-500 border border-slate-200' : 'bg-violet-600 text-white'}`}>
-              {marks[index]}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const marks = step === 2 ? ['Confirmado', 'Alternativa', 'Confirmado'] : null;
+  const label = step === 0 ? 'Rider del artista' : step === 1 ? 'El mismo rider' : 'Cada pedido';
 
   return (
-    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3 space-y-1.5" aria-hidden="true">
-      <div className="flex items-center justify-between gap-2 px-0.5">
-        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-          {step === 0 ? 'Rider del artista' : 'El mismo rider'}
-        </span>
+    <div className="rounded-[24px] bg-white border border-slate-200/80 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] px-4 py-3 sm:px-5" aria-hidden="true">
+      <div className="flex items-center justify-between gap-2 py-2">
+        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</span>
         {step === 1 ? (
-          <span className="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-100 px-1.5 py-0.5 rounded-full">Solo lectura</span>
+          <span className="text-[10px] font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full">Solo lectura</span>
         ) : null}
       </div>
-      {FRAME_LINES.map((line) => (
-        <div key={line} className="h-8 rounded-lg bg-white border border-slate-200 px-2 flex items-center text-[11px] font-bold text-slate-700">
-          {line}
+      {FRAME_LINES.map((line, index) => (
+        <div key={line} className="flex items-center justify-between gap-3 py-2.5 border-t border-slate-100">
+          <span className="text-sm font-bold text-slate-800">{line}</span>
+          {marks ? (
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${index === 1 ? 'text-slate-500 border border-slate-200' : 'bg-violet-600 text-white'}`}>
+              {marks[index]}
+            </span>
+          ) : (
+            <span className="h-1 w-8 rounded-full bg-violet-100" />
+          )}
         </div>
       ))}
     </div>
@@ -188,23 +177,23 @@ export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void
         </div>
       </section>
 
-      <section className="space-y-4">
-        <div>
+      <section className="space-y-8">
+        <div className="max-w-2xl">
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Cómo se evitan</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">El artista pide, el organizador confirma y todo queda en el rider.</p>
+          <p className="mt-1 text-sm sm:text-base font-medium text-slate-500">El artista pide, el organizador confirma y todo queda en el rider.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <ol className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-6">
           {STEPS.map((item, index) => (
-            <div key={item.title} className="bg-white rounded-[28px] border border-slate-200/80 p-5 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)]">
+            <li key={item.title} className="space-y-4">
               <StepFrame step={index} />
-              <span className="mt-4 w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-[11px] font-black inline-flex items-center justify-center">
-                {index + 1}
-              </span>
-              <p className="mt-3 text-sm font-black text-slate-900">{item.title}</p>
-              <p className="mt-1 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
-            </div>
+              <div className="px-1 space-y-1">
+                <p className="text-[11px] font-black tracking-wider text-violet-600">0{index + 1}</p>
+                <p className="text-base font-black text-slate-900">{item.title}</p>
+                <p className="text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
+              </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
 
       <section className="space-y-4">
