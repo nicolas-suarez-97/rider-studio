@@ -40,7 +40,7 @@ export function HeroSection({ onEnter, onSubmitPrompt, onPromptChange }: HeroSec
   return (
     <div className="flex flex-col items-center text-center space-y-4 sm:space-y-5 max-w-3xl mx-auto py-12 sm:py-16 lg:py-20 px-1">
       <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight leading-[1.05]">
-        Un show sin sorpresas
+        Un show <span className="text-violet-600">sin sorpresas</span>
       </h1>
 
       <p className="text-base sm:text-lg text-slate-600 font-medium max-w-xl leading-relaxed">
