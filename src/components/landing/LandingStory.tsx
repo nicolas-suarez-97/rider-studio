@@ -6,14 +6,17 @@ import type { LandingRole } from '@/components/landing/HeroSection';
 
 const SURPRISES = [
   {
+    icon: 'fileText',
     title: 'El rider que llegó viejo',
     body: 'Cada fecha circula un PDF distinto y nadie sabe cuál es el último.',
   },
   {
+    icon: 'messageSquare',
     title: 'La respuesta que se quedó en un correo',
     body: 'Lo que se confirmó por mensaje no queda junto al rider. Después nadie lo encuentra.',
   },
   {
+    icon: 'clock',
     title: 'El pedido que nadie revisó',
     body: 'El día del show aparece algo sin confirmar: el sonido, el camerino o la seguridad.',
   },
@@ -124,25 +127,23 @@ function RiderDemo() {
 export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void }) {
   return (
     <div className="mt-6 sm:mt-10 space-y-14 sm:space-y-20">
-      <section className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-6 lg:gap-10 items-center">
-        <img
-          src="/landing/landing-mail.jpg"
-          alt="Documentos y mensajes repartidos entre un computador y un teléfono"
-          className="w-full aspect-[4/3] object-cover rounded-[28px] border border-slate-200/80 bg-slate-50"
-        />
-        <div className="space-y-4">
+      <section className="space-y-4">
+        <div className="max-w-2xl">
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Las sorpresas de siempre</h2>
-          <p className="text-sm sm:text-base font-medium text-slate-600 leading-relaxed">
+          <p className="mt-1 text-sm sm:text-base font-medium text-slate-600 leading-relaxed">
             El rider es lo que el artista necesita para su show. Hoy el pedido sale por un lado y la confirmación vuelve por otro.
           </p>
-          <div className="space-y-3">
-            {SURPRISES.map((item) => (
-              <div key={item.title}>
-                <p className="text-sm font-black text-slate-900">{item.title}</p>
-                <p className="mt-0.5 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
-              </div>
-            ))}
-          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 bg-white rounded-[28px] border border-slate-200/80 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] overflow-hidden">
+          {SURPRISES.map((item) => (
+            <div key={item.title} className="p-5 sm:p-6 border-b md:border-b-0 md:border-r border-slate-100 last:border-0">
+              <span className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 inline-flex items-center justify-center">
+                <Icon name={item.icon} className="w-4 h-4" />
+              </span>
+              <p className="mt-4 text-sm font-black text-slate-900 leading-snug">{item.title}</p>
+              <p className="mt-1 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
