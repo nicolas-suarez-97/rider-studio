@@ -1,0 +1,14 @@
+---
+description: Commit and push project changes at the end of every interaction
+alwaysApply: true
+---
+
+# Subir los cambios en cada interacción
+
+Al terminar cada interacción en la que haya cambios en este repositorio, créalos en un commit y súbelos a la rama actual.
+
+- Incluye solo los archivos de este trabajo. No incluyas secretos (`.env`, credenciales).
+- Sigue el protocolo de commits del usuario: revisa estado, diff y mensajes recientes; el mensaje va en un HEREDOC y explica el porqué.
+- No uses `push --force`, no cambies la configuración de git y no omitas los hooks.
+- Si el commit o el push falla, dilo en la respuesta. No dejes los cambios solo en local.
+- Si no hay nada que commitear ni que subir, no hagas un commit vacío.
