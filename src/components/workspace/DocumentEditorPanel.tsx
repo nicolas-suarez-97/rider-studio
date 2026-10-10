@@ -5,9 +5,10 @@ import { Icon } from '../common/Icon';
 import { InputListTable } from './InputListTable';
 import { StagePlotView } from './StagePlotView';
 import { SectionCommentAnchor } from '@/components/view/SectionCommentThread';
-import { SectionItem, RiderType, ChannelData, StagePlotConfig } from '@/core/types/rider.types';
+import { SectionItem, RiderType, ChannelData, StagePlotConfig, RiderMediaItem } from '@/core/types/rider.types';
 import { ChannelInput } from '@/core/models/ChannelInput';
 import { SectionCommentItem } from '@/lib/share/comments';
+import { RiderGallery } from './RiderGallery';
 
 interface DocumentEditorPanelProps {
   riderTitle: string;
@@ -32,6 +33,13 @@ interface DocumentEditorPanelProps {
   onUpdateSeason?: (val: string) => void;
   stagePlot: StagePlotConfig;
   onUpdateStagePlot?: (newConfig: StagePlotConfig) => void;
+  onUploadReferenceImage?: (file: File) => Promise<void>;
+  onRemoveReferenceImage?: () => Promise<void>;
+  media?: RiderMediaItem[];
+  onAddMedia?: (file: File) => Promise<void> | void;
+  onRemoveMedia?: (id: string) => Promise<void> | void;
+  onMakeCover?: (id: string) => Promise<void> | void;
+  mediaBusy?: boolean;
   readOnly?: boolean;
   sectionComments?: SectionCommentItem[];
   openCommentSectionId?: string | null;
@@ -63,6 +71,13 @@ export function DocumentEditorPanel({
   onUpdateSeason,
   stagePlot,
   onUpdateStagePlot,
+  onUploadReferenceImage,
+  onRemoveReferenceImage,
+  media = [],
+  onAddMedia,
+  onRemoveMedia,
+  onMakeCover,
+  mediaBusy = false,
   readOnly = false,
   sectionComments = [],
   openCommentSectionId = null,
@@ -76,8 +91,17 @@ export function DocumentEditorPanel({
       <div className="bg-white rounded-2xl sm:rounded-[32px] p-4 sm:p-8 border border-slate-200/80 shadow-[0_12px_36px_-10px_rgba(100,116,139,0.06)] relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-radial from-violet-100/50 via-transparent to-transparent -mr-20 -mt-20 pointer-events-none" />
         
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-100 pb-5 sm:pb-6">
-          <div className="space-y-1.5 flex-1 min-w-0 w-full pr-0 lg:pr-4">
+        <div className="flex flex-col lg:flex-row items-start justify-between gap-4 border-b border-slate-100 pb-5 sm:pb-6">
+          <RiderGallery
+            media={media}
+            artistName={artistName}
+            editable={!readOnly && Boolean(onAddMedia)}
+            busy={mediaBusy || isSaving}
+            onAdd={onAddMedia}
+            onRemove={onRemoveMedia}
+            onMakeCover={onMakeCover}
+          >
+          <div className="space-y-1.5 min-w-0 w-full">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full border border-violet-100 shrink-0">
                 Documento de Gira Oficial
@@ -123,6 +147,7 @@ export function DocumentEditorPanel({
               {riderTitle}
             </p>
           </div>
+          </RiderGallery>
 
           <div className="flex items-center flex-wrap gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
             {onSaveRider && (
@@ -323,6 +348,8 @@ export function DocumentEditorPanel({
                   <StagePlotView
                     stagePlot={stagePlot}
                     onUpdateStagePlot={readOnly ? undefined : onUpdateStagePlot}
+                    onUploadReferenceImage={readOnly ? undefined : onUploadReferenceImage}
+                    onRemoveReferenceImage={readOnly ? undefined : onRemoveReferenceImage}
                     artistName={artistName}
                     riderTitle={riderTitle}
                     season={season}

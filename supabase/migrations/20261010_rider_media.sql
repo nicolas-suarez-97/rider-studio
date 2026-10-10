@@ -1,0 +1,2 @@
+ALTER TABLE public.riders
+  ADD COLUMN IF NOT EXISTS media JSONB NOT NULL DEFAULT '[]'::jsonb;

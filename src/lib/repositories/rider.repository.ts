@@ -1,6 +1,8 @@
 import { createServerSupabaseClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
 import { Database, Json } from '@/lib/supabase/database.types';
 import { createShareToken } from '@/lib/share/token';
+import { del } from '@vercel/blob';
+import { mediaPathnames } from '@/lib/media/rider-media';
 
 export type DbRider = Database['public']['Tables']['riders']['Row'];
 
@@ -27,6 +29,7 @@ export interface SaveRiderInput {
   channels?: Json;
   sections?: Json;
   metadata?: Json;
+  media?: Json;
 }
 
 export interface ShareLink {
@@ -83,6 +86,11 @@ function metadataWithShare(metadata: Json, share: ShareLink): Json {
       sharedAt: share.sharedAt,
     },
   };
+}
+
+function isMissingMediaColumn(error: { code?: string; message?: string }) {
+  const message = `${error.code ?? ''} ${error.message ?? ''}`;
+  return /PGRST204|42703/.test(message) || /Could not find the 'media' column/i.test(message);
 }
 
 function isOwnerSession(session: LinkedSessionItem): boolean {
@@ -304,6 +312,7 @@ export class RiderRepository implements IRiderRepository {
     const metadata = existingShare
       ? metadataWithShare(metadataBase, existingShare)
       : metadataBase;
+    const media = rider.media !== undefined ? rider.media : (existing?.media ?? []);
 
     const record: DbRider = {
       id,
@@ -317,6 +326,7 @@ export class RiderRepository implements IRiderRepository {
       channels: rider.channels ?? [],
       sections: rider.sections ?? [],
       metadata,
+      media,
       share_token: existing?.share_token,
       share_enabled: existing?.share_enabled,
       shared_at: existing?.shared_at,
@@ -339,14 +349,22 @@ export class RiderRepository implements IRiderRepository {
           channels: record.channels,
           sections: record.sections,
           metadata: record.metadata,
+          media: record.media ?? [],
           created_at: record.created_at,
           updated_at: record.updated_at,
         };
-        const { data, error } = await supabase
+        const write = async (payload: Database['public']['Tables']['riders']['Insert']) => supabase
           .from('riders')
-          .upsert(persist)
+          .upsert(payload)
           .select()
           .single();
+
+        let { data, error } = await write(persist);
+        if (error && isMissingMediaColumn(error)) {
+          const withoutMedia = { ...persist };
+          delete withoutMedia.media;
+          ({ data, error } = await write(withoutMedia));
+        }
 
         if (!error && data) {
           return data;
@@ -368,6 +386,19 @@ export class RiderRepository implements IRiderRepository {
   }
 
   public async delete(id: string): Promise<boolean> {
+    const existing = await this.getById(id);
+    if (existing) {
+      const metadata = asMetadataRecord(existing.metadata);
+      const paths = mediaPathnames(existing.media ?? metadata?.media, metadata?.stagePlot);
+      if (paths.length > 0 && process.env.BLOB_READ_WRITE_TOKEN) {
+        try {
+          await del(paths);
+        } catch (error) {
+          console.warn('[media delete rider]', error);
+        }
+      }
+    }
+
     if (isSupabaseServerConfigured()) {
       const supabase = await createServerSupabaseClient();
       if (supabase) {

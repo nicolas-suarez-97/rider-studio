@@ -303,4 +303,9 @@ html:active-view-transition-type(backward)::view-transition-new(root) {
     page-break-inside: avoid !important;
     page-break-after: auto !important;
   }
+
+  .stage-plot-print,
+  .stage-photo-print {
+    display: block !important;
+  }
 }

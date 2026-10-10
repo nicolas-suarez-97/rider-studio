@@ -30,6 +30,8 @@ BEGIN
     CREATE INDEX IF NOT EXISTS idx_riders_type ON public.riders (rider_type);
     CREATE INDEX IF NOT EXISTS idx_riders_user_id ON public.riders (user_id);
 
+    ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS media JSONB NOT NULL DEFAULT '[]'::jsonb;
+
     ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS share_token TEXT;
     ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS share_enabled BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS shared_at TIMESTAMPTZ;

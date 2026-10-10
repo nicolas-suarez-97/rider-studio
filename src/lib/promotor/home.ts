@@ -4,6 +4,7 @@ import { RiderType } from '@/core/types/rider.types';
 import { buildContraLines, readStoredContra } from '@/lib/promotor/contra-rider';
 import { readShareLink } from '@/lib/repositories/rider.repository';
 import { getConsultSessions, getRiders } from '@/lib/services/rider-storage';
+import { coverMedia } from '@/lib/media/rider-media';
 
 export interface PromotorShowCard {
   id: string;
@@ -13,6 +14,7 @@ export interface PromotorShowCard {
   type: RiderType;
   tour: string;
   riderStatus: 'completed' | 'in_progress';
+  coverUrl?: string;
   version: number;
   verdict: ReviewVerdict | null;
   updatedAt: string;
@@ -58,6 +60,7 @@ export async function loadPromotorHome() {
       type: rider.type,
       tour: rider.season,
       riderStatus: rider.status,
+      coverUrl: coverMedia(rider.media)?.url,
       version: stored.version,
       verdict: stored.review?.verdict ?? null,
       updatedAt: row.updated_at || '',

@@ -21,6 +21,8 @@ import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
+import { isPersistedRiderId, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
+import { deleteRiderImage, uploadRiderImage } from '@/lib/media/upload-client';
 
 type MobileTab = 'sections' | 'document' | 'assistant';
 
@@ -43,6 +45,8 @@ export function WorkspaceClient({
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [rider, setRider] = useState<Rider>(() => new Rider(initialRiderData || { type: initialType }));
+  const riderRef = useRef(rider);
+  riderRef.current = rider;
   const [activeSectionId, setActiveSectionId] = useState<string>(() => {
     return initialRiderData?.sections?.[0]?.id || 'tech-contactos';
   });
@@ -170,7 +174,7 @@ export function WorkspaceClient({
 
   // Guardar en base de datos Supabase
   const handleSaveRider = async (customRider?: Rider, options?: { silent?: boolean }) => {
-    const targetRider = customRider ? new Rider(customRider) : new Rider(rider);
+    const targetRider = customRider ? new Rider(customRider) : new Rider(riderRef.current);
     const hasArtist = Boolean(targetRider.artistName && targetRider.artistName.trim() !== '');
 
     if (!targetRider.title || targetRider.title.trim() === '') {
@@ -186,6 +190,7 @@ export function WorkspaceClient({
       if (!hasArtist) {
         saved.artistName = '';
       }
+      riderRef.current = saved;
       setRider(saved);
       setDbSyncStatus('saved');
       if (!options?.silent) {
@@ -210,6 +215,77 @@ export function WorkspaceClient({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const riderWithId = async (): Promise<Rider | null> => {
+    const current = riderRef.current;
+    if (isPersistedRiderId(current.id)) return current;
+    return (await handleSaveRider(current, { silent: true })) ?? null;
+  };
+
+  const handleAddMedia = async (file: File) => {
+    try {
+      const base = await riderWithId();
+      if (!base?.id) return;
+      if (base.media.length >= MAX_GALLERY_IMAGES) {
+        showToast('El carrusel admite hasta 8 fotos');
+        return;
+      }
+      const uploaded = await uploadRiderImage(file, 'gallery', base.id);
+      const updated = new Rider(base);
+      updated.addMedia(uploaded);
+      riderRef.current = updated;
+      setRider(updated);
+      await handleSaveRider(updated, { silent: true });
+      showToast('Foto agregada');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'No se pudo subir la foto');
+    }
+  };
+
+  const handleRemoveMedia = async (id: string) => {
+    const updated = new Rider(riderRef.current);
+    const pathname = updated.removeMedia(id);
+    riderRef.current = updated;
+    setRider(updated);
+    await handleSaveRider(updated, { silent: true });
+    if (pathname) void deleteRiderImage(pathname);
+  };
+
+  const handleMakeCover = async (id: string) => {
+    const updated = new Rider(riderRef.current);
+    updated.setCover(id);
+    riderRef.current = updated;
+    setRider(updated);
+    await handleSaveRider(updated, { silent: true });
+  };
+
+  const handleUploadPlotPhoto = async (file: File) => {
+    try {
+      const base = await riderWithId();
+      if (!base?.id) return;
+      const previous = base.stagePlot.referenceImagePath;
+      const uploaded = await uploadRiderImage(file, 'plot', base.id);
+      const updated = new Rider(base);
+      updated.setReferenceImage(uploaded.url, uploaded.pathname);
+      riderRef.current = updated;
+      setRider(updated);
+      await handleSaveRider(updated, { silent: true });
+      if (previous && previous !== uploaded.pathname) void deleteRiderImage(previous);
+      showToast('Foto del plano guardada');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'No se pudo subir la foto del plano');
+      throw err;
+    }
+  };
+
+  const handleRemovePlotPhoto = async () => {
+    const updated = new Rider(riderRef.current);
+    const pathname = updated.clearReferenceImage();
+    riderRef.current = updated;
+    setRider(updated);
+    await handleSaveRider(updated, { silent: true });
+    if (pathname) void deleteRiderImage(pathname);
   };
 
   const handleShare = async () => {
@@ -515,6 +591,13 @@ export function WorkspaceClient({
             onUpdateSeason={handleUpdateSeason}
             stagePlot={rider.stagePlot}
             onUpdateStagePlot={handleUpdateStagePlot}
+            onUploadReferenceImage={handleUploadPlotPhoto}
+            onRemoveReferenceImage={handleRemovePlotPhoto}
+            media={rider.media}
+            onAddMedia={handleAddMedia}
+            onRemoveMedia={handleRemoveMedia}
+            onMakeCover={handleMakeCover}
+            mediaBusy={isSaving}
             sectionComments={sectionComments}
             openCommentSectionId={openCommentSectionId}
             onToggleSectionComments={(sectionId) => {
@@ -640,6 +723,8 @@ export function WorkspaceClient({
         season={rider.season}
         stagePlot={rider.stagePlot}
         onUpdateStagePlot={handleUpdateStagePlot}
+        onUploadReferenceImage={handleUploadPlotPhoto}
+        onRemoveReferenceImage={handleRemovePlotPhoto}
       />
 
       <ShareLinkModal

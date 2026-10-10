@@ -36,6 +36,13 @@ export interface LinkedChatSession {
   updatedAt?: string;
 }
 
+export interface RiderMediaItem {
+  id: string;
+  url: string;
+  pathname: string;
+  cover: boolean;
+}
+
 export interface SavedRiderSummary {
   id: string;
   title: string;
@@ -48,6 +55,7 @@ export interface SavedRiderSummary {
   status: 'completed' | 'in_progress';
   updatedAt: string;
   lastEdited: string;
+  coverUrl?: string;
   channels?: ChannelData[];
   sections?: SectionItem[];
   linkedSessions?: LinkedChatSession[];
@@ -81,4 +89,6 @@ export interface StagePlotConfig {
   stageDepth: number;
   stageHeight: number;
   elements: StageElement[];
+  referenceImageUrl?: string;
+  referenceImagePath?: string;
 }

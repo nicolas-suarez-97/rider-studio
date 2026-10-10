@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/common/Header';
 import { Icon } from '@/components/common/Icon';
+import { RiderThumb } from '@/components/common/RiderThumb';
 import { ProgressMeter, StartConversation, WorkQuestions } from '@/components/home/HomeSuggestions';
 import { chatService } from '@/core/services/chat.service';
 import type { PromotorConversationCard, PromotorShowCard } from '@/lib/promotor/home';
@@ -81,13 +82,16 @@ export function PromotorHomeClient({ shows, conversations: initialConversations,
         {featured ? (
           <section className="bg-white rounded-[28px] border border-slate-200/90 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] p-5 sm:p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-              <div className="min-w-0">
+              <div className="min-w-0 flex items-start gap-4">
+                <RiderThumb url={featured.coverUrl} name={featured.artistName} size={72} />
+                <div className="min-w-0">
                 <h2 className="text-2xl font-black tracking-tight text-slate-900 truncate">
                   {featured.artistName}
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500">
                   {[featured.venue, featured.updatedLabel].filter(Boolean).join(' · ') || featured.title}
                 </p>
+                </div>
               </div>
               <Link
                 href={showHref(featured.id, pendingPrompt)}
@@ -148,7 +152,9 @@ export function PromotorHomeClient({ shows, conversations: initialConversations,
                         {show.riderStatus === 'completed' ? 'Completado' : 'En curso'}
                       </span>
                     </div>
-                    <Link href={showHref(show.id, pendingPrompt)} className="block space-y-2.5">
+                    <Link href={showHref(show.id, pendingPrompt)} className="flex items-start gap-3">
+                      <RiderThumb url={show.coverUrl} name={show.artistName} size={40} />
+                      <div className="min-w-0 flex-1 space-y-2.5">
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="text-sm font-extrabold text-slate-900 truncate">{show.artistName}</span>
                         <span className="text-[11px] font-semibold text-slate-400 shrink-0">{show.updatedLabel}</span>
@@ -160,6 +166,7 @@ export function PromotorHomeClient({ shows, conversations: initialConversations,
                         percent={showPercent}
                         caption={`${show.answered} de ${show.total} secciones`}
                       />
+                      </div>
                     </Link>
                     <Link
                       href={showHref(show.id)}

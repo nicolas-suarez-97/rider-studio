@@ -47,7 +47,8 @@ export async function POST(req: NextRequest) {
       ...parsed.data,
       channels: parsed.data.channels as Json,
       sections: parsed.data.sections as Json,
-      metadata: parsed.data.metadata as Json
+      metadata: parsed.data.metadata as Json,
+      media: parsed.data.media as Json | undefined,
     });
     return NextResponse.json({ rider: saved, success: true });
   } catch (error: unknown) {

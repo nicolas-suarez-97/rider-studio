@@ -211,6 +211,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
             onExport={() => {}}
             onOpenStagePlot={() => {}}
             stagePlot={rider.stagePlot}
+            media={rider.media}
             sectionComments={sectionComments}
             openCommentSectionId={openCommentSectionId}
             onToggleSectionComments={toggleSectionComments}

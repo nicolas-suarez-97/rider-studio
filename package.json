@@ -12,6 +12,7 @@
     "@ai-sdk/openai": "^4.0.89",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
+    "@vercel/blob": "^2.8.1",
     "ai": "^7.0.133",
     "mammoth": "^1.13.0",
     "motion": "^14.0.0",

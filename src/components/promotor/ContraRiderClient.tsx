@@ -3,11 +3,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Header } from '@/components/common/Header';
 import { Icon } from '@/components/common/Icon';
+import { RiderThumb } from '@/components/common/RiderThumb';
 import { Toast } from '@/components/common/Toast';
 import { InventoryStep } from '@/components/promotor/InventoryStep';
 import { PromotorAssistant } from '@/components/promotor/PromotorAssistant';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
 import { Rider } from '@/core/models/Rider';
+import { coverMedia } from '@/lib/media/rider-media';
 import { AgentRole } from '@/core/types/agent.types';
 import {
   ContraFinding,
@@ -533,7 +535,13 @@ export function ContraRiderClient({
         <section className={`h-full min-w-0 flex-col pb-16 xl:pb-0 ${mobileTab === 'contra' ? 'flex flex-1' : 'hidden'} xl:flex xl:flex-[1.4] xl:min-w-0`}>
           <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <div className="min-w-0 flex items-start gap-3">
+                <RiderThumb
+                  url={coverMedia(rider.media)?.url}
+                  name={rider.artistName || 'Artista'}
+                  size={48}
+                />
+                <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-full">
                     Contra-rider
@@ -553,6 +561,7 @@ export function ContraRiderClient({
                 <p className="text-xs font-semibold text-slate-500 truncate">
                   {[rider.season, rider.venue, rider.version].filter(Boolean).join(' · ') || rider.title}
                 </p>
+                </div>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -822,6 +831,7 @@ export function ContraRiderClient({
             onExport={() => {}}
             onOpenStagePlot={() => {}}
             stagePlot={rider.stagePlot}
+            media={rider.media}
           />
         </section>
         ) : null}

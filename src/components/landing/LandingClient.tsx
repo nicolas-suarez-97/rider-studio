@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/common/Header';
 import { Icon } from '@/components/common/Icon';
+import { RiderThumb } from '@/components/common/RiderThumb';
 import { Toast } from '@/components/common/Toast';
 import { ProgressMeter, StartConversation, WorkQuestions } from '@/components/home/HomeSuggestions';
 import { riderService } from '@/core/services/rider.service';
@@ -180,13 +181,16 @@ export function LandingClient({ initialRiders, initialConversations, suggestions
         {featured ? (
           <section className="bg-white rounded-[28px] border border-slate-200/90 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] p-5 sm:p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-              <div className="min-w-0">
+              <div className="min-w-0 flex items-start gap-4">
+                <RiderThumb url={featured.coverUrl} name={featured.artist || featured.title} size={72} />
+                <div className="min-w-0">
                 <h2 className="text-2xl font-black tracking-tight text-slate-900 truncate">
                   {featured.artist || featured.title}
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500">
                   {[TYPE_LABEL[featured.type] || 'Rider', featured.tour, formatDay(featured.updatedAt)].filter(Boolean).join(' · ')}
                 </p>
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -263,7 +267,9 @@ export function LandingClient({ initialRiders, initialConversations, suggestions
                         <Icon name="trash" className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <Link href={`/artista/workspace?id=${rider.id}`} className="block space-y-2.5">
+                    <Link href={`/artista/workspace?id=${rider.id}`} className="flex items-start gap-3">
+                      <RiderThumb url={rider.coverUrl} name={rider.artist || rider.title} size={40} />
+                      <div className="min-w-0 flex-1 space-y-2.5">
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="text-sm font-extrabold text-slate-900 truncate">{rider.artist || rider.title}</span>
                         <span className="text-[11px] font-semibold text-slate-400 shrink-0">{formatDay(rider.updatedAt)}</span>
@@ -275,6 +281,7 @@ export function LandingClient({ initialRiders, initialConversations, suggestions
                         percent={rider.progress}
                         caption={`${rider.sectionsCompleted} de ${rider.totalSections} secciones`}
                       />
+                      </div>
                     </Link>
                     {session ? (
                       <Link

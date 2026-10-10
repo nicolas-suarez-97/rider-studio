@@ -15,6 +15,8 @@ interface StagePlotModalProps {
   season?: string;
   stagePlot: StagePlotConfig;
   onUpdateStagePlot?: (newConfig: StagePlotConfig) => void;
+  onUploadReferenceImage?: (file: File) => Promise<void>;
+  onRemoveReferenceImage?: () => Promise<void>;
 }
 
 export function StagePlotModal({
@@ -25,7 +27,9 @@ export function StagePlotModal({
   riderTitle = 'Rider de Producción',
   season = 'Gira Oficial',
   stagePlot,
-  onUpdateStagePlot
+  onUpdateStagePlot,
+  onUploadReferenceImage,
+  onRemoveReferenceImage
 }: StagePlotModalProps) {
   if (!isOpen) return null;
 
@@ -115,6 +119,8 @@ export function StagePlotModal({
               <StagePlotView
                 stagePlot={stagePlot}
                 onUpdateStagePlot={onUpdateStagePlot}
+                onUploadReferenceImage={onUploadReferenceImage}
+                onRemoveReferenceImage={onRemoveReferenceImage}
                 artistName={artistName}
                 riderTitle={riderTitle}
                 season={season}

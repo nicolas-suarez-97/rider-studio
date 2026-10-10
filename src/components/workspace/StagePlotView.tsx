@@ -14,6 +14,8 @@ function generateUniqueId(): string {
 interface StagePlotViewProps {
   stagePlot: StagePlotConfig;
   onUpdateStagePlot?: (newConfig: StagePlotConfig) => void;
+  onUploadReferenceImage?: (file: File) => Promise<void>;
+  onRemoveReferenceImage?: () => Promise<void>;
   artistName?: string;
   riderTitle?: string;
   season?: string;
@@ -25,6 +27,8 @@ interface StagePlotViewProps {
 export function StagePlotView({
   stagePlot,
   onUpdateStagePlot,
+  onUploadReferenceImage,
+  onRemoveReferenceImage,
   artistName = 'Artista / Banda',
   riderTitle = 'Rider de Producción',
   season = 'Gira Oficial',
@@ -36,6 +40,9 @@ export function StagePlotView({
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [editingElement, setEditingElement] = useState<StageElement | null>(null);
+  const [plotView, setPlotView] = useState<'plot' | 'photo'>('plot');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const stageCanvasRef = useRef<HTMLDivElement>(null);
   const draggingIdRef = useRef<string | null>(null);
@@ -158,7 +165,11 @@ export function StagePlotView({
   const handleResetDefault = () => {
     const ok = window.confirm('¿Deseas restaurar la distribución predeterminada del escenario?');
     if (!ok || !onUpdateStagePlot) return;
-    onUpdateStagePlot(JSON.parse(JSON.stringify(DEFAULT_STAGE_PLOT)));
+    onUpdateStagePlot({
+      ...JSON.parse(JSON.stringify(DEFAULT_STAGE_PLOT)),
+      referenceImageUrl: stagePlot.referenceImageUrl,
+      referenceImagePath: stagePlot.referenceImagePath,
+    });
     setSelectedElementId(null);
     setEditingElement(null);
   };
@@ -220,7 +231,67 @@ export function StagePlotView({
         </div>
 
         {/* Acciones de Edición / Pantalla Completa */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {stagePlot.referenceImageUrl ? (
+            <div className="flex items-center gap-1 no-print">
+              <button
+                type="button"
+                onClick={() => setPlotView('plot')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
+                  plotView === 'plot' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                }`}
+              >
+                Plano 2D
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlotView('photo')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
+                  plotView === 'photo' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                }`}
+              >
+                Foto
+              </button>
+            </div>
+          ) : null}
+          {onUploadReferenceImage ? (
+            <>
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 cursor-pointer disabled:opacity-50 no-print"
+              >
+                {uploadingPhoto ? 'Subiendo…' : stagePlot.referenceImageUrl ? 'Reemplazar foto' : 'Subir foto'}
+              </button>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  if (!file || !onUploadReferenceImage) return;
+                  setUploadingPhoto(true);
+                  void onUploadReferenceImage(file)
+                    .then(() => setPlotView('photo'))
+                    .catch(() => undefined)
+                    .finally(() => setUploadingPhoto(false));
+                }}
+              />
+            </>
+          ) : null}
+          {onRemoveReferenceImage && stagePlot.referenceImageUrl ? (
+            <button
+              type="button"
+              onClick={() => void onRemoveReferenceImage()}
+              disabled={uploadingPhoto}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 bg-white border border-slate-200 cursor-pointer disabled:opacity-50 no-print"
+            >
+              Quitar foto
+            </button>
+          ) : null}
           {onUpdateStagePlot && (
             <button
               type="button"
@@ -299,7 +370,9 @@ export function StagePlotView({
         ref={stageCanvasRef}
         onMouseMove={handleCanvasMouseMove}
         onTouchMove={handleCanvasTouchMove}
-        className={`relative border-4 border-slate-800 rounded-3xl bg-slate-900 text-white p-4 sm:p-6 shadow-inner overflow-hidden flex flex-col justify-between select-none transition-all ${
+        className={`stage-plot-print relative border-4 border-slate-800 rounded-3xl bg-slate-900 text-white p-4 sm:p-6 shadow-inner overflow-hidden flex flex-col justify-between select-none transition-all ${
+          plotView === 'photo' ? 'hidden' : ''
+        } ${
           isCompact ? 'min-h-[380px]' : 'min-h-[460px] sm:min-h-[500px]'
         }`}
       >
@@ -431,6 +504,16 @@ export function StagePlotView({
           </span>
         </div>
       </div>
+
+      {stagePlot.referenceImageUrl ? (
+        <div className={`stage-photo-print rounded-3xl border border-slate-200 bg-slate-50 overflow-hidden ${plotView === 'photo' ? '' : 'hidden'}`}>
+          <img
+            src={stagePlot.referenceImageUrl}
+            alt="Foto del plano de escenario"
+            className="w-full max-h-[520px] object-contain bg-slate-100"
+          />
+        </div>
+      ) : null}
 
       {/* Editor Modal de Elemento Específico */}
       {editingElement && (

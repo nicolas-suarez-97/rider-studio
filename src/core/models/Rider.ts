@@ -6,8 +6,10 @@ import {
   LinkedChatSession,
   StagePlotConfig,
   StageElement,
-  RiderModuleData
+  RiderModuleData,
+  RiderMediaItem
 } from '../types/rider.types';
+import { coverMedia, parseRiderMedia, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { RIDER_DATA } from '../constants/rider-templates';
 import { DEFAULT_STAGE_PLOT } from '../constants/stage-plot';
 import { ChannelInput } from './ChannelInput';
@@ -28,6 +30,7 @@ export class Rider {
   public updatedAt: string;
   public modules: Partial<Record<RiderType, RiderModuleData>>;
   public stagePlot: StagePlotConfig;
+  public media: RiderMediaItem[];
 
   constructor(params: {
     id?: string;
@@ -45,6 +48,7 @@ export class Rider {
     updatedAt?: string;
     modules?: Partial<Record<RiderType, RiderModuleData>>;
     stagePlot?: StagePlotConfig;
+    media?: RiderMediaItem[];
   }) {
     this.type = params.type || 'tecnico';
     const template = RIDER_DATA[this.type];
@@ -67,6 +71,7 @@ export class Rider {
     this.linkedSessions = params.linkedSessions || [];
     this.updatedAt = params.updatedAt || '';
     this.modules = params.modules || {};
+    this.media = parseRiderMedia(params.media);
 
     this.stagePlot = params.stagePlot
       ? JSON.parse(JSON.stringify(params.stagePlot))
@@ -134,6 +139,7 @@ export class Rider {
     channels?: unknown;
     sections?: unknown;
     metadata?: unknown;
+    media?: unknown;
     chat_sessions?: Array<{
       id: string;
       title: string;
@@ -162,7 +168,11 @@ export class Rider {
       completedSectionIds?: string[];
       modules?: Partial<Record<RiderType, RiderModuleData>>;
       stagePlot?: StagePlotConfig;
+      media?: unknown;
     } | undefined;
+
+    const columnMedia = parseRiderMedia(row.media);
+    const media = columnMedia.length > 0 ? columnMedia : parseRiderMedia(meta?.media);
 
     return new Rider({
       id: row.id,
@@ -186,6 +196,7 @@ export class Rider {
         stageHeight: 1.5,
         elements: []
       },
+      media,
       updatedAt: row.updated_at || row.created_at || ''
     });
   }
@@ -299,6 +310,53 @@ export class Rider {
       ...updates
     };
     this.syncCurrentModule();
+  }
+
+  public setReferenceImage(url: string, pathname: string): void {
+    this.stagePlot = {
+      ...this.stagePlot,
+      referenceImageUrl: url,
+      referenceImagePath: pathname,
+    };
+    this.syncCurrentModule();
+  }
+
+  public clearReferenceImage(): string | undefined {
+    const pathname = this.stagePlot.referenceImagePath;
+    const next = { ...this.stagePlot };
+    delete next.referenceImageUrl;
+    delete next.referenceImagePath;
+    this.stagePlot = next;
+    this.syncCurrentModule();
+    return pathname;
+  }
+
+  public addMedia(input: { url: string; pathname: string }): RiderMediaItem {
+    if (this.media.length >= MAX_GALLERY_IMAGES) {
+      throw new Error('El carrusel admite hasta 8 fotos');
+    }
+    const item: RiderMediaItem = {
+      id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      url: input.url,
+      pathname: input.pathname,
+      cover: this.media.length === 0,
+    };
+    this.media = [...this.media, item];
+    return item;
+  }
+
+  public removeMedia(id: string): string | null {
+    const removed = this.media.find((item) => item.id === id) ?? null;
+    this.media = this.media.filter((item) => item.id !== id);
+    if (removed?.cover && this.media[0]) {
+      this.media = this.media.map((item, index) => ({ ...item, cover: index === 0 }));
+    }
+    return removed?.pathname ?? null;
+  }
+
+  public setCover(id: string): void {
+    if (!this.media.some((item) => item.id === id)) return;
+    this.media = this.media.map((item) => ({ ...item, cover: item.id === id }));
   }
 
   public addStageElement(element: Omit<StageElement, 'id'>): StageElement {
@@ -585,8 +643,10 @@ export class Rider {
         season: this.season,
         completedSectionIds: this.completedSectionIds,
         modules: this.modules,
-        stagePlot: this.stagePlot
-      }
+        stagePlot: this.stagePlot,
+        media: this.media,
+      },
+      media: this.media,
     };
   }
 
@@ -605,7 +665,8 @@ export class Rider {
       lastEdited: new Date(this.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       channels: this.channels.map(c => c.toJSON()),
       sections: this.sections,
-      linkedSessions: this.linkedSessions
+      linkedSessions: this.linkedSessions,
+      coverUrl: coverMedia(this.media)?.url,
     };
   }
 }
