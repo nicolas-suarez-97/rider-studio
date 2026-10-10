@@ -1,56 +1,126 @@
-import { Icon } from '@/components/common/Icon';
+"use client";
 
-const PROBLEMS = [
+import { useState } from 'react';
+import { Icon } from '@/components/common/Icon';
+import type { LandingRole } from '@/components/landing/HeroSection';
+
+const SURPRISES = [
   {
-    title: 'El PDF se queda viejo',
-    body: 'Cada fecha circula un archivo distinto. Producción, venue y artista no miran el mismo rider.',
+    title: 'El rider que llegó viejo',
+    body: 'Cada fecha circula un PDF distinto y nadie sabe cuál es el último.',
   },
   {
-    title: 'La respuesta se pierde en el correo',
-    body: 'El promotor contesta en un mensaje. No queda escrito qué se aprobó, qué se cambia y qué no se puede cubrir.',
+    title: 'La respuesta que se quedó en un correo',
+    body: 'Lo que se confirmó por mensaje no queda junto al rider. Después nadie lo encuentra.',
   },
   {
-    title: 'El día del show falta una sección',
-    body: 'Potencia, hospitality o aforo siguen abiertos porque nadie los marcó antes de llegar a la tarima.',
+    title: 'El pedido que nadie revisó',
+    body: 'El día del show aparece algo sin confirmar: el sonido, el camerino o la seguridad.',
   },
 ];
 
 const STEPS = [
   {
-    title: 'El artista arma el rider',
-    body: 'Describe el show y el documento queda por secciones: técnico, hospitality y seguridad.',
+    title: 'El artista pide',
+    body: 'Arma su rider: sonido, camerino y seguridad, cada cosa en su sección.',
   },
   {
     title: 'Lo comparte',
-    body: 'El promotor lo abre en solo lectura. El rider del artista no se edita.',
+    body: 'Envía un enlace. El organizador lo lee, pero no cambia lo que pidió el artista.',
   },
   {
-    title: 'El venue responde',
-    body: 'Cada sección se marca Aprobado, Alternativa o Rechazado. No se envía si falta una.',
+    title: 'El organizador confirma',
+    body: 'Revisa cada pedido y lo confirma o propone una alternativa. Todo queda en el rider.',
   },
 ];
+
+const DEMO_LINES = [
+  { id: 'sonido', tag: 'Rider técnico', title: 'Sonido', body: 'Bocinas que se oigan en todo el lugar' },
+  { id: 'camerino', tag: 'Hospitality', title: 'Camerino', body: 'Agua, comida y un lugar para descansar' },
+  { id: 'seguridad', tag: 'Seguridad', title: 'Seguridad', body: 'Entrada y salida seguras para el artista' },
+];
+
+const DEMO_CHOICES = [
+  { value: 'confirmado', label: 'Confirmado' },
+  { value: 'alternativa', label: 'Alternativa' },
+] as const;
 
 const REASONS = [
   {
     icon: 'fileCheck',
-    title: 'El cruce queda en las secciones',
-    body: 'El inventario del venue se escribe sobre el rider, no en un archivo aparte.',
+    title: 'Un solo rider',
+    body: 'El pedido y la confirmación están en el mismo lugar. No hay otra versión dando vueltas.',
   },
   {
     icon: 'send',
-    title: 'No se envía a medias',
-    body: 'Si falta una respuesta, una oferta o un motivo, el contra-rider no sale.',
+    title: 'Nada queda a medias',
+    body: 'La confirmación no se envía hasta que cada pedido tenga respuesta.',
   },
   {
     icon: 'lock',
-    title: 'El original no cambia',
-    body: 'El promotor responde. El documento que armó el artista sigue igual.',
+    title: 'Lo que pidió el artista no cambia',
+    body: 'El organizador confirma o propone. El pedido original sigue igual.',
   },
 ];
 
-export function LandingStory({ onEnter }: { onEnter: (role: 'artista' | 'promotor') => void }) {
+function RiderDemo() {
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const reviewed = DEMO_LINES.filter((line) => answers[line.id]).length;
+  const ready = reviewed === DEMO_LINES.length;
+
   return (
-    <div className="mt-14 sm:mt-20 space-y-14 sm:space-y-20">
+    <div className="bg-white rounded-[28px] border border-slate-200/90 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] p-4 sm:p-6 space-y-3">
+      {DEMO_LINES.map((line) => (
+        <div
+          key={line.id}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
+        >
+          <div className="min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-violet-700">{line.tag}</span>
+            <p className="mt-1 text-sm font-black text-slate-900">{line.title}</p>
+            <p className="text-sm font-medium text-slate-500">{line.body}</p>
+          </div>
+          <div className="flex gap-1.5 shrink-0">
+            {DEMO_CHOICES.map((choice) => {
+              const active = answers[line.id] === choice.value;
+              return (
+                <button
+                  key={choice.value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setAnswers((prev) => ({ ...prev, [line.id]: choice.value }))}
+                  className={`h-8 px-3 rounded-full text-xs font-bold inline-flex items-center cursor-pointer active:scale-95 transition-colors ${
+                    active
+                      ? 'bg-violet-600 text-white'
+                      : 'border border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-700'
+                  }`}
+                >
+                  {choice.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      <div className="flex items-center gap-3 pt-2" aria-live="polite">
+        <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${ready ? 'bg-emerald-500' : 'bg-violet-600'}`}
+            style={{ width: `${(reviewed / DEMO_LINES.length) * 100}%` }}
+          />
+        </div>
+        <span className={`text-xs font-bold whitespace-nowrap ${ready ? 'text-emerald-700' : 'text-slate-700'}`}>
+          {ready ? 'Sin sorpresas: todo revisado' : `${reviewed} de ${DEMO_LINES.length} revisados`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function LandingStory({ onEnter }: { onEnter: (role: LandingRole) => void }) {
+  return (
+    <div className="mt-6 sm:mt-10 space-y-14 sm:space-y-20">
       <section className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-6 lg:gap-10 items-center">
         <img
           src="/landing/landing-mail.jpg"
@@ -58,12 +128,12 @@ export function LandingStory({ onEnter }: { onEnter: (role: 'artista' | 'promoto
           className="w-full aspect-[4/3] object-cover rounded-[28px] border border-slate-200/80 bg-slate-50"
         />
         <div className="space-y-4">
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Hoy se pierde en el camino</h2>
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Las sorpresas de siempre</h2>
           <p className="text-sm sm:text-base font-medium text-slate-600 leading-relaxed">
-            El rider sale del artista y la respuesta del venue vuelve por otro lado. El día del show no hay una versión cerrada.
+            El rider sale del artista y la confirmación vuelve por otro lado. Las sorpresas aparecen el día del show.
           </p>
           <div className="space-y-3">
-            {PROBLEMS.map((item) => (
+            {SURPRISES.map((item) => (
               <div key={item.title}>
                 <p className="text-sm font-black text-slate-900">{item.title}</p>
                 <p className="mt-0.5 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
@@ -74,7 +144,7 @@ export function LandingStory({ onEnter }: { onEnter: (role: 'artista' | 'promoto
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">De la idea al contra-rider</h2>
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Cómo se evitan</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {STEPS.map((item, index) => (
             <div key={item.title} className="bg-white rounded-[28px] border border-slate-200/80 p-5 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)]">
@@ -90,80 +160,45 @@ export function LandingStory({ onEnter }: { onEnter: (role: 'artista' | 'promoto
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Así queda una sección</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">El pedido del artista a un lado. La respuesta del venue, al lado.</p>
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Pruébalo como organizador</h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">Este es un rider de ejemplo. Revisa cada pedido.</p>
         </div>
-        <div className="bg-white rounded-[28px] border border-slate-200/90 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] p-5 sm:p-6 grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-5 items-center">
-          <div className="min-w-0">
-            <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-full">
-              Rider técnico
-            </span>
-            <h3 className="mt-3 text-lg font-black tracking-tight text-slate-900">Sistema de PA</h3>
-            <p className="mt-1 text-sm font-medium text-slate-500 leading-relaxed">Line array, cobertura y consola FOH. Eso es lo que pide el artista.</p>
-          </div>
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-1.5">
-              <span className="h-8 px-3 rounded-full bg-violet-600 text-white text-xs font-bold inline-flex items-center">Aprobado</span>
-              <span className="h-8 px-3 rounded-full border border-slate-200 text-slate-500 text-xs font-bold inline-flex items-center">Alternativa</span>
-              <span className="h-8 px-3 rounded-full border border-slate-200 text-slate-500 text-xs font-bold inline-flex items-center">Rechazado</span>
+        <RiderDemo />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Por qué no hay sorpresas</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {REASONS.map((item) => (
+            <div key={item.title} className="bg-white rounded-2xl border border-slate-200/80 px-4 py-4">
+              <span className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 inline-flex items-center justify-center">
+                <Icon name={item.icon} className="w-4 h-4" />
+              </span>
+              <p className="mt-3 text-sm font-black text-slate-900 leading-snug">{item.title}</p>
+              <p className="mt-1 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
             </div>
-            <p className="text-sm font-medium text-slate-500 leading-relaxed">El promotor elige una. Si ofrece otra cosa, deja la alternativa. Si no puede, deja el motivo.</p>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                <div className="h-full w-1/3 rounded-full bg-violet-600" />
-              </div>
-              <span className="text-xs font-bold text-slate-700 whitespace-nowrap">1 de 9</span>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {REASONS.map((item) => (
-          <div key={item.title} className="bg-white rounded-2xl border border-slate-200/80 px-4 py-4">
-            <span className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 inline-flex items-center justify-center">
-              <Icon name={item.icon} className="w-4 h-4" />
-            </span>
-            <p className="mt-3 text-sm font-black text-slate-900 leading-snug">{item.title}</p>
-            <p className="mt-1 text-sm font-medium text-slate-500 leading-relaxed">{item.body}</p>
-          </div>
-        ))}
-      </section>
-
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => onEnter('artista')}
-          className="text-left bg-white rounded-[28px] border border-slate-200/80 p-5 sm:p-6 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] hover:border-violet-300 cursor-pointer active:scale-[0.99]"
-        >
-          <span className="block text-sm font-black text-slate-900">Para el artista</span>
-          <span className="block mt-1 text-sm font-medium text-slate-500 leading-relaxed">Dejas de reenviar el PDF. Armas el rider y lo compartes en cada fecha.</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onEnter('promotor')}
-          className="text-left bg-white rounded-[28px] border border-slate-200/80 p-5 sm:p-6 shadow-[0_8px_30px_-6px_rgba(100,116,139,0.06)] hover:border-violet-300 cursor-pointer active:scale-[0.99]"
-        >
-          <span className="block text-sm font-black text-slate-900">Para el promotor</span>
-          <span className="block mt-1 text-sm font-medium text-slate-500 leading-relaxed">Recibes el rider y respondes con lo que el venue sí puede cubrir.</span>
-        </button>
-      </section>
-
-      <section className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 pb-4">
-        <button
-          type="button"
-          onClick={() => onEnter('artista')}
-          className="h-10 px-4 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-md shadow-violet-500/25 cursor-pointer active:scale-95"
-        >
-          Soy el artista
-        </button>
-        <button
-          type="button"
-          onClick={() => onEnter('promotor')}
-          className="h-10 px-4 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-violet-300 hover:text-violet-700 cursor-pointer active:scale-95"
-        >
-          Soy el promotor
-        </button>
+      <section className="text-center space-y-4 pb-4">
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">El día del show, los dos ven el mismo rider</h2>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => onEnter('artista')}
+            className="h-10 px-5 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-md shadow-violet-500/25 cursor-pointer active:scale-95"
+          >
+            Soy el artista
+          </button>
+          <button
+            type="button"
+            onClick={() => onEnter('promotor')}
+            className="h-10 px-5 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-violet-300 hover:text-violet-700 cursor-pointer active:scale-95"
+          >
+            Soy el organizador
+          </button>
+        </div>
       </section>
     </div>
   );

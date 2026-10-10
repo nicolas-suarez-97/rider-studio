@@ -114,7 +114,7 @@ export function Header({
             </div>
           ) : pageType === 'promotor' || pageType === 'promotor-home' ? (
             <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
-              Promotor
+              Organizador
             </span>
           ) : pageType === 'gate' ? (
             <nav className="flex items-center gap-1.5 sm:gap-2" aria-label="Entrar">
@@ -130,7 +130,7 @@ export function Header({
                 prefetch={false}
                 className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-xs shadow-violet-500/25 inline-flex items-center active:scale-95"
               >
-                Promotor
+                Organizador
               </Link>
             </nav>
           ) : (
