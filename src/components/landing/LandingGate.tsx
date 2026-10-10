@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/common/Header';
 import { HeroSection } from '@/components/landing/HeroSection';
+import { LandingStory } from '@/components/landing/LandingStory';
 
 export function LandingGate() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export function LandingGate() {
           }}
         />
 
-        <div className="max-w-3xl mx-auto w-full grid grid-cols-1 sm:grid-cols-2 gap-3 -mt-12 sm:-mt-24 lg:-mt-32">
+        <div className="max-w-3xl mx-auto w-full grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
           <button
             type="button"
             onClick={() => enter('artista')}
@@ -53,6 +54,8 @@ export function LandingGate() {
             <span className="block text-xs text-slate-500 font-medium mt-1">Revisar el rider y armar el contra-rider</span>
           </button>
         </div>
+
+        <LandingStory onEnter={enter} />
       </main>
     </div>
   );

@@ -35,7 +35,7 @@ export function HeroSection({ onSubmitPrompt, onPromptChange }: HeroSectionProps
   };
 
   return (
-    <div className="flex flex-col items-center text-center space-y-3.5 sm:space-y-4 max-w-3xl mx-auto py-20 sm:py-32 lg:py-40 px-1">
+    <div className="flex flex-col items-center text-center space-y-3.5 sm:space-y-4 max-w-3xl mx-auto py-12 sm:py-16 lg:py-20 px-1">
       {/* Eyebrow badge */}
       <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 py-1 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-xs font-bold shadow-xs">
         <Icon name="sparkles" className="w-3.5 h-3.5 text-violet-600 shrink-0" />
@@ -44,15 +44,14 @@ export function HeroSection({ onSubmitPrompt, onPromptChange }: HeroSectionProps
 
       {/* Main Title */}
       <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-[1.12]">
-        Ingeniería de Producción para{' '}
+        El rider y la respuesta del venue,{' '}
         <span className="bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-500 bg-clip-text text-transparent">
-          Eventos en Vivo
+          en un solo documento
         </span>
       </h1>
 
-      {/* Subtitle with improved contrast */}
       <p className="text-sm sm:text-base text-slate-600 font-medium max-w-2xl leading-relaxed">
-        Crea, valida y estandariza riders técnicos, hospitality y protocolos de seguridad con agentes de producción especializados.
+        El artista lo arma. El promotor responde cada sección y envía el contra-rider.
       </p>
 
       {/* AI Prompt Input Card */}
