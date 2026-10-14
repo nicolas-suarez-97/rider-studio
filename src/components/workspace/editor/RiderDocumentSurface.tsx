@@ -487,8 +487,8 @@ export function RiderDocumentSurface({
         .docs-input-list td.col-ch { background: #fff; }
         .docs-input-list .col-data { min-width: 132px; }
         .docs-input-list .col-48 { min-width: 64px; text-align: center; }
-        .docs-input-list .col-actions { width: 28px; min-width: 28px; position: sticky; right: 0; z-index: 2; background: #fff; box-shadow: -6px 0 8px -6px rgba(15, 23, 42, 0.18); }
-        .docs-input-list th.col-actions { z-index: 3; background: #fafafa; }
+        .docs-input-list .col-actions { position: static; width: 32px; min-width: 32px; max-width: 32px; text-align: center; vertical-align: middle; background: #fff; }
+        .docs-input-list th.col-actions { background: #fafafa; }
         .docs-input-list-colhead { display: flex; align-items: center; gap: 2px; min-width: 0; }
         .docs-input-list-colhead input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #94a3b8; padding: 0 2px; outline: none; }
         .docs-input-list-colhead input:focus { color: #5b21b6; box-shadow: inset 0 -1px 0 #c4b5fd; }
@@ -497,7 +497,7 @@ export function RiderDocumentSurface({
         .docs-input-list-empty { text-align: center; color: #94a3b8; padding: 16px 8px !important; }
         .docs-input-list-48 { font-size: 8px; font-weight: 800; color: #cbd5e1; border: 0; background: transparent; cursor: pointer; padding: 3px 4px; border-radius: 4px; }
         .docs-input-list-48.is-on { color: #92400e; background: #fef3c7; }
-        .docs-input-list-delete { display: inline-flex; color: #cbd5e1; background: none; border: 0; cursor: pointer; padding: 4px; }
+        .docs-input-list-delete { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin: 0 auto; color: #94a3b8; background: none; border: 0; cursor: pointer; padding: 0; }
         .docs-input-list-delete:hover { color: #e11d48; }
         .docs-input-list.is-selected .docs-input-list-card { box-shadow: 0 0 0 2px #c4b5fd; }
         .docs-combo { position: relative; min-width: 0; }
