@@ -486,7 +486,7 @@ export class Rider {
    * Conserva metadatos de ids que siguen existiendo y elimina los que ya no están.
    */
   public syncSectionsFromDocument(
-    patches: Array<{ id: string; title: string; content: string; contentDoc?: SectionItem['contentDoc'] }>
+    patches: Array<{ id: string; title: string; content: string; contentDoc?: SectionItem['contentDoc']; pageBreakBefore?: boolean }>
   ): void {
     const byId = new Map(this.sections.map((sec) => [sec.id, sec]));
     this.sections = patches.map((patch, idx) => {
@@ -501,6 +501,7 @@ export class Rider {
         iconName: current?.iconName || 'fileText',
         content: patch.content,
         contentDoc: patch.contentDoc,
+        pageBreakBefore: patch.pageBreakBefore ?? current?.pageBreakBefore ?? false,
       };
     });
     const living = new Set(this.sections.map((sec) => sec.id));
@@ -510,24 +511,28 @@ export class Rider {
 
   public applyTemplateOutline(): void {
     const template = RIDER_DATA[this.type];
-    this.sections = (template?.sections || []).map((section) => ({
+    this.sections = (template?.sections || []).map((section, index) => ({
       ...section,
       content: '',
       contentDoc: undefined,
+      pageBreakBefore: index > 0,
     }));
     this.completedSectionIds = [];
     this.renumberSections();
     this.syncCurrentModule();
   }
 
-  public addSection(section: Omit<SectionItem, 'id' | 'num'>): SectionItem {
+  public addSection(section: Omit<SectionItem, 'id' | 'num'>, afterId?: string): SectionItem {
     const num = String(this.sections.length + 1).padStart(2, '0');
     const newSec: SectionItem = {
       ...section,
       id: `custom-${Date.now()}`,
-      num
+      num,
+      pageBreakBefore: false,
     };
-    this.sections.push(newSec);
+    const index = afterId ? this.sections.findIndex((item) => item.id === afterId) : -1;
+    if (index >= 0) this.sections.splice(index + 1, 0, newSec);
+    else this.sections.push(newSec);
     this.renumberSections();
     this.syncCurrentModule();
     return newSec;

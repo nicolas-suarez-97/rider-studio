@@ -396,6 +396,14 @@ export function WorkspaceClient({
   const handleAddSectionTitle = async (title: string) => {
     const trimmed = title.trim();
     if (!trimmed) return;
+    const insertedId = bridgeRef.current?.insertSectionTitle(trimmed) ?? null;
+    if (insertedId) {
+      setActiveSectionId(insertedId);
+      setIsAddingSection(false);
+      setMobileTab('document');
+      showToast('Nueva sección agregada');
+      return;
+    }
     const updated = new Rider({ ...rider });
     const section = updated.addSection({
       title: trimmed,
@@ -404,7 +412,7 @@ export function WorkspaceClient({
       tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
       iconName: 'fileText',
       content: '',
-    });
+    }, activeSectionId);
     setRider(updated);
     setActiveSectionId(section.id);
     setIsAddingSection(false);

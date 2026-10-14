@@ -23,6 +23,8 @@ export interface SectionItem {
   iconName: string;
   content?: string;
   contentDoc?: RiderContentDoc;
+  /** When true, pagination starts this heading on a new Letter page. */
+  pageBreakBefore?: boolean;
 }
 
 export interface RiderDefinition {

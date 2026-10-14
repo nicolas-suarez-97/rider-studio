@@ -80,6 +80,15 @@ export function headingIdsFromDoc(doc: RiderContentDoc | JsonNode): string[] {
   return ids;
 }
 
+export function sectionStartsOnNewPage(section: SectionItem, index: number): boolean {
+  if (typeof section.pageBreakBefore === 'boolean') return section.pageBreakBefore;
+  if (index === 0) return false;
+  if (section.id.startsWith('custom-') || section.id.startsWith('section-') || section.id === 'doc-intro') {
+    return false;
+  }
+  return true;
+}
+
 export function riderDocumentFromSections(
   sections: SectionItem[],
   header?: { artistName?: string; title?: string }
@@ -104,10 +113,14 @@ export function riderDocumentFromSections(
     }
   }
 
-  for (const section of sections) {
+  sections.forEach((section, index) => {
     content.push({
       type: 'heading',
-      attrs: { level: 2, id: section.id },
+      attrs: {
+        level: 2,
+        id: section.id,
+        pageBreakBefore: sectionStartsOnNewPage(section, index),
+      },
       content: [{ type: 'text', text: section.title || 'Sección' }],
     });
     const body = (sectionToDoc(section).content || []).filter((node) => {
@@ -116,7 +129,7 @@ export function riderDocumentFromSections(
     });
     if (body.length === 0) content.push({ type: 'paragraph' });
     else content.push(...body);
-  }
+  });
 
   return { type: 'doc', content };
 }
@@ -126,11 +139,12 @@ export interface SectionDocumentPatch {
   title: string;
   contentDoc: RiderContentDoc;
   content: string;
+  pageBreakBefore?: boolean;
 }
 
 export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: string[]): SectionDocumentPatch[] {
   const patches: SectionDocumentPatch[] = [];
-  let current: { id: string; title: string; nodes: RiderContentNode[] } | null = null;
+  let current: { id: string; title: string; nodes: RiderContentNode[]; pageBreakBefore?: boolean } | null = null;
   let skipSubtitle = false;
 
   const flush = () => {
@@ -144,6 +158,7 @@ export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: stri
       title: current.title,
       contentDoc,
       content: docToPlainText(contentDoc),
+      pageBreakBefore: current.pageBreakBefore,
     });
   };
 
@@ -165,6 +180,7 @@ export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: stri
         id: headingId,
         title: inlineText(node as JsonNode) || 'Sección',
         nodes: [],
+        pageBreakBefore: node.attrs?.pageBreakBefore === true,
       };
       continue;
     }

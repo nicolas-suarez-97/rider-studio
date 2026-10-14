@@ -34,6 +34,7 @@ export interface EditorBridge {
   apply: (suggestion: DocumentSuggestion) => boolean;
   focus: (suggestion: DocumentSuggestion) => void;
   find: (query: string) => void;
+  insertSectionTitle: (title: string) => string | null;
 }
 
 const RiderKeys = Extension.create({
@@ -66,6 +67,11 @@ const SectionHeading = Heading.extend({
         parseHTML: (element) => element.getAttribute('id'),
         renderHTML: (attributes) => (attributes.id ? { id: attributes.id } : {}),
       },
+      pageBreakBefore: {
+        default: false,
+        parseHTML: (element) => element.getAttribute('data-page-break') === 'before',
+        renderHTML: (attributes) => (attributes.pageBreakBefore ? { 'data-page-break': 'before' } : {}),
+      },
     };
   },
   addProseMirrorPlugins() {
@@ -85,7 +91,11 @@ const SectionHeading = Heading.extend({
             }
             const id = newSectionId();
             seen.add(id);
-            next = (next || newState.tr).setNodeMarkup(pos, undefined, { ...node.attrs, id });
+            next = (next || newState.tr).setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              id,
+              pageBreakBefore: false,
+            });
           });
           return next;
         },
@@ -298,6 +308,21 @@ export function RiderDocumentSurface({
     if (range) editor.chain().focus().setTextSelection(range).scrollIntoView().run();
   }, [editor]);
 
+  const insertSectionTitle = useCallback((title: string) => {
+    if (!editor || editor.isDestroyed || readOnly) return null;
+    const trimmed = title.trim();
+    if (!trimmed) return null;
+    const { $from } = editor.state.selection;
+    const pos = $from.depth > 0 ? $from.after(1) : editor.state.doc.content.size;
+    const id = newSectionId();
+    const inserted = editor.chain().focus().insertContentAt(pos, {
+      type: 'heading',
+      attrs: { level: 2, id, pageBreakBefore: false },
+      content: [{ type: 'text', text: trimmed }],
+    }).setTextSelection(pos + 1).scrollIntoView().run();
+    return inserted ? id : null;
+  }, [editor, readOnly]);
+
   useEffect(() => {
     if (!editor) return;
     onRegisterBridge?.({
@@ -315,8 +340,9 @@ export function RiderDocumentSurface({
         heading?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       },
       find: findInDocument,
+      insertSectionTitle,
     });
-  }, [editor, findInDocument, onRegisterBridge]);
+  }, [editor, findInDocument, insertSectionTitle, onRegisterBridge]);
 
   useEffect(() => {
     if (!editor) return;
