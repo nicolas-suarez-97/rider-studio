@@ -507,16 +507,22 @@ export class Rider {
     patches: Array<{ id: string; title: string; content: string; contentDoc?: SectionItem['contentDoc']; pageBreakBefore?: boolean }>
   ): void {
     const byId = new Map(this.sections.map((sec) => [sec.id, sec]));
+    const baseTemplates = Object.values(RIDER_DATA).flatMap((d) => d.sections);
     this.sections = patches.map((patch, idx) => {
       const current = byId.get(patch.id);
+      const baseMatch = !current
+        ? baseTemplates.find(
+            (b) => b.title.trim().toLowerCase() === (patch.title || '').trim().toLowerCase()
+          )
+        : null;
       return {
         id: patch.id,
         num: String(idx + 1).padStart(2, '0'),
         title: patch.title || current?.title || 'Sección',
-        subtitle: current?.subtitle || '',
-        tag: current?.tag || 'Custom',
-        tagColor: current?.tagColor || 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
-        iconName: current?.iconName || 'fileText',
+        subtitle: current?.subtitle || baseMatch?.subtitle || '',
+        tag: current?.tag || baseMatch?.tag || 'Custom',
+        tagColor: current?.tagColor || baseMatch?.tagColor || 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: current?.iconName || baseMatch?.iconName || 'fileText',
         content: patch.content,
         contentDoc: patch.contentDoc,
         pageBreakBefore: patch.pageBreakBefore ?? current?.pageBreakBefore ?? false,

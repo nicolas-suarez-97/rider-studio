@@ -18,6 +18,7 @@ import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/w
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
 import { SectionChips } from '@/components/workspace/editor/section-chips';
 import { InputList } from '@/components/workspace/editor/input-list-node';
+import { cloneInputListRows } from '@/core/constants/input-list';
 import {
   Columns,
   Contacts,
@@ -277,7 +278,7 @@ export function RiderDocumentSurface({
         },
       }),
       Placeholder.configure({
-        showOnlyCurrent: false,
+        showOnlyCurrent: true,
         placeholder: ({ node }) => {
           if (node.type.name === 'heading' && node.attrs.level === 2) return 'Título de sección';
           if (node.type.name === 'heading' && node.attrs.level === 3) return 'Subtítulo';
@@ -457,11 +458,38 @@ export function RiderDocumentSurface({
     const { $from } = editor.state.selection;
     const pos = $from.depth > 0 ? $from.after(1) : editor.state.doc.content.size;
     const id = newSectionId();
-    const inserted = editor.chain().focus().insertContentAt(pos, {
-      type: 'heading',
-      attrs: { level: 2, id, pageBreakBefore: false },
-      content: [{ type: 'text', text: trimmed }],
-    }).setTextSelection(pos + 1).scrollIntoView().run();
+
+    const isInputList = trimmed.toLowerCase().includes('input list');
+    let hasExistingInputList = false;
+    if (isInputList) {
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'inputList') {
+          hasExistingInputList = true;
+          return false;
+        }
+      });
+    }
+
+    const nodes: any[] = [
+      {
+        type: 'heading',
+        attrs: { level: 2, id, pageBreakBefore: false },
+        content: [{ type: 'text', text: trimmed }],
+      },
+    ];
+
+    if (isInputList && !hasExistingInputList) {
+      nodes.push({
+        type: 'inputList',
+        attrs: { rows: cloneInputListRows() },
+      });
+    } else {
+      nodes.push({
+        type: 'paragraph',
+      });
+    }
+
+    const inserted = editor.chain().focus().insertContentAt(pos, nodes).setTextSelection(pos + 1).scrollIntoView().run();
     return inserted ? id : null;
   }, [editor, readOnly]);
 

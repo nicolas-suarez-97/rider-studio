@@ -23,6 +23,7 @@ import { materializeSuggestions } from '@/core/editor/suggestions';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
 import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
+import { RIDER_DATA } from '@/core/constants/rider-templates';
 import { isPersistedRiderId, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { deleteRiderImage, uploadRiderImage } from '@/lib/media/upload-client';
 
@@ -419,13 +420,16 @@ export function WorkspaceClient({
       showToast('Nueva sección agregada');
       return;
     }
+    const baseMatch = Object.values(RIDER_DATA)
+      .flatMap((d) => d.sections)
+      .find((s) => s.title.trim().toLowerCase() === trimmed.toLowerCase());
     const updated = new Rider({ ...rider });
     const section = updated.addSection({
       title: trimmed,
-      subtitle: '',
-      tag: 'Personalizado',
-      tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
-      iconName: 'fileText',
+      subtitle: baseMatch?.subtitle || '',
+      tag: baseMatch?.tag || 'Personalizado',
+      tagColor: baseMatch?.tagColor || 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+      iconName: baseMatch?.iconName || 'fileText',
       content: '',
     }, activeSectionId);
     setRider(updated);

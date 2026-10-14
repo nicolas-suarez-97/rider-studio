@@ -41,6 +41,41 @@ function deleteThen(editor: Editor, range: SlashRange) {
 
 export const SLASH_COMMANDS: SlashCommand[] = [
   {
+    id: 'paragraph',
+    title: 'Texto',
+    description: 'Empieza a escribir un párrafo',
+    icon: 'fileText',
+    group: 'Bloques básicos',
+    keywords: ['parrafo', 'texto', 'normal', 'body'],
+    run: (editor, range) => {
+      deleteThen(editor, range).setParagraph().run();
+    },
+  },
+  {
+    id: 'heading-2',
+    title: 'Título',
+    description: 'Título de sección en esta página',
+    icon: 'heading',
+    group: 'Bloques básicos',
+    keywords: ['titulo', 'heading', 'h2', 'seccion', 'encabezado'],
+    run: (editor, range) => {
+      const attrs = headingAttrs(editor, 2, false);
+      deleteThen(editor, range).setNode('heading', attrs).run();
+    },
+  },
+  {
+    id: 'heading-3',
+    title: 'Subtítulo',
+    description: 'Encabezado más pequeño',
+    icon: 'heading3',
+    group: 'Bloques básicos',
+    keywords: ['subtitulo', 'heading', 'h3', 'subheading'],
+    run: (editor, range) => {
+      const attrs = headingAttrs(editor, 3, false);
+      deleteThen(editor, range).setNode('heading', attrs).run();
+    },
+  },
+  {
     id: 'cover',
     title: 'Portada',
     description: 'Primera página con artista, versión y foto',
@@ -116,41 +151,6 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: ['input', 'list', 'patch', 'canales', 'channels', 'il', 'microfonos'],
     run: (editor, range) => {
       deleteThen(editor, range).insertInputList(cloneInputListRows()).run();
-    },
-  },
-  {
-    id: 'paragraph',
-    title: 'Texto',
-    description: 'Empieza a escribir un párrafo',
-    icon: 'fileText',
-    group: 'Bloques básicos',
-    keywords: ['parrafo', 'texto', 'normal', 'body'],
-    run: (editor, range) => {
-      deleteThen(editor, range).setParagraph().run();
-    },
-  },
-  {
-    id: 'heading-2',
-    title: 'Título',
-    description: 'Título de sección en esta página',
-    icon: 'heading',
-    group: 'Bloques básicos',
-    keywords: ['titulo', 'heading', 'h2', 'seccion', 'encabezado'],
-    run: (editor, range) => {
-      const attrs = headingAttrs(editor, 2, false);
-      deleteThen(editor, range).setNode('heading', attrs).run();
-    },
-  },
-  {
-    id: 'heading-3',
-    title: 'Subtítulo',
-    description: 'Encabezado más pequeño',
-    icon: 'heading3',
-    group: 'Bloques básicos',
-    keywords: ['subtitulo', 'heading', 'h3', 'subheading'],
-    run: (editor, range) => {
-      const attrs = headingAttrs(editor, 3, false);
-      deleteThen(editor, range).setNode('heading', attrs).run();
     },
   },
   {

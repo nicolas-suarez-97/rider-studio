@@ -1,9 +1,10 @@
 "use client";
 
-import React, { FormEvent, useEffect, useRef, useState } from 'react';
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Reorder, useDragControls } from 'motion/react';
 import { Icon } from '../common/Icon';
 import { SectionItem, RiderType } from '@/core/types/rider.types';
+import { RIDER_DATA } from '@/core/constants/rider-templates';
 
 function useCoarsePointer() {
   const [coarse, setCoarse] = useState(false);
@@ -84,57 +85,188 @@ function IndexActionButton({
   );
 }
 
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+interface AddSectionTitleFormProps {
+  onSubmit: (title: string) => void;
+  onCancel: () => void;
+  riderType?: RiderType;
+}
+
 function AddSectionTitleForm({
   onSubmit,
   onCancel,
-}: {
-  onSubmit: (title: string) => void;
-  onCancel: () => void;
-}) {
+  riderType = 'tecnico',
+}: AddSectionTitleFormProps) {
   const [title, setTitle] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLFormElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Solo las secciones de la estructura base correspondientes al tipo de rider actual
+  const baseSections = useMemo(() => {
+    return RIDER_DATA[riderType]?.sections || [];
+  }, [riderType]);
+
+  const filteredSections = useMemo(() => {
+    const q = normalizeText(title.trim());
+    if (!q) return baseSections;
+    return baseSections.filter((s) => normalizeText(s.title).includes(q));
+  }, [baseSections, title]);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  // Cerrar el dropdown al hacer clic fuera del formulario
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (selectedTitle: string) => {
+    const trimmed = selectedTitle.trim();
+    if (!trimmed) return;
+    onSubmit(trimmed);
+  };
+
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
+    if (isOpen && focusedIndex >= 0 && focusedIndex < filteredSections.length) {
+      handleSelect(filteredSections[focusedIndex].title);
+      return;
+    }
     const next = title.trim();
     if (!next) return;
     onSubmit(next);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (isOpen) {
+        setIsOpen(false);
+      } else {
+        onCancel();
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+      }
+      setFocusedIndex((prev) => (prev < filteredSections.length - 1 ? prev + 1 : prev));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+      return;
+    }
+  };
+
   return (
     <form
+      ref={containerRef}
       onSubmit={submit}
-      className="p-3 rounded-2xl border border-violet-300 bg-violet-50/70 shadow-xs ring-1 ring-violet-200/60"
+      className="p-3 rounded-2xl border border-violet-300 bg-white shadow-sm ring-1 ring-violet-200/60 relative"
     >
-      <input
-        ref={inputRef}
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') onCancel();
-        }}
-        placeholder="Título de la sección"
-        aria-label="Título de la sección"
-        className="w-full bg-transparent text-base sm:text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none"
-      />
-      <div className="mt-2 flex items-center justify-between gap-2">
+      <div>
+        <div className="relative flex items-center">
+          <input
+            ref={inputRef}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setIsOpen(true);
+              setFocusedIndex(-1);
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Escribe o busca una sección..."
+            aria-label="Título de la sección"
+            className="w-full bg-slate-50 focus:bg-white text-base sm:text-xs font-bold text-slate-800 placeholder:text-slate-400 pl-3 pr-8 py-2 rounded-xl border border-slate-200 focus:border-violet-500 outline-none transition-colors"
+          />
+
+          {/* Ícono al final para abrir u ocultar el dropdown */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen((prev) => !prev);
+              inputRef.current?.focus();
+            }}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            title={isOpen ? 'Ocultar secciones base' : 'Ver secciones base'}
+            aria-label={isOpen ? 'Ocultar secciones base' : 'Ver secciones base'}
+          >
+            <Icon name={isOpen ? 'chevronUp' : 'chevronDown'} className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Dropdown sencillo de coincidencias de la estructura base del tipo de rider actual */}
+        {isOpen && (
+          <div
+            ref={dropdownRef}
+            className="mt-1.5 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1 space-y-0.5 z-20"
+          >
+            {filteredSections.map((sec, idx) => {
+              const isFocused = idx === focusedIndex;
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(sec.title);
+                  }}
+                  onMouseEnter={() => setFocusedIndex(idx)}
+                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                    isFocused
+                      ? 'bg-violet-100 text-violet-900 font-bold'
+                      : 'hover:bg-violet-50 text-slate-700'
+                  }`}
+                >
+                  <span className="truncate">{sec.title}</span>
+                  <span className="text-[10px] text-slate-400 shrink-0 ml-2">{sec.num}</span>
+                </button>
+              );
+            })}
+
+            {filteredSections.length === 0 && (
+              <div className="px-2.5 py-2 text-[11px] text-slate-400 text-center">
+                Sin coincidencias base. Presiona Enter para usar como personalizada.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-2.5 flex items-center justify-between gap-2">
         <span className="text-[10px] text-slate-400">Enter para agregar</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onCancel}
-            className="px-2 py-1 rounded-lg text-[10px] font-semibold text-slate-500 hover:bg-white cursor-pointer"
+            className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-slate-500 hover:bg-slate-100 cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            disabled={!title.trim()}
-            className="px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-40 cursor-pointer disabled:cursor-default"
+            disabled={!title.trim() && focusedIndex < 0}
+            className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-40 cursor-pointer disabled:cursor-default"
           >
             Agregar
           </button>
@@ -238,6 +370,7 @@ export function SectionsNavPanel({
   onSaveRider,
   isSaving = false,
   dbSyncStatus = 'idle',
+  riderType = 'tecnico',
   readOnly = false,
   commentCounts
 }: SectionsNavPanelProps) {
@@ -358,6 +491,7 @@ export function SectionsNavPanel({
               <AddSectionTitleForm
                 onSubmit={onAddSectionTitle}
                 onCancel={() => onCancelAddSection?.()}
+                riderType={riderType}
               />
             ) : (
               <IndexActionButton
