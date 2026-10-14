@@ -147,28 +147,7 @@ export function EditorToolbar({
 
   return (
     <div className="docs-toolbar-scroll sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 overflow-x-auto">
-      <div className="flex items-center gap-0.5 pr-1" role="group" aria-label="Tema del documento">
-        {RIDER_DOCUMENT_THEMES.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            title={`${item.label}. ${item.description}`}
-            aria-label={item.label}
-            aria-pressed={theme === item.id}
-            disabled={!onThemeChange}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => onThemeChange?.(item.id)}
-            className={`h-8 w-8 shrink-0 rounded-lg inline-flex items-center justify-center cursor-pointer disabled:cursor-default ${
-              theme === item.id ? 'bg-slate-100' : 'hover:bg-slate-50'
-            }`}
-          >
-            <span
-              className="h-4 w-4 rounded-full border border-slate-300"
-              style={{ background: item.swatch }}
-            />
-          </button>
-        ))}
-      </div>
+      <ThemeDropdown theme={theme} onThemeChange={onThemeChange} />
 
       <ToolbarButton label="Deshacer" disabled={!editor} onClick={() => run((current) => current.chain().focus().undo().run())}>
         ↺
@@ -408,6 +387,139 @@ function FontSizeControl({
         <Icon name="plus" className="w-3 h-3" />
       </button>
     </div>
+  );
+}
+
+function ThemeDropdown({
+  theme,
+  onThemeChange,
+}: {
+  theme: RiderDocumentTheme;
+  onThemeChange?: (theme: RiderDocumentTheme) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const currentTheme = RIDER_DOCUMENT_THEMES.find((item) => item.id === theme) || RIDER_DOCUMENT_THEMES[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Node && (buttonRef.current?.contains(target) || menuRef.current?.contains(target))) return;
+      setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const toggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const box = buttonRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const width = 288;
+    const left = Math.min(box.left, window.innerWidth - width - 8);
+    setCoords({ top: box.bottom + 4, left: Math.max(8, left) });
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`Tema del documento: ${currentTheme.label}`}
+        title={`Tema actual: ${currentTheme.label}. Clic para cambiar de estilo`}
+        disabled={!onThemeChange}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={toggle}
+        className="h-8 px-2.5 shrink-0 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 inline-flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-default hover:bg-slate-50 transition-colors"
+      >
+        <span
+          className="h-3.5 w-3.5 rounded-full border border-slate-300 shadow-sm shrink-0"
+          style={{ background: currentTheme.swatch }}
+        />
+        <span className="truncate max-w-[110px]">{currentTheme.label}</span>
+        <Icon name="chevronDown" className="w-3 h-3 text-slate-400 shrink-0" />
+      </button>
+      {open && coords && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={menuRef}
+          role="listbox"
+          aria-label="Temas del documento"
+          className="fixed z-[80] w-72 max-h-[440px] overflow-y-auto rounded-xl border border-slate-200 bg-white py-1.5 shadow-[0_18px_50px_rgba(15,23,42,0.18)]"
+          style={{ top: coords.top, left: coords.left }}
+        >
+          <div className="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-800 tracking-wide uppercase">
+              Tema visual del rider
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">
+              {RIDER_DOCUMENT_THEMES.length} estilos
+            </span>
+          </div>
+          <div className="py-1">
+            {RIDER_DOCUMENT_THEMES.map((item) => {
+              const isSelected = item.id === theme;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  className={`w-full flex items-start gap-2.5 px-3 py-2 text-left cursor-pointer transition-colors ${
+                    isSelected ? 'bg-violet-50/70 text-violet-950' : 'hover:bg-slate-50 text-slate-700'
+                  }`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    onThemeChange?.(item.id);
+                    setOpen(false);
+                  }}
+                >
+                  <span
+                    className="mt-0.5 h-4 w-4 rounded-full border border-slate-300 shadow-sm shrink-0"
+                    style={{ background: item.swatch }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold leading-tight truncate">
+                        {item.label}
+                      </span>
+                      {item.category && (
+                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wider">
+                          {item.category}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-snug mt-0.5 line-clamp-1">
+                      {item.description}
+                    </p>
+                  </div>
+                  {isSelected && (
+                    <Icon name="check" className="w-3.5 h-3.5 text-violet-600 shrink-0 mt-0.5" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 

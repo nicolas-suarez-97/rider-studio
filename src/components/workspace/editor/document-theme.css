@@ -54,38 +54,120 @@
   --rider-leading: 1.35;
 }
 
-.docs-theme-festival .docs-editor,
-.docs-theme-editorial .docs-editor,
-.docs-theme-festival .docs-canvas .ProseMirror,
-.docs-theme-editorial .docs-canvas .ProseMirror {
+.docs-theme-blueprint {
+  --rider-canvas: #e0f2fe;
+  --rider-page: #f8fafc;
+  --rider-ink: #0f172a;
+  --rider-muted: #64748b;
+  --rider-accent: #0284c7;
+  --rider-rule: #0284c7;
+  --rider-line: #cbd5e1;
+  --rider-soft: #f0f9ff;
+  --rider-table-head: #0369a1;
+  --rider-table-head-ink: #ffffff;
+  --rider-display: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
+  --rider-body: Arial, Helvetica, sans-serif;
+  --rider-cover: #0c4a6e;
+  --rider-cover-ink: #f0f9ff;
+  --rider-leading: 1.25;
+}
+
+.docs-theme-electronic {
+  --rider-canvas: #09090b;
+  --rider-page: #12101e;
+  --rider-ink: #f5f3ff;
+  --rider-muted: #a78bfa;
+  --rider-accent: #8b5cf6;
+  --rider-rule: #7c3aed;
+  --rider-line: #2e1065;
+  --rider-soft: #1e1b4b;
+  --rider-table-head: #6d28d9;
+  --rider-table-head-ink: #ffffff;
+  --rider-display: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --rider-body: Arial, Helvetica, sans-serif;
+  --rider-cover: #1e103a;
+  --rider-cover-ink: #faf5ff;
+  --rider-leading: 1.35;
+}
+
+.docs-theme-carbon {
+  --rider-canvas: #e2e8f0;
+  --rider-page: #ffffff;
+  --rider-ink: #0f172a;
+  --rider-muted: #64748b;
+  --rider-accent: #1e293b;
+  --rider-rule: #334155;
+  --rider-line: #cbd5e1;
+  --rider-soft: #f1f5f9;
+  --rider-table-head: #334155;
+  --rider-table-head-ink: #f8fafc;
+  --rider-display: "Helvetica Neue", Arial, sans-serif;
+  --rider-body: Arial, Helvetica, sans-serif;
+  --rider-cover: #1e293b;
+  --rider-cover-ink: #f8fafc;
+  --rider-leading: 1.25;
+}
+
+.docs-theme-acoustic {
+  --rider-canvas: #fef3c7;
+  --rider-page: #fdfbf7;
+  --rider-ink: #292524;
+  --rider-muted: #78716c;
+  --rider-accent: #b45309;
+  --rider-rule: #b45309;
+  --rider-line: #e7e5e4;
+  --rider-soft: #fefce8;
+  --rider-table-head: #78350f;
+  --rider-table-head-ink: #fef3c7;
+  --rider-display: "Iowan Old Style", Palatino, Georgia, serif;
+  --rider-body: Georgia, "Iowan Old Style", serif;
+  --rider-cover: #451a03;
+  --rider-cover-ink: #fef3c7;
+  --rider-leading: 1.35;
+}
+
+.docs-theme-nordic {
+  --rider-canvas: #e6f4f1;
+  --rider-page: #f8faf9;
+  --rider-ink: #134e4a;
+  --rider-muted: #2dd4bf;
+  --rider-accent: #0d9488;
+  --rider-rule: #0d9488;
+  --rider-line: #ccfbf1;
+  --rider-soft: #f0fdfa;
+  --rider-table-head: #115e59;
+  --rider-table-head-ink: #f0fdfa;
+  --rider-display: "Helvetica Neue", Arial, sans-serif;
+  --rider-body: Arial, Helvetica, sans-serif;
+  --rider-cover: #134e4a;
+  --rider-cover-ink: #f0fdfa;
+  --rider-leading: 1.3;
+}
+
+.docs-theme:not(.docs-theme-studio) .docs-editor,
+.docs-theme:not(.docs-theme-studio) .docs-canvas .ProseMirror {
   font-family: var(--rider-body);
   color: var(--rider-ink);
 }
 
-.docs-theme-festival .docs-editor,
-.docs-theme-editorial .docs-editor {
+.docs-theme:not(.docs-theme-studio) .docs-editor {
   counter-reset: rider-section;
 }
 
-.docs-theme-festival .docs-editor h1,
-.docs-theme-editorial .docs-editor h1,
-.docs-theme-festival .docs-editor h2,
-.docs-theme-editorial .docs-editor h2,
-.docs-theme-festival .docs-editor h3,
-.docs-theme-editorial .docs-editor h3 {
+.docs-theme:not(.docs-theme-studio) .docs-editor h1,
+.docs-theme:not(.docs-theme-studio) .docs-editor h2,
+.docs-theme:not(.docs-theme-studio) .docs-editor h3 {
   font-family: var(--rider-display);
   color: var(--rider-ink);
 }
 
-.docs-theme-festival .docs-editor h2,
-.docs-theme-editorial .docs-editor h2 {
+.docs-theme:not(.docs-theme-studio) .docs-editor h2 {
   counter-increment: rider-section;
   border-top: 1px solid var(--rider-rule);
   padding-top: 0.45em;
 }
 
-.docs-theme-festival .docs-editor h2:not(.is-empty)::before,
-.docs-theme-editorial .docs-editor h2:not(.is-empty)::before {
+.docs-theme:not(.docs-theme-studio) .docs-editor h2:not(.is-empty)::before {
   content: counter(rider-section, decimal-leading-zero);
   display: block;
   margin-bottom: 0.15em;
@@ -95,25 +177,27 @@
   color: var(--rider-accent);
 }
 
-.docs-theme-festival .docs-editor h2 {
-  letter-spacing: -0.02em;
-  text-transform: none;
-}
-
-.docs-theme-editorial .docs-editor h2 {
+.docs-theme-editorial .docs-editor h2,
+.docs-theme-acoustic .docs-editor h2 {
   font-size: 20pt;
   font-weight: 600;
 }
 
-.docs-theme-festival .docs-editor .tableWrapper th,
-.docs-theme-editorial .docs-editor .tableWrapper th {
+.docs-theme-blueprint .docs-editor h2 {
+  font-family: var(--rider-display);
+  font-size: 15pt;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.docs-theme:not(.docs-theme-studio) .docs-editor .tableWrapper th {
   background: var(--rider-table-head);
   color: var(--rider-table-head-ink);
   border-color: var(--rider-table-head);
 }
 
-.docs-theme-festival .docs-editor .tableWrapper td,
-.docs-theme-editorial .docs-editor .tableWrapper td {
+.docs-theme:not(.docs-theme-studio) .docs-editor .tableWrapper td {
   border-color: var(--rider-line);
 }
 
@@ -285,12 +369,17 @@
   font-weight: 700;
 }
 
-.docs-theme-editorial .docs-cover-artist {
+.docs-theme-editorial .docs-cover-artist,
+.docs-theme-acoustic .docs-cover-artist {
   font-size: 52px;
   font-weight: 600;
 }
 
-.docs-theme-festival .docs-cover-artist {
+.docs-theme-festival .docs-cover-artist,
+.docs-theme-electronic .docs-cover-artist,
+.docs-theme-carbon .docs-cover-artist,
+.docs-theme-blueprint .docs-cover-artist,
+.docs-theme-nordic .docs-cover-artist {
   font-size: 48px;
   letter-spacing: -0.03em;
   text-transform: uppercase;
