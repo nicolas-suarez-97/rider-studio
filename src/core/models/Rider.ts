@@ -489,8 +489,9 @@ export class Rider {
    * Reordena las secciones y actualiza su numeración secuencial
    */
   public reorderSections(newSections: SectionItem[]): void {
+    const byId = new Map(this.sections.map((sec) => [sec.id, sec]));
     this.sections = newSections.map((sec, idx) => ({
-      ...sec,
+      ...(byId.get(sec.id) || sec),
       num: String(idx + 1).padStart(2, '0')
     }));
     this.syncCurrentModule();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
@@ -16,6 +16,7 @@ import {
   SuggestionHighlights,
 } from '@/components/workspace/editor/suggestion-highlight';
 import {
+  headingIdsFromDoc,
   riderDocumentFromSections,
   splitDocumentToSections,
   type SectionDocumentPatch,
@@ -90,13 +91,18 @@ export function RiderDocumentSurface({
   onRegisterBridge,
 }: RiderDocumentSurfaceProps) {
   const sectionIds = useMemo(() => sections.map((section) => section.id).join('|'), [sections]);
+  const documentSignature = `${artistName}\0${riderTitle}\0${sectionIds}`;
   const initialContent = useMemo(
     () => riderDocumentFromSections(sections, { artistName, title: riderTitle }) as JSONContent,
-    // Only rebuild when the section set changes so typing does not reset the cursor.
+    // Only seed the editor once; later structure changes go through setContent.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sectionIds]
+    []
   );
   const [pages, setPages] = useState(1);
+  const sectionsRef = useRef(sections);
+  const callbacksRef = useRef({ onDocumentChange, onActivateSection, onSelectionChange });
+  sectionsRef.current = sections;
+  callbacksRef.current = { onDocumentChange, onActivateSection, onSelectionChange };
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -129,26 +135,37 @@ export function RiderDocumentSurface({
     },
     onUpdate: ({ editor: current, transaction }) => {
       if (!transaction.docChanged || readOnly) return;
-      onDocumentChange?.(splitDocumentToSections(current.getJSON(), sectionIds.split('|').filter(Boolean)));
+      const ids = sectionsRef.current.map((section) => section.id);
+      callbacksRef.current.onDocumentChange?.(splitDocumentToSections(current.getJSON(), ids));
       setPages(pageCountFromEditor(current.view.dom));
     },
     onSelectionUpdate: ({ editor: current }) => {
       const { from, to } = current.state.selection;
-      let sectionId = sections[0]?.id || '';
+      let sectionId = sectionsRef.current[0]?.id || '';
       current.state.doc.descendants((node, pos) => {
         if (node.type.name === 'heading' && node.attrs.id && pos <= from) {
           sectionId = node.attrs.id as string;
         }
       });
-      if (sectionId) onActivateSection?.(sectionId);
-      onSelectionChange?.(sectionId, from === to ? '' : current.state.doc.textBetween(from, to, '\n'));
+      if (sectionId) callbacksRef.current.onActivateSection?.(sectionId);
+      callbacksRef.current.onSelectionChange?.(sectionId, from === to ? '' : current.state.doc.textBetween(from, to, '\n'));
     },
-  }, [sectionIds, readOnly]);
+  }, [readOnly]);
 
   useEffect(() => {
     if (!editor) return;
     editor.setEditable(!readOnly);
   }, [editor, readOnly]);
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const nextDoc = riderDocumentFromSections(sections, { artistName, title: riderTitle });
+    const currentIds = headingIdsFromDoc(editor.getJSON());
+    const nextIds = headingIdsFromDoc(nextDoc);
+    if (currentIds.join('|') === nextIds.join('|')) return;
+    editor.commands.setContent(nextDoc as JSONContent, { emitUpdate: false });
+    setPages(pageCountFromEditor(editor.view.dom));
+  }, [editor, documentSignature, artistName, riderTitle, sections]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;

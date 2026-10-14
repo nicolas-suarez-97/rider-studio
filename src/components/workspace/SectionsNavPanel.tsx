@@ -61,7 +61,7 @@ function SortableSection({
 
   return (
     <Reorder.Item
-      value={section}
+      value={section.id}
       dragListener={!handleOnly}
       dragControls={dragControls}
       className={`group relative p-3 rounded-2xl border transition-colors cursor-pointer flex items-center gap-3 ${
@@ -132,6 +132,11 @@ export function SectionsNavPanel({
   commentCounts
 }: SectionsNavPanelProps) {
   const handleOnly = useCoarsePointer();
+  const [sortable, setSortable] = useState(false);
+
+  useEffect(() => {
+    setSortable(true);
+  }, []);
 
   return (
     <aside className="w-full xl:w-80 xl:border-r border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden">
@@ -153,7 +158,7 @@ export function SectionsNavPanel({
 
       {/* Lista de Secciones Reordenables */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1 overscroll-contain">
-        {readOnly ? (
+        {readOnly || !sortable ? (
           <div className="space-y-1.5">
             {sections.map((section) => {
               const isActive = activeSectionId === section.id;
@@ -199,10 +204,16 @@ export function SectionsNavPanel({
             })}
           </div>
         ) : (
-        <Reorder.Group 
-          axis="y" 
-          values={sections} 
-          onReorder={onReorderSections}
+        <Reorder.Group
+          axis="y"
+          values={sections.map((section) => section.id)}
+          onReorder={(ids) => {
+            const byId = new Map(sections.map((section) => [section.id, section]));
+            onReorderSections(ids.flatMap((id) => {
+              const section = byId.get(id);
+              return section ? [section] : [];
+            }));
+          }}
           className="space-y-1.5"
         >
           {sections.map((section) => (

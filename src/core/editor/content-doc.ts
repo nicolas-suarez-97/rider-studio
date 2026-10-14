@@ -5,6 +5,7 @@ import { DocumentSuggestion } from '@/core/types/suggestion.types';
 interface JsonNode {
   type?: string;
   text?: string;
+  attrs?: { id?: unknown; level?: unknown };
   content?: JsonNode[];
 }
 
@@ -52,6 +53,15 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
 
   visit(doc as JsonNode);
   return lines.join('\n');
+}
+
+export function headingIdsFromDoc(doc: RiderContentDoc | JsonNode): string[] {
+  const ids: string[] = [];
+  for (const node of (doc.content || []) as JsonNode[]) {
+    const id = typeof node.attrs?.id === 'string' ? node.attrs.id : '';
+    if (node.type === 'heading' && id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
 }
 
 export function riderDocumentFromSections(

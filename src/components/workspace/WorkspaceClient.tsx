@@ -486,9 +486,10 @@ export function WorkspaceClient({
   };
 
   const handleReorderSections = (newSections: SectionItem[]) => {
-    setRider(prev => {
+    setRider((prev) => {
       const updated = new Rider({ ...prev });
-      updated.reorderSections(newSections);
+      const byId = new Map(prev.sections.map((section) => [section.id, section]));
+      updated.reorderSections(newSections.map((section) => byId.get(section.id) || section));
       return updated;
     });
   };
