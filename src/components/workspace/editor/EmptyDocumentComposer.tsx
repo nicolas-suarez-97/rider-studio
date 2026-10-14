@@ -1,9 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/common/Icon';
 import { RiderType } from '@/core/types/rider.types';
 import { BLANK_COMPOSER_PLACEHOLDER, BLANK_RIDER_PROMPTS } from '@/core/constants/blank-rider-prompts';
+
+const CHIP =
+  'shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 cursor-pointer';
 
 interface EmptyDocumentComposerProps {
   riderType: RiderType;
@@ -23,15 +26,31 @@ export function EmptyDocumentComposer({
   const [text, setText] = useState('');
   const [showMore, setShowMore] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!showMore) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!moreRef.current?.contains(event.target as Node)) setShowMore(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowMore(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showMore]);
+
   const prompts = BLANK_RIDER_PROMPTS[riderType] || BLANK_RIDER_PROMPTS.tecnico;
-  const visible = useMemo(
-    () => (showMore ? prompts : prompts.slice(0, 3)),
-    [prompts, showMore],
-  );
+  const primary = useMemo(() => prompts.slice(0, 3), [prompts]);
+  const extra = useMemo(() => prompts.slice(3), [prompts]);
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
@@ -47,28 +66,57 @@ export function EmptyDocumentComposer({
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] xl:pb-6">
       <div className="pointer-events-auto w-full max-w-[720px]">
         {showPrompts && (
-          <div className="mb-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-            {visible.map((prompt) => (
-              <button
-                key={prompt.id}
-                type="button"
-                disabled={isThinking}
-                onClick={() => onAsk(prompt.prompt)}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 cursor-pointer"
-              >
-                <Icon name={prompt.icon} className="w-3.5 h-3.5 text-slate-400" />
-                {prompt.label}
-              </button>
-            ))}
-            {prompts.length > 3 && (
-              <button
-                type="button"
-                onClick={() => setShowMore((current) => !current)}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 shadow-sm hover:bg-slate-50 cursor-pointer"
-              >
-                <Icon name="fileText" className="w-3.5 h-3.5 text-slate-400" />
-                {showMore ? 'Menos' : 'Más'}
-              </button>
+          <div className="mb-2.5 flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+              {primary.map((prompt) => (
+                <button
+                  key={prompt.id}
+                  type="button"
+                  disabled={isThinking}
+                  onClick={() => onAsk(prompt.prompt)}
+                  className={CHIP}
+                >
+                  <Icon name={prompt.icon} className="w-3.5 h-3.5 text-slate-400" />
+                  {prompt.label}
+                </button>
+              ))}
+            </div>
+            {extra.length > 0 && (
+              <div ref={moreRef} className="relative shrink-0 pb-1">
+                {showMore && (
+                  <div
+                    role="menu"
+                    className="absolute bottom-full right-0 z-20 mb-2 flex w-max flex-col items-end gap-2"
+                  >
+                    {extra.map((prompt) => (
+                      <button
+                        key={prompt.id}
+                        type="button"
+                        role="menuitem"
+                        disabled={isThinking}
+                        onClick={() => {
+                          setShowMore(false);
+                          onAsk(prompt.prompt);
+                        }}
+                        className={CHIP}
+                      >
+                        <Icon name={prompt.icon} className="w-3.5 h-3.5 text-slate-400" />
+                        {prompt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  aria-expanded={showMore}
+                  aria-haspopup="menu"
+                  onClick={() => setShowMore((current) => !current)}
+                  className={CHIP}
+                >
+                  <Icon name="fileText" className="w-3.5 h-3.5 text-slate-400" />
+                  {showMore ? 'Menos' : 'Más'}
+                </button>
+              </div>
             )}
           </div>
         )}
