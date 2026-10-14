@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
 import { Icon } from '@/components/common/Icon';
@@ -109,25 +110,7 @@ export function EditorToolbar({ editor, theme, onThemeChange, onInsertSection, o
   };
 
   return (
-    <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80">
-      <div
-        className="docs-toolbar-scroll flex items-center gap-1 overflow-x-auto px-2 sm:px-3 py-1.5 border-b border-slate-100"
-        role="toolbar"
-        aria-label="Bloques del rider"
-      >
-        {RIDER_INSERTS.map((item) => (
-          <ToolbarButton
-            key={item.id}
-            label={item.label}
-            disabled={!editor}
-            onClick={() => { if (editor) insertRiderBlock(editor, item.id); }}
-          >
-            <Icon name={item.icon} className="w-3.5 h-3.5" />
-            {item.label}
-          </ToolbarButton>
-        ))}
-      </div>
-      <div className="docs-toolbar-scroll px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 overflow-x-auto">
+    <div className="docs-toolbar-scroll sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 overflow-x-auto">
       <div className="flex items-center gap-0.5 pr-1" role="group" aria-label="Tema del documento">
         {RIDER_DOCUMENT_THEMES.map((item) => (
           <button
@@ -167,6 +150,7 @@ export function EditorToolbar({ editor, theme, onThemeChange, onInsertSection, o
         <option value="heading-2">Título</option>
         <option value="heading-3">Subtítulo</option>
       </select>
+      <RiderInsertMenu editor={editor} />
       <ToolbarButton label="Negrita" active={marks?.bold} disabled={!editor} onClick={() => run((current) => current.chain().focus().toggleBold().run())}>
         B
       </ToolbarButton>
@@ -265,8 +249,91 @@ export function EditorToolbar({ editor, theme, onThemeChange, onInsertSection, o
           ↓
         </ToolbarButton>
       </form>
-      </div>
     </div>
+  );
+}
+
+function RiderInsertMenu({ editor }: { editor: Editor | null }) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Node && (buttonRef.current?.contains(target) || menuRef.current?.contains(target))) return;
+      setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const toggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const box = buttonRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const width = 208;
+    const left = Math.min(box.left, window.innerWidth - width - 8);
+    setCoords({ top: box.bottom + 4, left: Math.max(8, left) });
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Insertar bloque del rider"
+        disabled={!editor}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={toggle}
+        className="h-8 px-2 shrink-0 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 inline-flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-default"
+      >
+        Insertar
+        <Icon name="chevronDown" className="w-3.5 h-3.5" />
+      </button>
+      {open && coords && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="Bloques del rider"
+          className="fixed z-[80] w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-[0_18px_50px_rgba(15,23,42,0.18)]"
+          style={{ top: coords.top, left: coords.left }}
+        >
+          {RIDER_INSERTS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                if (editor) insertRiderBlock(editor, item.id);
+                setOpen(false);
+              }}
+            >
+              <Icon name={item.icon} className="w-3.5 h-3.5 text-slate-500" />
+              {item.label}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
