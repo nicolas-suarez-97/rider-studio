@@ -55,7 +55,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
         tag: 'Canales',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'list',
-        content: 'Configura en la tabla interactiva inferior los canales de entrada, transductores principales y sustitutos homologados, tipos de atril, alimentación phantom (+48V) y sub-snakes de escenario.'
+        content: ''
       },
       {
         id: 'tech-stageplot',

@@ -10,6 +10,7 @@ import {
   RiderMediaItem
 } from '../types/rider.types';
 import { coverMedia, parseRiderMedia, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
+import { inputListDoc } from '../constants/input-list';
 import { RIDER_DATA } from '../constants/rider-templates';
 import { DEFAULT_STAGE_PLOT } from '../constants/stage-plot';
 import { ChannelInput } from './ChannelInput';
@@ -514,7 +515,7 @@ export class Rider {
     this.sections = (template?.sections || []).map((section, index) => ({
       ...section,
       content: '',
-      contentDoc: undefined,
+      contentDoc: section.id === 'tech-inputlist' ? inputListDoc() : undefined,
       pageBreakBefore: index > 0,
     }));
     this.completedSectionIds = [];

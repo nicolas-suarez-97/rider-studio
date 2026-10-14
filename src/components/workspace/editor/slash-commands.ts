@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core';
+import { cloneInputListRows } from '@/core/constants/input-list';
 import { newSectionId } from '@/core/editor/content-doc';
 
 export type SlashRange = { from: number; to: number };
@@ -115,6 +116,17 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: ['tabla', 'grid', 'columnas', 'filas', 'excel'],
     run: (editor, range) => {
       deleteThen(editor, range).setParagraph().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+    },
+  },
+  {
+    id: 'input-list',
+    title: 'Input List',
+    description: 'Tabla de canales, instrumento y posición',
+    icon: 'list',
+    group: 'Insertar',
+    keywords: ['input', 'list', 'patch', 'canales', 'channels', 'il', 'microfonos'],
+    run: (editor, range) => {
+      deleteThen(editor, range).insertInputList(cloneInputListRows()).run();
     },
   },
   {

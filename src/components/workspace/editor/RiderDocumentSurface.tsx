@@ -17,6 +17,7 @@ import { EmptyDocumentComposer } from '@/components/workspace/editor/EmptyDocume
 import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/workspace/editor/document-images';
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
 import { SectionChips } from '@/components/workspace/editor/section-chips';
+import { InputList } from '@/components/workspace/editor/input-list-node';
 import { SlashCommandMenu } from '@/components/workspace/editor/SlashCommandMenu';
 import {
   applySuggestionToEditor,
@@ -200,6 +201,7 @@ export function RiderDocumentSurface({
       TableKit.configure({
         table: { resizable: false, renderWrapper: true },
       }),
+      InputList,
       TaskList,
       TaskItem.configure({ nested: true }),
       Image.configure({
@@ -436,6 +438,28 @@ export function RiderDocumentSurface({
         .docs-editor ul[data-type="taskList"] p { margin: 0; }
         .docs-editor li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 8px; }
         .docs-editor li[data-type="taskItem"] > label { margin-top: 0.2em; }
+        .docs-input-list-node, .docs-input-list { margin: 0.4em 0 0.9em; }
+        .docs-input-list-card { border: 1px solid #dadce0; border-radius: 10px; overflow: hidden; background: #fff; font-family: Arial, Helvetica, sans-serif; }
+        .docs-input-list-head { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: #f8f9fa; border-bottom: 1px solid #dadce0; }
+        .docs-input-list-title { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #334155; }
+        .docs-input-list-count { font-size: 9px; font-weight: 800; color: #6d28d9; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 999px; padding: 1px 7px; }
+        .docs-input-list-add { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; font-size: 10px; font-weight: 700; color: #334155; cursor: pointer; }
+        .docs-input-list-scroll { overflow: auto; max-height: 640px; }
+        .docs-input-list table { width: 100%; border-collapse: collapse; table-layout: auto; font-size: 9.5pt; }
+        .docs-input-list th { text-align: left; font-size: 8px; letter-spacing: 0.04em; text-transform: uppercase; color: #94a3b8; font-weight: 800; padding: 6px 6px; border-bottom: 1px solid #e2e8f0; background: #fafafa; }
+        .docs-input-list td { padding: 3px 4px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .docs-input-list .col-ch { width: 32px; text-align: center; font-weight: 800; color: #94a3b8; }
+        .docs-input-list .col-48 { width: 44px; text-align: center; }
+        .docs-input-list .col-actions { width: 28px; }
+        .docs-input-list td input, .docs-combo input { width: 100%; border: 0; background: transparent; font: inherit; color: #1e293b; outline: none; padding: 4px 6px; border-radius: 6px; }
+        .docs-input-list td input:focus, .docs-combo input:focus { background: #fff; box-shadow: inset 0 0 0 1px #c4b5fd; }
+        .docs-input-list-empty { text-align: center; color: #94a3b8; padding: 16px 8px !important; }
+        .docs-input-list-48 { font-size: 8px; font-weight: 800; color: #cbd5e1; border: 0; background: transparent; cursor: pointer; padding: 3px 4px; border-radius: 4px; }
+        .docs-input-list-48.is-on { color: #92400e; background: #fef3c7; }
+        .docs-input-list-delete { display: inline-flex; color: #cbd5e1; background: none; border: 0; cursor: pointer; padding: 4px; }
+        .docs-input-list-delete:hover { color: #e11d48; }
+        .docs-input-list.is-selected .docs-input-list-card { box-shadow: 0 0 0 2px #c4b5fd; }
+        .docs-combo { position: relative; min-width: 0; }
         .docs-editor img, .docs-editor .docs-image { max-width: 100%; height: auto; max-height: 28rem; display: block; margin: 0.4em 0 0.7em; object-fit: contain; }
         .docs-toolbar-scroll { scrollbar-width: none; }
         .docs-toolbar-scroll::-webkit-scrollbar { display: none; }
