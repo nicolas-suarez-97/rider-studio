@@ -656,7 +656,9 @@ export function WorkspaceClient({
       return;
     }
     setIsChatCollapsed(false);
-    setMobileTab('assistant');
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches) {
+      setMobileTab('assistant');
+    }
     void handleSendMessage(text, sectionId);
   };
 
@@ -791,7 +793,7 @@ export function WorkspaceClient({
         </div>
 
         {/* Panel 3: Copilot Asistente de IA */}
-        <div className={`h-full ${mobileTab === 'assistant' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:flex-none xl:w-auto shrink-0`}>
+        <div className={`h-full ${mobileTab === 'assistant' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:flex-none ${isChatCollapsed ? 'xl:w-12' : 'xl:w-96'} shrink-0`}>
           <AssistantChatPanel
             activeAgent={activeAgent}
             onSelectAgent={(role) => setActiveAgent(role)}
