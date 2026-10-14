@@ -106,6 +106,31 @@ const RiderKeys = Extension.create({
         window.dispatchEvent(new CustomEvent('rider:open-link-dialog'));
         return true;
       },
+      Backspace: () => {
+        const { state } = this.editor;
+        const { selection } = state;
+        if (!selection.empty) return false;
+        const { $from } = selection;
+
+        for (let d = $from.depth; d > 0; d--) {
+          const parent = $from.node(d);
+          if (parent.type.name === 'requirement' || parent.type.name === 'notice') {
+            const isStart = $from.pos === $from.start(d);
+            if (isStart && parent.textContent.trim() === '') {
+              const from = $from.before(d);
+              const to = $from.after(d);
+              return this.editor.chain().focus().deleteRange({ from, to }).setParagraph().run();
+            }
+          }
+          if (parent.type.name === 'table') {
+            const isStart = $from.pos === $from.start(d);
+            if (isStart && parent.textContent.trim() === '') {
+              return this.editor.commands.deleteTable();
+            }
+          }
+        }
+        return false;
+      },
     };
   },
 });
@@ -731,6 +756,8 @@ export function RiderDocumentSurface({
         .docs-input-list-48.is-on { color: #92400e; background: #fef3c7; }
         .docs-input-list-delete { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin: 0 auto; color: #94a3b8; background: none; border: 0; cursor: pointer; padding: 0; }
         .docs-input-list-delete:hover { color: #e11d48; }
+        .docs-input-list-delete-block { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 8px; border: 1px solid #fee2e2; background: #fff5f5; font-size: 10px; font-weight: 700; color: #e11d48; cursor: pointer; transition: all 0.15s ease; }
+        .docs-input-list-delete-block:hover { background: #fee2e2; border-color: #fca5a5; color: #be123c; }
         .docs-input-list.is-selected .docs-input-list-card { box-shadow: 0 0 0 2px #c4b5fd; }
         .docs-combo { position: relative; min-width: 0; }
         .docs-editor img, .docs-editor .docs-image { max-width: 100%; height: auto; max-height: 28rem; display: block; margin: 0.4em 0 0.7em; object-fit: contain; }

@@ -169,7 +169,7 @@ export const Requirement = Node.create({
   group: 'block',
   content: 'paragraph+',
   defining: true,
-  isolating: true,
+  isolating: false,
   addAttributes() {
     return {
       label: stringField('label', 'data-label', 'Requisito'),
@@ -200,7 +200,7 @@ export const Notice = Node.create({
   group: 'block',
   content: 'paragraph+',
   defining: true,
-  isolating: true,
+  isolating: false,
   addAttributes() {
     return {
       tone: {

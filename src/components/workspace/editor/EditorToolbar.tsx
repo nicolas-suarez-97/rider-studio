@@ -104,6 +104,7 @@ export function EditorToolbar({
         fontSize: computedSize,
         textAlign,
         link: current.isActive('link'),
+        table: current.isActive('table'),
       };
     },
   });
@@ -267,6 +268,19 @@ export function EditorToolbar({
       <ToolbarButton label="Lista numerada" active={marks?.ordered} disabled={!editor} onClick={() => run((current) => current.chain().focus().toggleOrderedList().run())}>
         1.
       </ToolbarButton>
+
+      {marks?.table && (
+        <>
+          <ToolbarDivider />
+          <ToolbarButton
+            label="Eliminar tabla"
+            disabled={!editor}
+            onClick={() => run((current) => current.chain().focus().deleteTable().run())}
+          >
+            <Icon name="trash" className="w-3.5 h-3.5 text-rose-500" />
+          </ToolbarButton>
+        </>
+      )}
 
       <form
         className="flex items-center gap-1 ml-auto"

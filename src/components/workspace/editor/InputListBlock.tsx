@@ -28,7 +28,7 @@ function asColumns(value: unknown): InputListColumn[] {
   }));
 }
 
-export function InputListBlock({ node, updateAttributes, editor, selected }: NodeViewProps) {
+export function InputListBlock({ node, updateAttributes, deleteNode, editor, selected }: NodeViewProps) {
   const rows = asRows(node.attrs.rows);
   const columns = asColumns(node.attrs.columns);
   const readOnly = !editor.isEditable;
@@ -117,6 +117,16 @@ export function InputListBlock({ node, updateAttributes, editor, selected }: Nod
                   <option value="toggle">+48V</option>
                 </select>
               </label>
+              <button
+                type="button"
+                className="docs-input-list-delete-block"
+                title="Eliminar Input List"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => deleteNode()}
+              >
+                <Icon name="trash" className="h-3 w-3" />
+                <span>Eliminar</span>
+              </button>
             </div>
           )}
         </div>
