@@ -11,7 +11,7 @@ export const BLANK_RIDER_PROMPTS: Record<RiderType, BlankRiderPrompt[]> = {
   tecnico: [
     {
       id: 'outline',
-      label: 'Estructura típica',
+      label: 'Estructura base',
       icon: 'fileText',
       prompt: '__outline__',
     },
@@ -43,7 +43,7 @@ export const BLANK_RIDER_PROMPTS: Record<RiderType, BlankRiderPrompt[]> = {
   hospitality: [
     {
       id: 'outline',
-      label: 'Estructura típica',
+      label: 'Estructura base',
       icon: 'fileText',
       prompt: '__outline__',
     },
@@ -75,7 +75,7 @@ export const BLANK_RIDER_PROMPTS: Record<RiderType, BlankRiderPrompt[]> = {
   seguridad: [
     {
       id: 'outline',
-      label: 'Estructura típica',
+      label: 'Estructura base',
       icon: 'fileText',
       prompt: '__outline__',
     },

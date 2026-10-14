@@ -396,10 +396,10 @@ export function RiderDocumentSurface({
           </div>
         </div>
       </div>
-      {!readOnly && onAskAssistant && (
+      {!readOnly && onAskAssistant && isBlankDocument && (
         <EmptyDocumentComposer
           riderType={riderType}
-          showPrompts={isBlankDocument}
+          showPrompts
           isThinking={isAssistantThinking}
           onAsk={onAskAssistant}
           onInsertSection={onInsertSection}

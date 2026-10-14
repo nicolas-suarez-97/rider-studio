@@ -644,7 +644,7 @@ export function WorkspaceClient({
         if (updated.sections[0]) setActiveSectionId(updated.sections[0].id);
         return updated;
       });
-      showToast('Estructura típica añadida al documento');
+      showToast('Estructura base del rider añadida al documento');
       return;
     }
     setIsChatCollapsed(false);

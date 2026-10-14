@@ -522,8 +522,7 @@ export class Rider {
     const template = RIDER_DATA[this.type];
     this.sections = (template?.sections || []).map((section) => ({
       ...section,
-      content: '',
-      contentDoc: undefined,
+      content: section.content || '',
     }));
     this.completedSectionIds = [];
     this.renumberSections();
