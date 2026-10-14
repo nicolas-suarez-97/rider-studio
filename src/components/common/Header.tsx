@@ -175,7 +175,7 @@ export function Header({
       {(pageType === 'workspace' || pageType === 'view' || pageType === 'promotor') && (
         <>
         <div className="h-12 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm text-xs shrink-0">
-        <div className="h-full w-full px-3 sm:px-6 flex items-center justify-start md:justify-between gap-2 overflow-x-auto no-scrollbar">
+        <div className="h-full w-full px-3 sm:px-6 flex items-center justify-center md:justify-between gap-2 overflow-x-auto no-scrollbar">
           {/* Selector de Tipo de Rider */}
           {onSelectRiderType && (
               <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/70 shrink-0">
