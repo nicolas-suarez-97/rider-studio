@@ -1,7 +1,7 @@
 "use client";
 
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
-import { Reorder, useDragControls, useReducedMotion } from 'motion/react';
+import { Reorder, useDragControls } from 'motion/react';
 import { Icon } from '../common/Icon';
 import { SectionItem, RiderType } from '@/core/types/rider.types';
 
@@ -31,7 +31,6 @@ interface SectionsNavPanelProps {
   isAddingSection?: boolean;
   onCancelAddSection?: () => void;
   onApplyTemplateOutline?: () => void;
-  outlineEnter?: boolean;
   onResetBlank: () => void;
   progressPercent: number;
   masterProgress?: { completed: number; total: number; percent: number };
@@ -234,7 +233,6 @@ export function SectionsNavPanel({
   isAddingSection = false,
   onCancelAddSection,
   onApplyTemplateOutline,
-  outlineEnter = false,
   onResetBlank,
   progressPercent,
   onSaveRider,
