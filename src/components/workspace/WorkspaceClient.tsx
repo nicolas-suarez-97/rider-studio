@@ -271,10 +271,10 @@ export function WorkspaceClient({
   };
 
   const handleUploadDocumentImage = async (file: File): Promise<string | null> => {
-    const current = riderRef.current;
-    if (!isPersistedRiderId(current.id)) return null;
+    const base = await riderWithId();
+    if (!base?.id) return null;
     try {
-      const uploaded = await uploadRiderImage(file, 'gallery', current.id);
+      const uploaded = await uploadRiderImage(file, 'gallery', base.id);
       return uploaded.url;
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'No se pudo subir la imagen');

@@ -1,7 +1,7 @@
 import { createServerSupabaseClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
 import { Database, Json } from '@/lib/supabase/database.types';
 import { createShareToken } from '@/lib/share/token';
-import { del } from '@vercel/blob';
+import { deleteStoredImages } from '@/lib/media/image-store';
 import { mediaPathnames } from '@/lib/media/rider-media';
 
 export type DbRider = Database['public']['Tables']['riders']['Row'];
@@ -390,9 +390,9 @@ export class RiderRepository implements IRiderRepository {
     if (existing) {
       const metadata = asMetadataRecord(existing.metadata);
       const paths = mediaPathnames(existing.media ?? metadata?.media, metadata?.stagePlot);
-      if (paths.length > 0 && process.env.BLOB_READ_WRITE_TOKEN) {
+      if (paths.length > 0) {
         try {
-          await del(paths);
+          await deleteStoredImages(paths);
         } catch (error) {
           console.warn('[media delete rider]', error);
         }

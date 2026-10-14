@@ -1,15 +1,23 @@
 'use client';
 
-import { upload } from '@vercel/blob/client';
-import { assertRiderImage, riderImagePath } from '@/lib/media/rider-media';
+import { assertRiderImage } from '@/lib/media/rider-media';
 
 export async function uploadRiderImage(file: File, kind: 'gallery' | 'plot', riderId: string) {
   assertRiderImage(file, kind);
-  const blob = await upload(riderImagePath(riderId, kind, file.name), file, {
-    access: 'public',
-    handleUploadUrl: '/api/media/upload',
+  const form = new FormData();
+  form.set('file', file);
+  form.set('kind', kind);
+  form.set('riderId', riderId);
+
+  const response = await fetch('/api/media/upload', {
+    method: 'POST',
+    body: form,
   });
-  return { url: blob.url, pathname: blob.pathname };
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || typeof payload.url !== 'string' || typeof payload.pathname !== 'string') {
+    throw new Error(typeof payload.error === 'string' ? payload.error : 'No se pudo subir la imagen');
+  }
+  return { url: payload.url as string, pathname: payload.pathname as string };
 }
 
 export async function deleteRiderImage(pathname: string) {

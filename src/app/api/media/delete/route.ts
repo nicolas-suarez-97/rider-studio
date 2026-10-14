@@ -1,5 +1,5 @@
-import { del } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import { deleteStoredImage } from '@/lib/media/image-store';
 import { imageKindFromPath } from '@/lib/media/rider-media';
 
 export async function POST(request: Request) {
@@ -12,15 +12,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Ruta no permitida' }, { status: 400 });
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json({ ok: true, skipped: true });
-  }
-
-  try {
-    await del(pathname);
-  } catch (error) {
-    console.warn('[media delete]', error);
-  }
-
+  await deleteStoredImage(pathname);
   return NextResponse.json({ ok: true });
 }
