@@ -694,11 +694,7 @@ export function WorkspaceClient({
         pageType="workspace"
         riderType={rider.type}
         onSelectRiderType={handleSelectRiderType}
-        completedCount={rider.completedSectionIds.length}
-        totalCount={rider.sections.length}
-        progressPercent={rider.getProgress()}
         moduleStats={rider.getModuleStats()}
-        masterProgress={rider.getMasterProgress()}
         onSaveRider={handleSaveRider}
         isSaving={isSaving}
         dbSyncStatus={dbSyncStatus}

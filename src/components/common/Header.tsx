@@ -14,7 +14,6 @@ interface HeaderProps {
   totalCount?: number;
   progressPercent?: number;
   moduleStats?: Record<RiderType, { completed: number; total: number; percent: number }>;
-  masterProgress?: { completed: number; total: number; percent: number };
   visibleModuleTypes?: RiderType[];
   onSaveRider?: () => void;
   isSaving?: boolean;
@@ -37,7 +36,6 @@ export function Header({
   totalCount = 7,
   progressPercent = 0,
   moduleStats,
-  masterProgress,
   visibleModuleTypes,
   onExport,
   onOpenExportModal,
@@ -237,43 +235,8 @@ export function Header({
             </div>
           )}
 
-          {/* Progreso y acciones: solo escritorio. En móvil, Compartir es el botón flotante principal. */}
+          {/* Acciones: solo escritorio. En móvil, Compartir es el botón flotante principal. */}
           <div className="hidden md:flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {pageType === 'workspace' && (
-            <div className="hidden md:flex items-center gap-2 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200/60 text-xs">
-              <div className="w-12 bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-emerald-500 h-full transition-all duration-300"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <span className="font-bold text-slate-700 whitespace-nowrap text-[11px]">
-                {completedCount}/{totalCount}
-              </span>
-            </div>
-            )}
-
-            {/* Progreso Global del Rider General */}
-            {pageType === 'workspace' && masterProgress && (
-              <div 
-                className="hidden xl:flex items-center gap-2 bg-violet-50/80 px-3 py-1 rounded-full border border-violet-200/70 text-xs"
-                title="Progreso consolidado de los 3 módulos del Rider de Producción"
-              >
-                <span className="text-[10px] font-black uppercase tracking-wider text-violet-600">Rider:</span>
-                <div className="w-14 bg-violet-200/70 h-1.5 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-violet-600 h-full transition-all duration-300"
-                    style={{ width: `${masterProgress.percent}%` }}
-                  />
-                </div>
-                <span className="font-black text-violet-800 whitespace-nowrap text-[11px]">
-                  {masterProgress.completed}/{masterProgress.total} ({masterProgress.percent}%)
-                </span>
-              </div>
-            )}
-
-
-
             {pageType === 'workspace' && (
             <button
               type="button"
