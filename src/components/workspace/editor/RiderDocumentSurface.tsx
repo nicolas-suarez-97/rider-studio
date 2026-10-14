@@ -9,11 +9,15 @@ import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Extension, type Editor, type JSONContent } from '@tiptap/core';
 import { Plugin, type Transaction } from '@tiptap/pm/state';
+import { TableKit } from '@tiptap/extension-table';
+import { TaskList } from '@tiptap/extension-task-list';
+import { TaskItem } from '@tiptap/extension-task-item';
 import { EditorToolbar } from '@/components/workspace/editor/EditorToolbar';
 import { EmptyDocumentComposer } from '@/components/workspace/editor/EmptyDocumentComposer';
 import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/workspace/editor/document-images';
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
 import { SectionChips } from '@/components/workspace/editor/section-chips';
+import { SlashCommandMenu } from '@/components/workspace/editor/SlashCommandMenu';
 import {
   applySuggestionToEditor,
   findSectionBounds,
@@ -159,6 +163,7 @@ export function RiderDocumentSurface({
   const documentHeight = pages * PAGE_HEIGHT + Math.max(0, pages - 1) * PAGE_GAP;
   const scrollerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
+  const slashKeysRef = useRef<(event: KeyboardEvent) => boolean>(() => false);
   const sectionsRef = useRef(sections);
   const askRef = useRef(onAskAssistant);
   const riderTypeRef = useRef(riderType);
@@ -188,12 +193,15 @@ export function RiderDocumentSurface({
         heading: false,
         code: false,
         codeBlock: false,
-        blockquote: false,
-        horizontalRule: false,
         strike: false,
         link: { openOnClick: false, autolink: true },
       }),
       SectionHeading.configure({ levels: [1, 2, 3] }),
+      TableKit.configure({
+        table: { resizable: false, renderWrapper: true },
+      }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
       Image.configure({
         inline: false,
         allowBase64: false,
@@ -202,7 +210,12 @@ export function RiderDocumentSurface({
         },
       }),
       Placeholder.configure({
-        placeholder: 'Empieza a escribir…',
+        showOnlyCurrent: false,
+        placeholder: ({ node }) => {
+          if (node.type.name === 'heading' && node.attrs.level === 2) return 'Título de sección';
+          if (node.type.name === 'heading' && node.attrs.level === 3) return 'Subtítulo';
+          return 'Escribe / para insertar un bloque…';
+        },
       }),
       RiderKeys,
       SuggestionHighlights,
@@ -219,6 +232,9 @@ export function RiderDocumentSurface({
         class: 'docs-editor',
         'aria-label': 'Documento del rider',
         style: `padding:${PAGE_PADDING}px;min-height:${PAGE_HEIGHT}px;font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.15;color:#202124;outline:none;`,
+      },
+      handleKeyDown(_view, event) {
+        return slashKeysRef.current(event);
       },
       handlePaste(_view, event) {
         const current = editorRef.current;
@@ -405,9 +421,21 @@ export function RiderDocumentSurface({
         .docs-editor h2 { font-size: 16pt; font-weight: 700; line-height: 1.2; margin: 1em 0 0.3em; }
         .docs-editor h3 { font-size: 13pt; font-weight: 700; margin: 0.8em 0 0.25em; }
         .docs-editor p { margin: 0 0 0.35em; }
+        .docs-editor .is-empty::before { color: #9aa0a6; content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }
         .docs-editor ul { list-style: disc; padding-left: 1.5em; margin: 0.2em 0 0.5em; }
         .docs-editor ol { list-style: decimal; padding-left: 1.5em; margin: 0.2em 0 0.5em; }
         .docs-editor a { color: #1155cc; text-decoration: underline; }
+        .docs-editor blockquote { border-left: 3px solid #c4b5fd; padding: 0.1em 0 0.1em 12px; margin: 0.45em 0 0.7em; color: #475569; }
+        .docs-editor hr { border: 0; border-top: 1px solid #dadce0; margin: 1em 0; }
+        .docs-editor .tableWrapper { margin: 0.45em 0 0.9em; overflow-x: auto; }
+        .docs-editor table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .docs-editor th, .docs-editor td { position: relative; border: 1px solid #dadce0; padding: 6px 8px; vertical-align: top; font-size: 10pt; }
+        .docs-editor th { background: #f8f9fa; font-weight: 700; text-align: left; }
+        .docs-editor .selectedCell:after { position: absolute; inset: 0; background: rgba(124, 58, 237, 0.08); content: ''; pointer-events: none; }
+        .docs-editor ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+        .docs-editor ul[data-type="taskList"] p { margin: 0; }
+        .docs-editor li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 8px; }
+        .docs-editor li[data-type="taskItem"] > label { margin-top: 0.2em; }
         .docs-editor img, .docs-editor .docs-image { max-width: 100%; height: auto; max-height: 28rem; display: block; margin: 0.4em 0 0.7em; object-fit: contain; }
         .docs-toolbar-scroll { scrollbar-width: none; }
         .docs-toolbar-scroll::-webkit-scrollbar { display: none; }
@@ -496,6 +524,14 @@ export function RiderDocumentSurface({
           </div>
         </div>
       </div>
+      {!readOnly && (
+        <SlashCommandMenu
+          editor={editor}
+          enabled={!readOnly}
+          keysRef={slashKeysRef}
+          onInsertImages={insertImages}
+        />
+      )}
       <AnimatePresence>
         {!readOnly && onAskAssistant && isBlankDocument && (
           <EmptyDocumentComposer

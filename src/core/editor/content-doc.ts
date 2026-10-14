@@ -5,7 +5,7 @@ import { DocumentSuggestion } from '@/core/types/suggestion.types';
 interface JsonNode {
   type?: string;
   text?: string;
-  attrs?: { id?: unknown; level?: unknown; src?: unknown; alt?: unknown; title?: unknown; width?: unknown; height?: unknown };
+  attrs?: { id?: unknown; level?: unknown; src?: unknown; alt?: unknown; title?: unknown; width?: unknown; height?: unknown; checked?: unknown };
   content?: JsonNode[];
 }
 
@@ -54,6 +54,28 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
       (node.content || []).forEach((item, index) => {
         lines.push(`${index + 1}. ${inlineText(item)}`);
       });
+      return;
+    }
+    if (node.type === 'taskList') {
+      for (const item of node.content || []) {
+        const checked = item.attrs?.checked === true ? 'x' : ' ';
+        lines.push(`[${checked}] ${inlineText(item)}`);
+      }
+      return;
+    }
+    if (node.type === 'table') {
+      for (const row of node.content || []) {
+        const cells = (row.content || []).map((cell) => inlineText(cell).replace(/\s+/g, ' ').trim());
+        lines.push(cells.join(' | '));
+      }
+      return;
+    }
+    if (node.type === 'blockquote') {
+      for (const child of node.content || []) visit(child);
+      return;
+    }
+    if (node.type === 'horizontalRule') {
+      lines.push('---');
       return;
     }
     for (const child of node.content || []) visit(child);
