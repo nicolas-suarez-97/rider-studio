@@ -27,9 +27,13 @@ function spacer(height: number) {
 }
 
 function isSpacer(el: Element | null): boolean {
-  return !!el && el instanceof HTMLElement && (
-    el.classList.contains('docs-page-break') || el.classList.contains('ProseMirror-widget')
-  );
+  if (!el || !(el instanceof HTMLElement)) return false;
+  if (el.classList.contains('docs-page-break')) return true;
+  if (el.classList.contains('docs-section-chips')) return false;
+  if (el.classList.contains('ProseMirror-widget')) {
+    return !el.querySelector('.docs-section-chips');
+  }
+  return false;
 }
 
 function topLevelPos(view: EditorView, el: HTMLElement): number | null {

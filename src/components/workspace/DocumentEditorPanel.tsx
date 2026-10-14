@@ -30,7 +30,7 @@ interface DocumentEditorPanelProps {
   onImageError?: (message: string) => void;
   isBlankDocument?: boolean;
   isAssistantThinking?: boolean;
-  onAskAssistant?: (text: string) => void;
+  onAskAssistant?: (text: string, sectionId?: string) => void;
   onUpdateChannel?: (chId: string, field: keyof ChannelData, val: string | boolean) => void;
   onAddChannel?: () => void;
   onDeleteChannel?: (chId: string) => void;

@@ -349,7 +349,7 @@ export function SectionsNavPanel({
               <IndexActionButton
                 icon="fileText"
                 title="Agregar estructura sugerida"
-                subtitle="Títulos y contenido base de este tipo de rider"
+                subtitle="Solo los títulos de este tipo de rider"
                 onClick={onApplyTemplateOutline}
                 highlighted
               />

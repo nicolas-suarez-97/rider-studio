@@ -12,6 +12,7 @@ import { EditorToolbar } from '@/components/workspace/editor/EditorToolbar';
 import { EmptyDocumentComposer } from '@/components/workspace/editor/EmptyDocumentComposer';
 import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/workspace/editor/document-images';
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
+import { SectionChips } from '@/components/workspace/editor/section-chips';
 import {
   applySuggestionToEditor,
   findSectionBounds,
@@ -110,7 +111,7 @@ interface RiderDocumentSurfaceProps {
   riderType?: RiderType;
   isBlankDocument?: boolean;
   isAssistantThinking?: boolean;
-  onAskAssistant?: (text: string) => void;
+  onAskAssistant?: (text: string, sectionId?: string) => void;
 }
 
 export function RiderDocumentSurface({
@@ -145,6 +146,10 @@ export function RiderDocumentSurface({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
   const sectionsRef = useRef(sections);
+  const askRef = useRef(onAskAssistant);
+  const riderTypeRef = useRef(riderType);
+  askRef.current = onAskAssistant;
+  riderTypeRef.current = riderType;
   const callbacksRef = useRef({
     onDocumentChange,
     onActivateSection,
@@ -188,6 +193,11 @@ export function RiderDocumentSurface({
       RiderKeys,
       SuggestionHighlights,
       Pagination,
+      SectionChips.configure({
+        riderType: () => riderTypeRef.current,
+        enabled: () => !readOnly && Boolean(askRef.current),
+        onAsk: (prompt, sectionId) => askRef.current?.(prompt, sectionId),
+      }),
     ],
     content: initialContent,
     editorProps: {
@@ -260,6 +270,11 @@ export function RiderDocumentSurface({
     if (!editor) return;
     editor.setEditable(!readOnly);
   }, [editor, readOnly]);
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    editor.view.dom.dataset.chipsDisabled = isAssistantThinking ? 'true' : 'false';
+  }, [editor, isAssistantThinking]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
@@ -341,6 +356,15 @@ export function RiderDocumentSurface({
         .docs-editor img, .docs-editor .docs-image { max-width: 100%; height: auto; max-height: 28rem; display: block; margin: 0.4em 0 0.7em; object-fit: contain; }
         .docs-toolbar-scroll { scrollbar-width: none; }
         .docs-toolbar-scroll::-webkit-scrollbar { display: none; }
+        .ProseMirror-widget:has(.docs-section-chips) { display: block; width: 100%; }
+        .docs-section-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 16px; pointer-events: auto; }
+        .docs-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 11px; font-size: 12px; font-weight: 600; font-family: Arial, Helvetica, sans-serif; line-height: 1.2; cursor: pointer; }
+        .docs-chip-icon { width: 13px; height: 13px; flex-shrink: 0; }
+        .docs-chip-chat { background: #7c3aed; color: #fff; border: 1px solid #7c3aed; }
+        .docs-chip-chat:hover { background: #6d28d9; }
+        .docs-chip-topic { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+        .docs-chip-topic:hover { background: #ede9fe; border-color: #c4b5fd; }
+        .docs-editor[data-chips-disabled="true"] .docs-section-chips button { opacity: 0.45; pointer-events: none; }
       `}</style>
       {!readOnly && (
         <EditorToolbar

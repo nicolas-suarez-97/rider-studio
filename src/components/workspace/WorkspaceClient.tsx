@@ -566,15 +566,17 @@ export function WorkspaceClient({
   };
 
   // Chat con Asistente
-  const handleSendMessage = async (text: string) => {
+  const handleSendMessage = async (text: string, sectionId?: string) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg: ChatMessageItem = { sender: 'user', text, time: now };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setIsAgentThinking(true);
+    const targetSectionId = sectionId || activeSectionId;
+    if (sectionId) setActiveSectionId(sectionId);
 
     try {
-      const section = rider.sections.find((item) => item.id === activeSectionId) || rider.sections[0];
+      const section = rider.sections.find((item) => item.id === targetSectionId) || rider.sections[0];
       const editorContext: EditorContextPayload | undefined = section
         ? {
             sectionId: section.id,
@@ -644,7 +646,7 @@ export function WorkspaceClient({
 
   const isBlankDocument = rider.sections.length === 0 && !rider.artistName.trim();
 
-  const handleAskFromDocument = (text: string) => {
+  const handleAskFromDocument = (text: string, sectionId?: string) => {
     if (text === '__outline__') {
       setRider((prev) => {
         const updated = new Rider({ ...prev });
@@ -652,12 +654,12 @@ export function WorkspaceClient({
         if (updated.sections[0]) setActiveSectionId(updated.sections[0].id);
         return updated;
       });
-      showToast('Estructura base del rider añadida al documento');
+      showToast('Estructura de títulos añadida al documento');
       return;
     }
     setIsChatCollapsed(false);
     setMobileTab('assistant');
-    void handleSendMessage(text);
+    void handleSendMessage(text, sectionId);
   };
 
   const handleOpenExportModal = (scope: ExportScope = 'master') => {
