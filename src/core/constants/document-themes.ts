@@ -30,10 +30,8 @@ export function isRiderDocumentTheme(value: unknown): value is RiderDocumentThem
   return value === 'studio' || value === 'festival' || value === 'editorial';
 }
 
-export function defaultDocumentTheme(type: RiderType): RiderDocumentTheme {
-  if (type === 'hospitality') return 'editorial';
-  if (type === 'seguridad') return 'studio';
-  return 'festival';
+export function defaultDocumentTheme(): RiderDocumentTheme {
+  return 'studio';
 }
 
 export function riderKicker(type: RiderType) {

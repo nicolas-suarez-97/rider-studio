@@ -111,6 +111,17 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     },
   },
   {
+    id: 'input-list',
+    title: 'Input List',
+    description: 'Tabla de canales, instrumento y posición',
+    icon: 'list',
+    group: 'Rider',
+    keywords: ['input', 'list', 'patch', 'canales', 'channels', 'il', 'microfonos'],
+    run: (editor, range) => {
+      deleteThen(editor, range).insertInputList(cloneInputListRows()).run();
+    },
+  },
+  {
     id: 'paragraph',
     title: 'Texto',
     description: 'Empieza a escribir un párrafo',
@@ -187,17 +198,6 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: ['tabla', 'grid', 'columnas', 'filas', 'excel'],
     run: (editor, range) => {
       deleteThen(editor, range).setParagraph().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-    },
-  },
-  {
-    id: 'input-list',
-    title: 'Input List',
-    description: 'Tabla de canales, instrumento y posición',
-    icon: 'list',
-    group: 'Insertar',
-    keywords: ['input', 'list', 'patch', 'canales', 'channels', 'il', 'microfonos'],
-    run: (editor, range) => {
-      deleteThen(editor, range).insertInputList(cloneInputListRows()).run();
     },
   },
   {

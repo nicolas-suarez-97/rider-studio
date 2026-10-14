@@ -67,7 +67,7 @@ export class Rider {
     this.version = params.version || 'v1.0';
     this.documentTheme = isRiderDocumentTheme(params.documentTheme)
       ? params.documentTheme
-      : defaultDocumentTheme(this.type);
+      : defaultDocumentTheme();
     this.status = params.status || 'in_progress';
     this.sections = Array.isArray(params.sections)
       ? JSON.parse(JSON.stringify(params.sections))

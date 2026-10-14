@@ -193,7 +193,7 @@ export function RiderDocumentSurface({
   isAssistantThinking = false,
   onAskAssistant,
 }: RiderDocumentSurfaceProps) {
-  const theme = documentTheme || defaultDocumentTheme(riderType);
+  const theme = documentTheme || defaultDocumentTheme();
   const coverArtist = useMemo(() => {
     for (const section of sections) {
       const cover = (section.contentDoc?.content || []).find((node) => node.type === 'riderCover');

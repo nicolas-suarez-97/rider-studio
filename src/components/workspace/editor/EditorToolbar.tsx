@@ -4,8 +4,38 @@ import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
 import { Icon } from '@/components/common/Icon';
+import { coverAttrsFromEditor, removeSyntheticHeader } from '@/components/workspace/editor/rider-blocks';
 import { RIDER_DOCUMENT_THEMES } from '@/core/constants/document-themes';
+import { cloneInputListRows } from '@/core/constants/input-list';
 import type { RiderDocumentTheme } from '@/core/types/rider.types';
+
+const RIDER_INSERTS: Array<{ id: string; label: string; icon: string }> = [
+  { id: 'cover', label: 'Portada', icon: 'fileText' },
+  { id: 'requirement', label: 'Requisito', icon: 'badge' },
+  { id: 'notice', label: 'Aviso', icon: 'shield' },
+  { id: 'tiers', label: 'Tiers', icon: 'table' },
+  { id: 'contacts', label: 'Contactos', icon: 'users' },
+  { id: 'columns', label: 'Columnas', icon: 'columns' },
+  { id: 'input-list', label: 'Input List', icon: 'list' },
+];
+
+function insertRiderBlock(editor: Editor, id: string) {
+  const chain = editor.chain().focus();
+  if (id === 'cover') {
+    const inserted = chain.insertContent({
+      type: 'riderCover',
+      attrs: coverAttrsFromEditor(editor),
+    }).run();
+    if (inserted) removeSyntheticHeader(editor);
+    return;
+  }
+  if (id === 'requirement') chain.insertRequirement().run();
+  else if (id === 'notice') chain.insertNotice('note').run();
+  else if (id === 'tiers') chain.insertTiers().run();
+  else if (id === 'contacts') chain.insertContacts().run();
+  else if (id === 'columns') chain.insertColumns().run();
+  else if (id === 'input-list') chain.insertInputList(cloneInputListRows()).run();
+}
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -79,7 +109,25 @@ export function EditorToolbar({ editor, theme, onThemeChange, onInsertSection, o
   };
 
   return (
-    <div className="docs-toolbar-scroll sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 overflow-x-auto">
+    <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80">
+      <div
+        className="docs-toolbar-scroll flex items-center gap-1 overflow-x-auto px-2 sm:px-3 py-1.5 border-b border-slate-100"
+        role="toolbar"
+        aria-label="Bloques del rider"
+      >
+        {RIDER_INSERTS.map((item) => (
+          <ToolbarButton
+            key={item.id}
+            label={item.label}
+            disabled={!editor}
+            onClick={() => { if (editor) insertRiderBlock(editor, item.id); }}
+          >
+            <Icon name={item.icon} className="w-3.5 h-3.5" />
+            {item.label}
+          </ToolbarButton>
+        ))}
+      </div>
+      <div className="docs-toolbar-scroll px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 overflow-x-auto">
       <div className="flex items-center gap-0.5 pr-1" role="group" aria-label="Tema del documento">
         {RIDER_DOCUMENT_THEMES.map((item) => (
           <button
@@ -217,6 +265,7 @@ export function EditorToolbar({ editor, theme, onThemeChange, onInsertSection, o
           ↓
         </ToolbarButton>
       </form>
+      </div>
     </div>
   );
 }
