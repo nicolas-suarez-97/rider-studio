@@ -8,38 +8,125 @@ export const PAGE_WIDTH = 816;
 export const PAGE_HEIGHT = 1056;
 export const PAGE_PADDING = 96;
 export const PAGE_GAP = 36;
-export const PAGE_INNER = PAGE_HEIGHT - PAGE_PADDING * 2;
+/** Keep the last line above the page number. */
+const PAGE_FOOTER = 28;
+export const PAGE_INNER = PAGE_HEIGHT - PAGE_PADDING * 2 - PAGE_FOOTER;
+const PAGE_STRIDE = PAGE_HEIGHT + PAGE_GAP;
 
-const pageKey = new PluginKey<{ breaks: number[]; pages: number }>('riderPages');
+type PageBreak = { pos: number; height: number };
+
+const pageKey = new PluginKey<{ breaks: PageBreak[]; pages: number }>('riderPages');
 
 function spacer(height: number) {
   const el = document.createElement('div');
   el.className = 'docs-page-break';
   el.style.height = `${height}px`;
+  el.style.pointerEvents = 'none';
   el.contentEditable = 'false';
   return el;
 }
 
-function measureBreaks(view: EditorView): number[] {
-  const breaks: number[] = [];
-  let used = 0;
-  view.state.doc.forEach((node, pos) => {
-    const dom = view.nodeDOM(pos);
-    if (!(dom instanceof HTMLElement) || dom.classList.contains('docs-page-break')) return;
-    const height = Math.ceil(dom.getBoundingClientRect().height);
-    if (height <= 0) return;
-    if (used > 0 && used + height > PAGE_INNER) {
-      breaks.push(pos);
-      used = height;
-    } else {
-      used += height;
+function isSpacer(el: Element | null): boolean {
+  return !!el && el instanceof HTMLElement && (
+    el.classList.contains('docs-page-break') || el.classList.contains('ProseMirror-widget')
+  );
+}
+
+function topLevelPos(view: EditorView, el: HTMLElement): number | null {
+  try {
+    const inside = view.posAtDOM(el, 0);
+    const max = view.state.doc.content.size;
+    const $pos = view.state.doc.resolve(Math.max(0, Math.min(inside, max)));
+    if ($pos.depth === 0) return $pos.pos > 0 ? $pos.pos : 0;
+    return $pos.before(1);
+  } catch {
+    return null;
+  }
+}
+
+function blockElementFromPos(view: EditorView, pos: number): HTMLElement | null {
+  for (const candidate of [pos, pos + 1]) {
+    let dom: Node | null | undefined = view.nodeDOM(candidate);
+    if (dom && !(dom instanceof HTMLElement)) dom = dom.parentElement;
+    if (!(dom instanceof HTMLElement)) continue;
+    let current: HTMLElement = dom;
+    while (current.parentElement && current.parentElement !== view.dom) {
+      current = current.parentElement;
     }
+    if (current === view.dom || isSpacer(current)) continue;
+    return current;
+  }
+  return null;
+}
+
+function collapsedSize(el: HTMLElement, previousBottomMargin: number, isFirst: boolean) {
+  const style = window.getComputedStyle(el);
+  const marginTop = parseFloat(style.marginTop) || 0;
+  const marginBottom = parseFloat(style.marginBottom) || 0;
+  const height = el.getBoundingClientRect().height;
+  const topGap = isFirst ? marginTop : Math.max(previousBottomMargin, marginTop);
+  return { size: topGap + height, nextMargin: marginBottom };
+}
+
+function collectBlocks(view: EditorView): { pos: number; el: HTMLElement }[] {
+  const blocks: { pos: number; el: HTMLElement }[] = [];
+  const seen = new Set<HTMLElement>();
+
+  for (const child of Array.from(view.dom.children)) {
+    if (!(child instanceof HTMLElement) || isSpacer(child)) continue;
+    const pos = topLevelPos(view, child);
+    if (pos == null || pos < 0) continue;
+    seen.add(child);
+    blocks.push({ pos, el: child });
+  }
+
+  if (blocks.length > 0) return blocks;
+
+  view.state.doc.forEach((_node, pos) => {
+    const el = blockElementFromPos(view, pos);
+    if (!el || seen.has(el)) return;
+    seen.add(el);
+    blocks.push({ pos, el });
   });
+
+  return blocks;
+}
+
+function measureBreaks(view: EditorView): PageBreak[] {
+  const breaks: PageBreak[] = [];
+  let used = 0;
+  let previousBottomMargin = 0;
+  let isFirst = true;
+
+  for (const { pos, el } of collectBlocks(view)) {
+    const { size, nextMargin } = collapsedSize(el, previousBottomMargin, isFirst);
+    isFirst = false;
+    previousBottomMargin = nextMargin;
+    if (size <= 0) continue;
+    if (used > 0 && used + size > PAGE_INNER) {
+      const filled = Math.min(used, PAGE_INNER);
+      breaks.push({
+        pos,
+        height: Math.max(0, PAGE_STRIDE - filled),
+      });
+      used = Math.min(size, PAGE_INNER);
+    } else {
+      used += size;
+    }
+  }
+
   return breaks;
 }
 
-function sameBreaks(a: number[], b: number[]) {
-  return a.length === b.length && a.every((value, index) => value === b[index]);
+function sameBreaks(a: PageBreak[], b: PageBreak[]) {
+  return a.length === b.length && a.every((value, index) => (
+    value.pos === b[index].pos && value.height === b[index].height
+  ));
+}
+
+function applyPageMetrics(view: EditorView, pages: number) {
+  view.dom.style.minHeight = `${PAGE_HEIGHT}px`;
+  view.dom.dataset.pages = String(pages);
 }
 
 export const Pagination = Extension.create({
@@ -49,13 +136,15 @@ export const Pagination = Extension.create({
       new Plugin({
         key: pageKey,
         state: {
-          init: () => ({ breaks: [] as number[], pages: 1 }),
+          init: () => ({ breaks: [] as PageBreak[], pages: 1 }),
           apply(tr, value) {
-            const next = tr.getMeta(pageKey) as { breaks: number[]; pages: number } | undefined;
+            const next = tr.getMeta(pageKey) as { breaks: PageBreak[]; pages: number } | undefined;
             if (next) return next;
             if (!tr.docChanged) return value;
             return {
-              breaks: value.breaks.map((pos) => tr.mapping.map(pos)).filter((pos) => pos > 0),
+              breaks: value.breaks
+                .map((item) => ({ pos: tr.mapping.map(item.pos), height: item.height }))
+                .filter((item) => item.pos > 0),
               pages: value.pages,
             };
           },
@@ -66,35 +155,65 @@ export const Pagination = Extension.create({
             if (!data?.breaks.length) return DecorationSet.empty;
             return DecorationSet.create(
               state.doc,
-              data.breaks.map((pos) => Decoration.widget(pos, () => spacer(PAGE_GAP + PAGE_PADDING * 2), {
+              data.breaks.map((item) => Decoration.widget(item.pos, () => spacer(item.height), {
                 side: -1,
-                key: `page-${pos}`,
+                key: `page-${item.pos}-${item.height}`,
                 ignoreSelection: true,
               }))
             );
           },
         },
         view(view) {
-          let frame = 0;
+          let measureFrame = 0;
+          let retryFrame = 0;
+          let retries = 0;
+          let observer: ResizeObserver | null = null;
+          let mutations: MutationObserver | null = null;
+
           const run = () => {
             if (view.isDestroyed || !view.dom.isConnected) return;
             const breaks = measureBreaks(view);
             const pages = Math.max(1, breaks.length + 1);
             const current = pageKey.getState(view.state);
+            applyPageMetrics(view, pages);
             if (current && sameBreaks(current.breaks, breaks) && current.pages === pages) return;
             view.dispatch(view.state.tr.setMeta(pageKey, { breaks, pages }).setMeta('addToHistory', false));
-            view.dom.style.minHeight = `${pages * PAGE_HEIGHT + (pages - 1) * PAGE_GAP}px`;
-            view.dom.dataset.pages = String(pages);
           };
+
           const schedule = () => {
-            cancelAnimationFrame(frame);
-            frame = requestAnimationFrame(run);
+            cancelAnimationFrame(measureFrame);
+            measureFrame = requestAnimationFrame(run);
           };
+
+          const watchChildren = () => {
+            if (!observer) return;
+            for (const child of Array.from(view.dom.children)) observer.observe(child);
+          };
+
+          const retry = () => {
+            retries += 1;
+            schedule();
+            if (retries < 8) retryFrame = requestAnimationFrame(retry);
+          };
+
           schedule();
+          retryFrame = requestAnimationFrame(retry);
+          observer = new ResizeObserver(schedule);
+          observer.observe(view.dom);
+          watchChildren();
+          mutations = new MutationObserver(() => {
+            watchChildren();
+            schedule();
+          });
+          mutations.observe(view.dom, { childList: true });
+
           return {
             update: schedule,
             destroy() {
-              cancelAnimationFrame(frame);
+              cancelAnimationFrame(measureFrame);
+              cancelAnimationFrame(retryFrame);
+              observer?.disconnect();
+              mutations?.disconnect();
             },
           };
         },

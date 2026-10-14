@@ -7,7 +7,7 @@ import Heading from '@tiptap/extension-heading';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Extension, type JSONContent } from '@tiptap/core';
 import { EditorToolbar } from '@/components/workspace/editor/EditorToolbar';
-import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
+import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
 import {
   applySuggestionToEditor,
   findSectionBounds,
@@ -130,7 +130,7 @@ export function RiderDocumentSurface({
       attributes: {
         class: 'docs-editor',
         'aria-label': 'Documento del rider',
-        style: 'padding:96px;min-height:1056px;font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.15;color:#202124;outline:none;',
+        style: `padding:${PAGE_PADDING}px;min-height:${PAGE_HEIGHT}px;font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.15;color:#202124;outline:none;`,
       },
     },
     onUpdate: ({ editor: current, transaction }) => {
@@ -211,6 +211,8 @@ export function RiderDocumentSurface({
   return (
     <div className="flex-1 h-full min-h-0 flex flex-col bg-[#f0f2f5]">
       <style>{`
+        .docs-editor { box-sizing: border-box; background: transparent; }
+        .docs-page-break { pointer-events: none; user-select: none; display: block; width: 100%; margin: 0; padding: 0; border: 0; overflow: hidden; box-sizing: content-box; }
         .docs-editor h1 { font-size: 26pt; font-weight: 700; line-height: 1.15; margin: 0 0 0.35em; }
         .docs-editor h2 { font-size: 16pt; font-weight: 700; line-height: 1.2; margin: 1em 0 0.3em; }
         .docs-editor h3 { font-size: 13pt; font-weight: 700; margin: 0.8em 0 0.25em; }
