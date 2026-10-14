@@ -27,6 +27,7 @@ interface SectionsNavPanelProps {
   completedSectionIds: string[];
   onToggleComplete: (id: string, e?: React.MouseEvent) => void;
   onOpenAddSection: () => void;
+  onApplyTemplateOutline?: () => void;
   onResetBlank: () => void;
   progressPercent: number;
   masterProgress?: { completed: number; total: number; percent: number };
@@ -38,6 +39,46 @@ interface SectionsNavPanelProps {
   onSelectRiderType?: (type: RiderType) => void;
   readOnly?: boolean;
   commentCounts?: Record<string, number>;
+}
+
+function IndexActionButton({
+  icon,
+  title,
+  subtitle,
+  onClick,
+  highlighted = false,
+}: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+  highlighted?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left p-3 rounded-2xl border border-dashed transition-colors cursor-pointer flex items-center gap-3 ${
+        highlighted
+          ? 'border-violet-300 bg-violet-50/60 hover:bg-violet-50 hover:border-violet-400'
+          : 'border-slate-300 bg-white hover:bg-slate-50 hover:border-slate-400'
+      }`}
+    >
+      <div
+        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+          highlighted ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-500'
+        }`}
+      >
+        <Icon name={icon} className="w-3.5 h-3.5" />
+      </div>
+      <div className="min-w-0">
+        <span className={`block text-xs font-bold ${highlighted ? 'text-violet-800' : 'text-slate-700'}`}>
+          {title}
+        </span>
+        <span className="block text-[10px] text-slate-400 truncate mt-0.5">{subtitle}</span>
+      </div>
+    </button>
+  );
 }
 
 function SortableSection({
@@ -123,6 +164,7 @@ export function SectionsNavPanel({
   completedSectionIds,
   onToggleComplete,
   onOpenAddSection,
+  onApplyTemplateOutline,
   onResetBlank,
   progressPercent,
   onSaveRider,
@@ -157,8 +199,8 @@ export function SectionsNavPanel({
       </div>
 
       {/* Lista de Secciones Reordenables */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1 overscroll-contain">
-        {readOnly || !sortable ? (
+      <div className="flex-1 overflow-y-auto p-3 space-y-1.5 overscroll-contain">
+        {sections.length > 0 && (readOnly || !sortable) && (
           <div className="space-y-1.5">
             {sections.map((section) => {
               const isActive = activeSectionId === section.id;
@@ -203,7 +245,8 @@ export function SectionsNavPanel({
               );
             })}
           </div>
-        ) : (
+        )}
+        {sections.length > 0 && !readOnly && sortable && (
         <Reorder.Group
           axis="y"
           values={sections.map((section) => section.id)}
@@ -229,6 +272,25 @@ export function SectionsNavPanel({
             />
           ))}
         </Reorder.Group>
+        )}
+        {!readOnly && (
+          <>
+            {sections.length === 0 && onApplyTemplateOutline && (
+              <IndexActionButton
+                icon="fileText"
+                title="Agregar estructura sugerida"
+                subtitle="Títulos y contenido base de este tipo de rider"
+                onClick={onApplyTemplateOutline}
+                highlighted
+              />
+            )}
+            <IndexActionButton
+              icon="plus"
+              title="Agregar sección"
+              subtitle="Añade un título al documento"
+              onClick={onOpenAddSection}
+            />
+          </>
         )}
       </div>
 
@@ -263,14 +325,6 @@ export function SectionsNavPanel({
             )}
           </button>
         )}
-
-        <button
-          onClick={onOpenAddSection}
-          className="w-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
-        >
-          <Icon name="plus" className="w-3.5 h-3.5" />
-          <span>Añadir Nueva Sección</span>
-        </button>
 
         <button
           onClick={onResetBlank}

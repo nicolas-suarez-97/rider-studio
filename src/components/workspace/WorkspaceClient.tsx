@@ -706,6 +706,7 @@ export function WorkspaceClient({
             completedSectionIds={rider.completedSectionIds}
             onToggleComplete={handleToggleComplete}
             onOpenAddSection={() => setShowAddSectionModal(true)}
+            onApplyTemplateOutline={() => handleAskFromDocument('__outline__')}
             onResetBlank={handleResetBlank}
             progressPercent={rider.getProgress()}
             masterProgress={rider.getMasterProgress()}
