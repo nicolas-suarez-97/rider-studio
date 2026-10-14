@@ -60,10 +60,15 @@ function renderChips(
     const button = document.createElement('button');
     button.type = 'button';
     button.className = prompt.kind === 'chat' ? 'docs-chip docs-chip-chat' : 'docs-chip docs-chip-topic';
-    if (prompt.kind === 'chat') button.appendChild(sparkleSvg());
-    const label = document.createElement('span');
-    label.textContent = prompt.label;
-    button.appendChild(label);
+    button.setAttribute('aria-label', prompt.label);
+    button.title = prompt.label;
+    if (prompt.kind === 'chat') {
+      button.appendChild(sparkleSvg());
+    } else {
+      const label = document.createElement('span');
+      label.textContent = prompt.label;
+      button.appendChild(label);
+    }
     button.addEventListener('mousedown', (event) => {
       event.preventDefault();
       event.stopPropagation();

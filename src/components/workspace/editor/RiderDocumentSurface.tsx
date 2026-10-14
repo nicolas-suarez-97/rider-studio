@@ -360,7 +360,8 @@ export function RiderDocumentSurface({
         .docs-section-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 16px; pointer-events: auto; }
         .docs-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 11px; font-size: 12px; font-weight: 600; font-family: Arial, Helvetica, sans-serif; line-height: 1.2; cursor: pointer; }
         .docs-chip-icon { width: 13px; height: 13px; flex-shrink: 0; }
-        .docs-chip-chat { background: #7c3aed; color: #fff; border: 1px solid #7c3aed; }
+        .docs-chip-chat { background: #7c3aed; color: #fff; border: 1px solid #7c3aed; width: 28px; height: 28px; padding: 0; justify-content: center; }
+        .docs-chip-chat .docs-chip-icon { width: 14px; height: 14px; }
         .docs-chip-chat:hover { background: #6d28d9; }
         .docs-chip-topic { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
         .docs-chip-topic:hover { background: #ede9fe; border-color: #c4b5fd; }
