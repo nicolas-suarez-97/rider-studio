@@ -6,6 +6,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { Editor } from '@tiptap/core';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
+import { previewRiderMarkup, riderMarkupToContent } from '@/core/editor/rider-markup';
 
 export function findSectionBounds(doc: PMNode, sectionId: string): { from: number; to: number } | null {
   let from: number | null = null;
@@ -55,11 +56,17 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
   }
 
   if (range) {
-    editor.chain().focus().insertContentAt(range, suggestion.proposedText).run();
+    const blocks = riderMarkupToContent(suggestion.proposedText);
+    editor.chain().focus().insertContentAt(range, blocks || suggestion.proposedText).run();
     return true;
   }
 
   const insertAt = bounds?.to ?? editor.state.doc.content.size;
+  const blocks = riderMarkupToContent(suggestion.proposedText);
+  if (blocks) {
+    editor.chain().focus().insertContentAt(insertAt, blocks).run();
+    return true;
+  }
   const prefix = insertAt > 1 ? '\n' : '';
   editor.chain().focus().insertContentAt(insertAt, `${prefix}${suggestion.proposedText}`).run();
   return true;
@@ -98,7 +105,7 @@ export const SuggestionHighlights = Extension.create({
                 decorations.push(Decoration.widget(position, () => {
                   const widget = document.createElement('div');
                   widget.className = 'rider-suggestion-insert rider-suggestion-block';
-                  widget.textContent = suggestion.proposedText;
+                  widget.textContent = previewRiderMarkup(suggestion.proposedText);
                   return widget;
                 }, {
                   side: -1,
@@ -113,7 +120,7 @@ export const SuggestionHighlights = Extension.create({
                 decorations.push(Decoration.widget(range.to, () => {
                   const insert = document.createElement('span');
                   insert.className = 'rider-suggestion-insert';
-                  insert.textContent = suggestion.proposedText;
+                  insert.textContent = previewRiderMarkup(suggestion.proposedText);
                   return insert;
                 }, {
                   side: 1,

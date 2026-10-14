@@ -4,15 +4,19 @@ import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
 import { Icon } from '@/components/common/Icon';
+import { RIDER_DOCUMENT_THEMES } from '@/core/constants/document-themes';
+import type { RiderDocumentTheme } from '@/core/types/rider.types';
 
 interface EditorToolbarProps {
   editor: Editor | null;
+  theme: RiderDocumentTheme;
+  onThemeChange?: (theme: RiderDocumentTheme) => void;
   onInsertSection: () => void;
   onFind: (query: string, direction?: 'first' | 'next' | 'prev') => { current: number; total: number };
   onInsertImages: (files: File[]) => void;
 }
 
-export function EditorToolbar({ editor, onInsertSection, onFind, onInsertImages }: EditorToolbarProps) {
+export function EditorToolbar({ editor, theme, onThemeChange, onInsertSection, onFind, onInsertImages }: EditorToolbarProps) {
   const findRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -76,6 +80,28 @@ export function EditorToolbar({ editor, onInsertSection, onFind, onInsertImages 
 
   return (
     <div className="docs-toolbar-scroll sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 overflow-x-auto">
+      <div className="flex items-center gap-0.5 pr-1" role="group" aria-label="Tema del documento">
+        {RIDER_DOCUMENT_THEMES.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            title={`${item.label}. ${item.description}`}
+            aria-label={item.label}
+            aria-pressed={theme === item.id}
+            disabled={!onThemeChange}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => onThemeChange?.(item.id)}
+            className={`h-8 w-8 shrink-0 rounded-lg inline-flex items-center justify-center cursor-pointer disabled:cursor-default ${
+              theme === item.id ? 'bg-slate-100' : 'hover:bg-slate-50'
+            }`}
+          >
+            <span
+              className="h-4 w-4 rounded-full border border-slate-300"
+              style={{ background: item.swatch }}
+            />
+          </button>
+        ))}
+      </div>
       <ToolbarButton label="Deshacer" disabled={!editor} onClick={() => run((current) => current.chain().focus().undo().run())}>
         ↺
       </ToolbarButton>

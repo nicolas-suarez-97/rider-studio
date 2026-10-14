@@ -18,7 +18,19 @@ import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/w
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
 import { SectionChips } from '@/components/workspace/editor/section-chips';
 import { InputList } from '@/components/workspace/editor/input-list-node';
+import {
+  Columns,
+  Contacts,
+  Notice,
+  Requirement,
+  RiderCover,
+  RiderDocumentMetaExtension,
+  Tiers,
+} from '@/components/workspace/editor/rider-blocks';
 import { SlashCommandMenu } from '@/components/workspace/editor/SlashCommandMenu';
+import '@/components/workspace/editor/document-theme.css';
+import { defaultDocumentTheme } from '@/core/constants/document-themes';
+import type { RiderDocumentTheme } from '@/core/types/rider.types';
 import {
   findAllDocumentMatches,
   scrollMatchIntoView,
@@ -152,6 +164,9 @@ interface RiderDocumentSurfaceProps {
   onUploadDocumentImage?: (file: File) => Promise<string | null | undefined>;
   onImageError?: (message: string) => void;
   riderType?: RiderType;
+  documentTheme?: RiderDocumentTheme;
+  version?: string;
+  onThemeChange?: (theme: RiderDocumentTheme) => void;
   isBlankDocument?: boolean;
   isAssistantThinking?: boolean;
   onAskAssistant?: (text: string, sectionId?: string) => void;
@@ -171,10 +186,23 @@ export function RiderDocumentSurface({
   onUploadDocumentImage,
   onImageError,
   riderType = 'tecnico',
+  documentTheme,
+  version = 'v1.0',
+  onThemeChange,
   isBlankDocument = false,
   isAssistantThinking = false,
   onAskAssistant,
 }: RiderDocumentSurfaceProps) {
+  const theme = documentTheme || defaultDocumentTheme(riderType);
+  const coverArtist = useMemo(() => {
+    for (const section of sections) {
+      const cover = (section.contentDoc?.content || []).find((node) => node.type === 'riderCover');
+      const artist = typeof cover?.attrs?.artist === 'string' ? cover.attrs.artist.trim() : '';
+      if (artist) return artist;
+    }
+    return '';
+  }, [sections]);
+  const footerLabel = [artistName.trim() || coverArtist, version.trim()].filter(Boolean).join(' · ');
   const sectionIds = useMemo(() => sections.map((section) => section.id).join('|'), [sections]);
   const documentSignature = `${artistName}\0${riderTitle}\0${sectionIds}`;
   const initialContent = useMemo(
@@ -226,6 +254,13 @@ export function RiderDocumentSurface({
         table: { resizable: false, renderWrapper: true },
       }),
       InputList,
+      RiderCover,
+      Requirement,
+      Notice,
+      Tiers,
+      Contacts,
+      Columns,
+      RiderDocumentMetaExtension,
       TaskList,
       TaskItem.configure({ nested: true }),
       Image.configure({
@@ -258,7 +293,7 @@ export function RiderDocumentSurface({
       attributes: {
         class: 'docs-editor',
         'aria-label': 'Documento del rider',
-        style: `padding:${PAGE_PADDING}px;min-height:${PAGE_HEIGHT}px;font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.15;color:#202124;outline:none;`,
+        style: `padding:${PAGE_PADDING}px;min-height:${PAGE_HEIGHT}px;font-family:var(--rider-body);font-size:11pt;line-height:1.35;color:var(--rider-ink);outline:none;`,
       },
       handleKeyDown(_view, event) {
         return slashKeysRef.current(event);
@@ -312,6 +347,17 @@ export function RiderDocumentSurface({
   }, [readOnly]);
 
   editorRef.current = editor;
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const storage = editor.storage.riderDocumentMeta;
+    if (!storage) return;
+    storage.artistName = artistName;
+    storage.riderTitle = riderTitle;
+    storage.version = version;
+    storage.riderType = riderType;
+    storage.uploadImage = onUploadDocumentImage || null;
+  }, [editor, artistName, riderTitle, version, riderType, onUploadDocumentImage]);
 
   const insertImages = useCallback((files: File[]) => {
     if (!editor || readOnly || files.length === 0) return;
@@ -448,7 +494,7 @@ export function RiderDocumentSurface({
   }, []);
 
   return (
-    <div className="relative flex-1 h-full min-h-0 min-w-0 flex flex-col bg-[#f0f2f5]">
+    <div className={`docs-theme docs-theme-${theme} relative flex-1 h-full min-h-0 min-w-0 flex flex-col`}>
       <style>{`
         .docs-editor { box-sizing: border-box; background: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         .docs-page-break { pointer-events: none; user-select: none; display: block; width: 100%; margin: 0; padding: 0; border: 0; overflow: hidden; box-sizing: content-box; }
@@ -464,8 +510,8 @@ export function RiderDocumentSurface({
         .docs-editor hr { border: 0; border-top: 1px solid #dadce0; margin: 1em 0; }
         .docs-editor .tableWrapper { margin: 0.45em 0 0.9em; overflow-x: auto; }
         .docs-editor table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .docs-editor th, .docs-editor td { position: relative; border: 1px solid #dadce0; padding: 6px 8px; vertical-align: top; font-size: 10pt; }
-        .docs-editor th { background: #f8f9fa; font-weight: 700; text-align: left; }
+        .docs-editor .tableWrapper th { background: var(--rider-table-head); color: var(--rider-table-head-ink); font-weight: 700; text-align: left; }
+        .docs-editor th, .docs-editor td { position: relative; border: 1px solid var(--rider-line, #dadce0); padding: 6px 8px; vertical-align: top; font-size: 10pt; }
         .docs-editor .selectedCell:after { position: absolute; inset: 0; background: rgba(124, 58, 237, 0.08); content: ''; pointer-events: none; }
         .docs-editor ul[data-type="taskList"] { list-style: none; padding-left: 0; }
         .docs-editor ul[data-type="taskList"] p { margin: 0; }
@@ -525,6 +571,8 @@ export function RiderDocumentSurface({
       {!readOnly && (
         <EditorToolbar
           editor={editor}
+          theme={theme}
+          onThemeChange={onThemeChange}
           onInsertSection={() => onInsertSection?.()}
           onFind={findInDocument}
           onInsertImages={insertImages}
@@ -533,7 +581,7 @@ export function RiderDocumentSurface({
       <div
         ref={scrollerRef}
         data-docs-scroller
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-40 xl:pb-28 bg-[#f0f2f5]"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-40 xl:pb-28"
         style={{ scrollPaddingTop: SECTION_SCROLL_PADDING }}
       >
         <div
@@ -555,18 +603,18 @@ export function RiderDocumentSurface({
             {Array.from({ length: pages }, (_, index) => (
               <div
                 key={index}
-                className="absolute left-0 w-full bg-white border border-[#dadce0] shadow-sm"
+                className="docs-sheet absolute left-0 w-full border shadow-sm"
                 style={{
                   top: index * (PAGE_HEIGHT + PAGE_GAP),
                   height: PAGE_HEIGHT,
                   zIndex: 0,
+                  background: 'var(--rider-page)',
+                  borderColor: 'var(--rider-line)',
                 }}
               >
-                <span
-                  className="absolute text-[11px] text-[#9aa0a6]"
-                  style={{ right: 24, bottom: 18 }}
-                >
-                  {index + 1}
+                <span className="docs-sheet-footer">
+                  <span>{footerLabel}</span>
+                  <span>{index + 1}</span>
                 </span>
               </div>
             ))}

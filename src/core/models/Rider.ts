@@ -1,5 +1,6 @@
 import { 
   RiderType, 
+  RiderDocumentTheme,
   SectionItem, 
   ChannelData, 
   SavedRiderSummary, 
@@ -9,6 +10,7 @@ import {
   RiderModuleData,
   RiderMediaItem
 } from '../types/rider.types';
+import { defaultDocumentTheme, isRiderDocumentTheme } from '../constants/document-themes';
 import { coverMedia, parseRiderMedia, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { inputListDoc } from '../constants/input-list';
 import { isDocumentIntro } from '../editor/content-doc';
@@ -24,6 +26,7 @@ export class Rider {
   public season: string;
   public venue: string;
   public version: string;
+  public documentTheme: RiderDocumentTheme;
   public status: 'completed' | 'in_progress';
   public sections: SectionItem[];
   public channels: ChannelInput[];
@@ -42,6 +45,7 @@ export class Rider {
     season?: string;
     venue?: string;
     version?: string;
+    documentTheme?: RiderDocumentTheme;
     status?: 'completed' | 'in_progress';
     sections?: SectionItem[];
     channels?: (ChannelData | ChannelInput)[];
@@ -61,6 +65,9 @@ export class Rider {
     this.season = params.season !== undefined ? params.season : '';
     this.venue = params.venue !== undefined ? params.venue : '';
     this.version = params.version || 'v1.0';
+    this.documentTheme = isRiderDocumentTheme(params.documentTheme)
+      ? params.documentTheme
+      : defaultDocumentTheme(this.type);
     this.status = params.status || 'in_progress';
     this.sections = Array.isArray(params.sections)
       ? JSON.parse(JSON.stringify(params.sections))
@@ -165,6 +172,7 @@ export class Rider {
       modules?: Partial<Record<RiderType, RiderModuleData>>;
       stagePlot?: StagePlotConfig;
       media?: unknown;
+      documentTheme?: unknown;
     } | undefined;
 
     const columnMedia = parseRiderMedia(row.media);
@@ -178,6 +186,7 @@ export class Rider {
       season: meta?.season || '',
       venue: row.venue_name || '',
       version: row.version || 'v1.0',
+      documentTheme: isRiderDocumentTheme(meta?.documentTheme) ? meta.documentTheme : undefined,
       status: row.status === 'completed' ? 'completed' : 'in_progress',
       sections,
       channels,
@@ -679,6 +688,7 @@ export class Rider {
       sections: this.sections,
       metadata: {
         season: this.season,
+        documentTheme: this.documentTheme,
         completedSectionIds: this.completedSectionIds,
         modules: this.modules,
         stagePlot: this.stagePlot,

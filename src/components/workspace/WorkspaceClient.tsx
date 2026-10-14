@@ -14,7 +14,7 @@ import { ShareLinkModal } from '@/components/modals/ShareLinkModal';
 import { Rider } from '@/core/models/Rider';
 import { riderService } from '@/core/services/rider.service';
 import { chatService } from '@/core/services/chat.service';
-import { RiderType, SectionItem, ChannelData, ExportScope, StagePlotConfig } from '@/core/types/rider.types';
+import { RiderType, RiderDocumentTheme, SectionItem, ChannelData, ExportScope, StagePlotConfig } from '@/core/types/rider.types';
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
@@ -38,6 +38,7 @@ function riderEditSnapshot(current: Rider) {
     channels: current.channels.map((channel) => channel.toJSON()),
     stagePlot: current.stagePlot,
     media: current.media,
+    documentTheme: current.documentTheme,
     completedSectionIds: current.completedSectionIds,
   });
 }
@@ -384,6 +385,10 @@ export function WorkspaceClient({
 
   const handleUpdateSeason = (val: string) => {
     setRider(prev => new Rider({ ...prev, season: val }));
+  };
+
+  const handleThemeChange = (documentTheme: RiderDocumentTheme) => {
+    setRider(prev => new Rider({ ...prev, documentTheme }));
   };
 
   // Toggle completado de sección
@@ -759,6 +764,9 @@ export function WorkspaceClient({
             artistName={rider.artistName}
             season={rider.season}
             riderType={rider.type}
+            documentTheme={rider.documentTheme}
+            version={rider.version}
+            onThemeChange={handleThemeChange}
             sections={rider.sections}
             channels={rider.channels}
             completedSectionIds={rider.completedSectionIds}

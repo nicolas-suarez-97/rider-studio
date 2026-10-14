@@ -1,5 +1,7 @@
 export type RiderType = 'tecnico' | 'hospitality' | 'seguridad';
 
+export type RiderDocumentTheme = 'studio' | 'festival' | 'editorial';
+
 export interface RiderContentNode {
   type?: string;
   text?: string;

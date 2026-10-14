@@ -6,7 +6,7 @@ import { DocumentSuggestion } from '@/core/types/suggestion.types';
 interface JsonNode {
   type?: string;
   text?: string;
-  attrs?: { id?: unknown; level?: unknown; src?: unknown; alt?: unknown; title?: unknown; width?: unknown; height?: unknown; checked?: unknown; rows?: unknown; columns?: unknown };
+  attrs?: Record<string, unknown>;
   content?: JsonNode[];
 }
 
@@ -79,6 +79,55 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
       lines.push('---');
       return;
     }
+    if (node.type === 'riderCover') {
+      const bits = ['kicker', 'artist', 'title', 'version', 'date']
+        .map((key) => (typeof node.attrs?.[key] === 'string' ? node.attrs[key].trim() : ''))
+        .filter(Boolean);
+      if (bits.length) lines.push(bits.join(' · '));
+      return;
+    }
+    if (node.type === 'requirement') {
+      const label = typeof node.attrs?.label === 'string' ? node.attrs.label.trim() : 'Requisito';
+      const body = inlineText(node).trim();
+      lines.push(body ? `${label}: ${body}` : label);
+      return;
+    }
+    if (node.type === 'notice') {
+      const tone = node.attrs?.tone === 'required'
+        ? 'Obligatorio'
+        : node.attrs?.tone === 'rejected'
+          ? 'No aceptado'
+          : 'Nota';
+      const body = inlineText(node).trim();
+      lines.push(body ? `[${tone}] ${body}` : `[${tone}]`);
+      return;
+    }
+    if (node.type === 'tiers') {
+      lines.push(`Preferido: ${typeof node.attrs?.preferred === 'string' ? node.attrs.preferred : ''}`);
+      lines.push(`Alternativa: ${typeof node.attrs?.alternative === 'string' ? node.attrs.alternative : ''}`);
+      lines.push(`No aceptado: ${typeof node.attrs?.rejected === 'string' ? node.attrs.rejected : ''}`);
+      return;
+    }
+    if (node.type === 'contacts') {
+      const people = Array.isArray(node.attrs?.people) ? node.attrs.people : [];
+      for (const person of people) {
+        if (!person || typeof person !== 'object') continue;
+        const row = person as Record<string, unknown>;
+        const bits = ['role', 'name', 'phone', 'email']
+          .map((key) => (typeof row[key] === 'string' ? row[key].trim() : ''))
+          .filter(Boolean);
+        if (bits.length) lines.push(bits.join(' · '));
+      }
+      return;
+    }
+    if (node.type === 'columns') {
+      const left = typeof node.attrs?.left === 'string' ? node.attrs.left.trim() : '';
+      const right = typeof node.attrs?.right === 'string' ? node.attrs.right.trim() : '';
+      if (left) lines.push(left);
+      if (right) lines.push(right);
+      if (typeof node.attrs?.imageSrc === 'string' && node.attrs.imageSrc) lines.push('[imagen]');
+      return;
+    }
     if (node.type === 'inputList') {
       const rows = Array.isArray(node.attrs?.rows) ? (node.attrs.rows as InputListRow[]) : [];
       const columns = Array.isArray(node.attrs?.columns) ? (node.attrs.columns as InputListColumn[]) : undefined;
@@ -141,10 +190,12 @@ export function riderDocumentFromSections(
   const title = header?.title?.trim();
   const outline = sections.filter((section) => !isDocumentIntro(section.id));
   const intro = sections.find((section) => isDocumentIntro(section.id));
+  const introBody = intro ? sectionBody(intro) : [];
+  const hasCover = introBody.some((node) => node.type === 'riderCover');
   if (outline.length === 0 && !artist && !intro) {
     return { type: 'doc', content: [{ type: 'paragraph' }] };
   }
-  if (artist) {
+  if (artist && !hasCover) {
     content.push({
       type: 'heading',
       attrs: { level: 1 },
@@ -159,9 +210,8 @@ export function riderDocumentFromSections(
   }
 
   if (intro) {
-    const body = sectionBody(intro);
-    if (body.length === 0) content.push({ type: 'paragraph' });
-    else content.push(...body);
+    if (introBody.length === 0) content.push({ type: 'paragraph' });
+    else content.push(...introBody);
   }
 
   outline.forEach((section, index) => {
@@ -238,12 +288,13 @@ export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: stri
     current.nodes.push(node);
   }
   flush();
-  if (
-    patches.length === 1
-    && patches[0].id === DOCUMENT_INTRO_ID
-    && !(patches[0].content || '').trim()
-  ) {
-    return [];
+  if (patches.length === 1 && patches[0].id === DOCUMENT_INTRO_ID) {
+    const nodes = (patches[0].contentDoc.content || []) as JsonNode[];
+    const hasBody = nodes.some((node) => {
+      if (node.type === 'paragraph' || node.type === 'heading') return Boolean(inlineText(node).trim());
+      return Boolean(node.type && node.type !== 'paragraph');
+    });
+    if (!hasBody && !(patches[0].content || '').trim()) return [];
   }
   return patches;
 }

@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core';
+import { coverAttrsFromEditor, removeSyntheticHeader } from '@/components/workspace/editor/rider-blocks';
 import { cloneInputListRows } from '@/core/constants/input-list';
 import { newSectionId } from '@/core/editor/content-doc';
 
@@ -39,6 +40,76 @@ function deleteThen(editor: Editor, range: SlashRange) {
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    id: 'cover',
+    title: 'Portada',
+    description: 'Primera página con artista, versión y foto',
+    icon: 'fileText',
+    group: 'Rider',
+    keywords: ['portada', 'cover', 'artista', 'foto'],
+    run: (editor, range) => {
+      const inserted = deleteThen(editor, range).insertContent({
+        type: 'riderCover',
+        attrs: coverAttrsFromEditor(editor),
+      }).run();
+      if (inserted) removeSyntheticHeader(editor);
+    },
+  },
+  {
+    id: 'requirement',
+    title: 'Requisito',
+    description: 'Etiqueta y el dato al lado',
+    icon: 'badge',
+    group: 'Rider',
+    keywords: ['requisito', 'spec', 'criterio', 'etiqueta'],
+    run: (editor, range) => {
+      deleteThen(editor, range).insertRequirement().run();
+    },
+  },
+  {
+    id: 'notice',
+    title: 'Aviso',
+    description: 'Nota, obligatorio o no aceptado',
+    icon: 'shield',
+    group: 'Rider',
+    keywords: ['aviso', 'nota', 'obligatorio', 'veto', 'no aceptado'],
+    run: (editor, range) => {
+      deleteThen(editor, range).insertNotice('note').run();
+    },
+  },
+  {
+    id: 'tiers',
+    title: 'Tiers',
+    description: 'Preferido, alternativa y no aceptado',
+    icon: 'table',
+    group: 'Rider',
+    keywords: ['tiers', 'preferido', 'alternativa', 'marcas', 'veto'],
+    run: (editor, range) => {
+      deleteThen(editor, range).insertTiers().run();
+    },
+  },
+  {
+    id: 'contacts',
+    title: 'Contactos',
+    description: 'Rol, nombre, teléfono y correo',
+    icon: 'users',
+    group: 'Rider',
+    keywords: ['contactos', 'telefono', 'correo', 'foh'],
+    run: (editor, range) => {
+      deleteThen(editor, range).insertContacts().run();
+    },
+  },
+  {
+    id: 'columns',
+    title: 'Dos columnas',
+    description: 'Texto al lado de otro texto o una foto',
+    icon: 'columns',
+    group: 'Rider',
+    keywords: ['columnas', 'foto', 'dos', 'layout'],
+    run: (editor, range) => {
+      deleteThen(editor, range).insertColumns().run();
+    },
+  },
   {
     id: 'paragraph',
     title: 'Texto',

@@ -1,0 +1,336 @@
+"use client";
+
+import { useRef, useState } from 'react';
+import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
+import { PAGE_INNER } from '@/components/workspace/editor/pagination';
+import { assertRiderImage } from '@/lib/media/rider-media';
+import { emptyContact, normalizePeople, type ContactPerson, type NoticeTone } from '@/components/workspace/editor/rider-block-model';
+
+const TONE_LABEL: Record<NoticeTone, string> = {
+  note: 'Nota',
+  required: 'Obligatorio',
+  rejected: 'No aceptado',
+};
+
+function fieldValue(value: unknown) {
+  return typeof value === 'string' ? value : '';
+}
+
+function stop(event: { stopPropagation: () => void }) {
+  event.stopPropagation();
+}
+
+export function CoverBlock({ node, updateAttributes, editor, selected }: NodeViewProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState('');
+  const readOnly = !editor.isEditable;
+  const imageSrc = fieldValue(node.attrs.imageSrc);
+  const set = (key: string, value: string) => updateAttributes({ [key]: value });
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError('');
+    try {
+      assertRiderImage(file, 'gallery');
+      const upload = editor.storage.riderDocumentMeta?.uploadImage;
+      const src = upload ? await upload(file) : URL.createObjectURL(file);
+      if (!src) {
+        setError('No se pudo subir la foto');
+        return;
+      }
+      set('imageSrc', src);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo subir la foto');
+    }
+  };
+
+  return (
+    <NodeViewWrapper
+      className={`docs-cover ${selected ? 'is-selected' : ''} ${imageSrc ? 'has-image' : ''}`}
+      data-type="rider-cover"
+      data-page-break-after="true"
+    >
+      <div
+        className="docs-cover-inner"
+        contentEditable={false}
+        style={{
+          minHeight: PAGE_INNER,
+          ...(imageSrc ? {
+            backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.72)), url("${imageSrc}")`,
+            color: '#fafafa',
+          } : undefined),
+        }}
+      >
+        {!readOnly && (
+          <div className="docs-cover-tools">
+            <button type="button" onMouseDown={stop} onClick={() => fileRef.current?.click()}>
+              {imageSrc ? 'Cambiar foto' : 'Foto de portada'}
+            </button>
+            {imageSrc && (
+              <button type="button" onMouseDown={stop} onClick={() => set('imageSrc', '')}>
+                Quitar foto
+              </button>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                void onFile(file);
+              }}
+            />
+            {error && <span className="docs-cover-error">{error}</span>}
+          </div>
+        )}
+        <div className="docs-cover-copy">
+          <input
+            className="docs-cover-kicker"
+            aria-label="Tipo de rider"
+            value={fieldValue(node.attrs.kicker)}
+            readOnly={readOnly}
+            onMouseDown={stop}
+            onChange={(event) => set('kicker', event.target.value)}
+          />
+          <textarea
+            className="docs-cover-artist"
+            aria-label="Artista"
+            rows={2}
+            placeholder="Nombre del artista"
+            value={fieldValue(node.attrs.artist)}
+            readOnly={readOnly}
+            onMouseDown={stop}
+            onChange={(event) => set('artist', event.target.value)}
+          />
+          <input
+            className="docs-cover-title"
+            aria-label="Gira o show"
+            placeholder="Gira o show"
+            value={fieldValue(node.attrs.title)}
+            readOnly={readOnly}
+            onMouseDown={stop}
+            onChange={(event) => set('title', event.target.value)}
+          />
+          <div className="docs-cover-meta">
+            <input
+              aria-label="Versión"
+              value={fieldValue(node.attrs.version)}
+              readOnly={readOnly}
+              onMouseDown={stop}
+              onChange={(event) => set('version', event.target.value)}
+            />
+            <input
+              aria-label="Fecha"
+              value={fieldValue(node.attrs.date)}
+              readOnly={readOnly}
+              onMouseDown={stop}
+              onChange={(event) => set('date', event.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+    </NodeViewWrapper>
+  );
+}
+
+export function RequirementBlock({ node, updateAttributes, editor, selected }: NodeViewProps) {
+  const readOnly = !editor.isEditable;
+  return (
+    <NodeViewWrapper className={`docs-requirement ${selected ? 'is-selected' : ''}`} data-type="requirement">
+      <div className="docs-requirement-label" contentEditable={false}>
+        <input
+          aria-label="Etiqueta del requisito"
+          value={fieldValue(node.attrs.label)}
+          readOnly={readOnly}
+          placeholder="Etiqueta"
+          onMouseDown={stop}
+          onChange={(event) => updateAttributes({ label: event.target.value })}
+        />
+      </div>
+      <NodeViewContent className="docs-requirement-body" />
+    </NodeViewWrapper>
+  );
+}
+
+export function NoticeBlock({ node, updateAttributes, editor, selected }: NodeViewProps) {
+  const readOnly = !editor.isEditable;
+  const tone: NoticeTone = node.attrs.tone === 'required' || node.attrs.tone === 'rejected'
+    ? node.attrs.tone
+    : 'note';
+  return (
+    <NodeViewWrapper className={`docs-notice is-${tone} ${selected ? 'is-selected' : ''}`} data-type="notice" data-tone={tone}>
+      <div className="docs-notice-bar" contentEditable={false}>
+        {(Object.keys(TONE_LABEL) as NoticeTone[]).map((item) => (
+          <button
+            key={item}
+            type="button"
+            aria-pressed={tone === item}
+            disabled={readOnly}
+            onMouseDown={stop}
+            onClick={() => updateAttributes({ tone: item })}
+          >
+            {TONE_LABEL[item]}
+          </button>
+        ))}
+      </div>
+      <NodeViewContent className="docs-notice-body" />
+    </NodeViewWrapper>
+  );
+}
+
+export function TiersBlock({ node, updateAttributes, editor, selected }: NodeViewProps) {
+  const readOnly = !editor.isEditable;
+  const columns: Array<{ key: 'preferred' | 'alternative' | 'rejected'; label: string }> = [
+    { key: 'preferred', label: 'Preferido' },
+    { key: 'alternative', label: 'Alternativa' },
+    { key: 'rejected', label: 'No aceptado' },
+  ];
+  return (
+    <NodeViewWrapper className={`docs-tiers ${selected ? 'is-selected' : ''}`} data-type="tiers">
+      <div className="docs-tiers-grid" contentEditable={false}>
+        {columns.map((column) => (
+          <label key={column.key} className={`docs-tiers-col is-${column.key}`}>
+            <span>{column.label}</span>
+            <textarea
+              aria-label={column.label}
+              rows={4}
+              readOnly={readOnly}
+              placeholder={column.label}
+              value={fieldValue(node.attrs[column.key])}
+              onMouseDown={stop}
+              onChange={(event) => updateAttributes({ [column.key]: event.target.value })}
+            />
+          </label>
+        ))}
+      </div>
+    </NodeViewWrapper>
+  );
+}
+
+export function ContactsBlock({ node, updateAttributes, editor, selected }: NodeViewProps) {
+  const readOnly = !editor.isEditable;
+  const people = normalizePeople(node.attrs.people);
+  const save = (next: ContactPerson[]) => updateAttributes({ people: next });
+  const patch = (id: string, key: keyof ContactPerson, value: string) => {
+    save(people.map((person) => (person.id === id ? { ...person, [key]: value } : person)));
+  };
+
+  return (
+    <NodeViewWrapper className={`docs-contacts ${selected ? 'is-selected' : ''}`} data-type="contacts">
+      <div className="docs-contacts-card" contentEditable={false}>
+        <div className="docs-contacts-head">
+          <span>Contactos</span>
+          {!readOnly && (
+            <button type="button" onMouseDown={stop} onClick={() => save([...people, emptyContact(people.length + 1)])}>
+              Añadir
+            </button>
+          )}
+        </div>
+        {people.map((person) => (
+          <div key={person.id} className="docs-contacts-row">
+            <input aria-label="Rol" placeholder="Rol" value={person.role} readOnly={readOnly} onMouseDown={stop} onChange={(event) => patch(person.id, 'role', event.target.value)} />
+            <input aria-label="Nombre" placeholder="Nombre" value={person.name} readOnly={readOnly} onMouseDown={stop} onChange={(event) => patch(person.id, 'name', event.target.value)} />
+            <input aria-label="Teléfono" placeholder="Teléfono" value={person.phone} readOnly={readOnly} onMouseDown={stop} onChange={(event) => patch(person.id, 'phone', event.target.value)} />
+            <input aria-label="Correo" placeholder="Correo" value={person.email} readOnly={readOnly} onMouseDown={stop} onChange={(event) => patch(person.id, 'email', event.target.value)} />
+            {!readOnly && people.length > 1 && (
+              <button type="button" aria-label="Quitar contacto" onMouseDown={stop} onClick={() => save(people.filter((item) => item.id !== person.id))}>
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </NodeViewWrapper>
+  );
+}
+
+export function ColumnsBlock({ node, updateAttributes, editor, selected }: NodeViewProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState('');
+  const readOnly = !editor.isEditable;
+  const imageSrc = fieldValue(node.attrs.imageSrc);
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError('');
+    try {
+      assertRiderImage(file, 'gallery');
+      const upload = editor.storage.riderDocumentMeta?.uploadImage;
+      const src = upload ? await upload(file) : URL.createObjectURL(file);
+      if (!src) {
+        setError('No se pudo subir la imagen');
+        return;
+      }
+      updateAttributes({ imageSrc: src });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo subir la imagen');
+    }
+  };
+
+  return (
+    <NodeViewWrapper className={`docs-columns ${selected ? 'is-selected' : ''}`} data-type="columns">
+      <div className="docs-columns-grid" contentEditable={false}>
+        <textarea
+          aria-label="Columna izquierda"
+          rows={5}
+          placeholder="Texto"
+          readOnly={readOnly}
+          value={fieldValue(node.attrs.left)}
+          onMouseDown={stop}
+          onChange={(event) => updateAttributes({ left: event.target.value })}
+        />
+        <div className="docs-columns-side">
+          {imageSrc ? (
+            <img src={imageSrc} alt="" />
+          ) : (
+            <textarea
+              aria-label="Columna derecha"
+              rows={5}
+              placeholder="Texto o una foto"
+              readOnly={readOnly}
+              value={fieldValue(node.attrs.right)}
+              onMouseDown={stop}
+              onChange={(event) => updateAttributes({ right: event.target.value })}
+            />
+          )}
+          {!readOnly && (
+            <div className="docs-columns-tools">
+              <button type="button" onMouseDown={stop} onClick={() => fileRef.current?.click()}>
+                {imageSrc ? 'Cambiar foto' : 'Foto'}
+              </button>
+              {imageSrc && (
+                <button type="button" onMouseDown={stop} onClick={() => updateAttributes({ imageSrc: '' })}>
+                  Quitar foto
+                </button>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  void onFile(file);
+                }}
+              />
+            </div>
+          )}
+          {imageSrc && (
+            <input
+              aria-label="Pie de foto"
+              placeholder="Pie de foto"
+              readOnly={readOnly}
+              value={fieldValue(node.attrs.right)}
+              onMouseDown={stop}
+              onChange={(event) => updateAttributes({ right: event.target.value })}
+            />
+          )}
+          {error && <span className="docs-cover-error">{error}</span>}
+        </div>
+      </div>
+    </NodeViewWrapper>
+  );
+}

@@ -77,6 +77,11 @@ function hasForcedPageBreak(el: HTMLElement) {
   return heading?.getAttribute('data-page-break') === 'before';
 }
 
+function breaksAfterPage(el: HTMLElement) {
+  return el.getAttribute('data-page-break-after') === 'true'
+    || Boolean(el.querySelector('[data-page-break-after="true"]'));
+}
+
 function collectBlocks(view: EditorView): { pos: number; el: HTMLElement }[] {
   const blocks: { pos: number; el: HTMLElement }[] = [];
   const seen = new Set<HTMLElement>();
@@ -106,12 +111,14 @@ function measureBreaks(view: EditorView): PageBreak[] {
   let used = 0;
   let previousBottomMargin = 0;
   let isFirst = true;
+  let carryForce = false;
 
   for (const { pos, el } of collectBlocks(view)) {
     const { size, nextMargin } = collapsedSize(el, previousBottomMargin, isFirst);
-    const forceNewPage = used > 0 && (used + size > PAGE_INNER || hasForcedPageBreak(el));
+    const forceNewPage = used > 0 && (used + size > PAGE_INNER || hasForcedPageBreak(el) || carryForce);
     isFirst = false;
     previousBottomMargin = nextMargin;
+    carryForce = breaksAfterPage(el);
     if (size <= 0) continue;
     if (forceNewPage) {
       const filled = Math.min(used, PAGE_INNER);

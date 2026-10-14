@@ -6,13 +6,16 @@ import { SectionCommentItem } from '@/lib/share/comments';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 import { EditorBridge, RiderDocumentSurface } from './editor/RiderDocumentSurface';
 import type { SectionDocumentPatch } from '@/core/editor/content-doc';
-import type { RiderType } from '@/core/types/rider.types';
+import type { RiderType, RiderDocumentTheme } from '@/core/types/rider.types';
 
 interface DocumentEditorPanelProps {
   riderTitle: string;
   artistName: string;
   season?: string;
   riderType?: RiderType;
+  documentTheme?: RiderDocumentTheme;
+  version?: string;
+  onThemeChange?: (theme: RiderDocumentTheme) => void;
   sections: SectionItem[];
   channels?: ChannelInput[];
   completedSectionIds?: string[];
@@ -72,6 +75,9 @@ export function DocumentEditorPanel({
   onUploadDocumentImage,
   onImageError,
   riderType,
+  documentTheme,
+  version,
+  onThemeChange,
   isBlankDocument = false,
   isAssistantThinking = false,
   onAskAssistant,
@@ -94,6 +100,9 @@ export function DocumentEditorPanel({
         onUploadDocumentImage={onUploadDocumentImage}
         onImageError={onImageError}
         riderType={riderType}
+        documentTheme={documentTheme}
+        version={version}
+        onThemeChange={onThemeChange}
         isBlankDocument={isBlankDocument}
         isAssistantThinking={isAssistantThinking}
         onAskAssistant={onAskAssistant}

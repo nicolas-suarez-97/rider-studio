@@ -816,6 +816,8 @@ export function ContraRiderClient({
             artistName={rider.artistName}
             season={rider.season}
             riderType={rider.type}
+            documentTheme={rider.documentTheme}
+            version={rider.version}
             sections={rider.sections}
             channels={rider.channels}
             completedSectionIds={readSectionIds}
