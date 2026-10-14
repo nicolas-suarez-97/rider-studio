@@ -8,7 +8,7 @@ import { Icon } from '@/components/common/Icon';
 interface EditorToolbarProps {
   editor: Editor | null;
   onInsertSection: () => void;
-  onFind: (query: string) => void;
+  onFind: (query: string, direction?: 'first' | 'next' | 'prev') => { current: number; total: number };
   onInsertImages: (files: File[]) => void;
 }
 
@@ -16,6 +16,7 @@ export function EditorToolbar({ editor, onInsertSection, onFind, onInsertImages 
   const findRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
+  const [stats, setStats] = useState({ current: 0, total: 0 });
   const marks = useEditorState({
     editor,
     selector: ({ editor: current }) => {
@@ -143,22 +144,52 @@ export function EditorToolbar({ editor, onInsertSection, onFind, onInsertImages 
       </ToolbarButton>
       <form
         className="flex items-center gap-1 ml-auto"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onFind(query);
-        }}
+        onSubmit={(event) => event.preventDefault()}
       >
         <input
           ref={findRef}
           value={query}
           onChange={(event) => {
-            setQuery(event.target.value);
-            if (event.target.value.trim().length >= 2) onFind(event.target.value);
+            const value = event.target.value;
+            setQuery(value);
+            if (value.trim().length >= 2) setStats(onFind(value, 'first'));
+            else setStats(onFind('', 'first'));
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              if (!query.trim()) return;
+              setStats(onFind(query, event.shiftKey ? 'prev' : 'next'));
+            }
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              setQuery('');
+              setStats(onFind('', 'first'));
+            }
           }}
           placeholder="Buscar"
           aria-label="Buscar en el documento"
-          className="h-8 w-28 sm:w-44 shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs text-slate-800 outline-none focus:border-violet-400 focus:bg-white"
+          className="h-8 w-28 sm:w-40 shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs text-slate-800 outline-none focus:border-violet-400 focus:bg-white"
         />
+        {query.trim().length >= 2 && (
+          <span className="text-[10px] font-bold tabular-nums text-slate-400 min-w-[2.4rem]" aria-live="polite">
+            {stats.total > 0 ? `${stats.current}/${stats.total}` : '0'}
+          </span>
+        )}
+        <ToolbarButton
+          label="Anterior"
+          disabled={!query.trim()}
+          onClick={() => { if (query.trim()) setStats(onFind(query, 'prev')); }}
+        >
+          ↑
+        </ToolbarButton>
+        <ToolbarButton
+          label="Siguiente"
+          disabled={!query.trim()}
+          onClick={() => { if (query.trim()) setStats(onFind(query, 'next')); }}
+        >
+          ↓
+        </ToolbarButton>
       </form>
     </div>
   );

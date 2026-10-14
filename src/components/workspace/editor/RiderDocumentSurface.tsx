@@ -20,6 +20,14 @@ import { SectionChips } from '@/components/workspace/editor/section-chips';
 import { InputList } from '@/components/workspace/editor/input-list-node';
 import { SlashCommandMenu } from '@/components/workspace/editor/SlashCommandMenu';
 import {
+  findAllDocumentMatches,
+  scrollMatchIntoView,
+  SearchHits,
+  setSearchHits,
+  type SearchDirection,
+  type SearchStats,
+} from '@/components/workspace/editor/document-search';
+import {
   applySuggestionToEditor,
   findSectionBounds,
   locateText,
@@ -39,7 +47,7 @@ import { DocumentSuggestion } from '@/core/types/suggestion.types';
 export interface EditorBridge {
   apply: (suggestion: DocumentSuggestion) => boolean;
   focus: (suggestion: DocumentSuggestion) => void;
-  find: (query: string) => void;
+  find: (query: string, direction?: SearchDirection) => SearchStats;
   insertSectionTitle: (title: string) => string | null;
 }
 
@@ -221,6 +229,7 @@ export function RiderDocumentSurface({
       }),
       RiderKeys,
       SuggestionHighlights,
+      SearchHits,
       Pagination,
       SectionChips.configure({
         riderType: () => riderTypeRef.current,
@@ -349,10 +358,33 @@ export function RiderDocumentSurface({
     editor.view.dispatch(editor.state.tr.setMeta('rider-suggestions', true));
   }, [editor, suggestions]);
 
-  const findInDocument = useCallback((query: string) => {
-    if (!editor || !query.trim()) return;
-    const range = locateText(editor.state.doc, query.trim(), true);
-    if (range) editor.chain().focus().setTextSelection(range).scrollIntoView().run();
+  const searchCursor = useRef({ query: '', index: 0 });
+
+  const findInDocument = useCallback((query: string, direction: SearchDirection = 'first'): SearchStats => {
+    const empty = { current: 0, total: 0 };
+    if (!editor || editor.isDestroyed) return empty;
+    const needle = query.trim();
+    if (!needle) {
+      searchCursor.current = { query: '', index: 0 };
+      setSearchHits(editor, [], 0);
+      return empty;
+    }
+    const matches = findAllDocumentMatches(editor.state.doc, needle);
+    if (matches.length === 0) {
+      searchCursor.current = { query: needle, index: 0 };
+      setSearchHits(editor, [], 0);
+      return empty;
+    }
+    let index = 0;
+    if (direction !== 'first' && searchCursor.current.query === needle) {
+      index = direction === 'next'
+        ? (searchCursor.current.index + 1) % matches.length
+        : (searchCursor.current.index - 1 + matches.length) % matches.length;
+    }
+    searchCursor.current = { query: needle, index };
+    setSearchHits(editor, matches, index);
+    requestAnimationFrame(() => scrollMatchIntoView(scrollerRef.current, editor, matches[index].from));
+    return { current: index + 1, total: matches.length };
   }, [editor]);
 
   const insertSectionTitle = useCallback((title: string) => {
@@ -470,6 +502,12 @@ export function RiderDocumentSurface({
         .docs-input-list.is-selected .docs-input-list-card { box-shadow: 0 0 0 2px #c4b5fd; }
         .docs-combo { position: relative; min-width: 0; }
         .docs-editor img, .docs-editor .docs-image { max-width: 100%; height: auto; max-height: 28rem; display: block; margin: 0.4em 0 0.7em; object-fit: contain; }
+        .docs-editor .docs-search-hit { background: #fde68a; border-radius: 2px; }
+        .docs-editor .docs-search-hit.is-current { background: #fbbf24; box-shadow: inset 0 0 0 1px #d97706; }
+        .docs-input-list.docs-search-hit .docs-input-list-card,
+        .docs-input-list-node.docs-search-hit .docs-input-list-card { box-shadow: 0 0 0 2px #fbbf24; }
+        .docs-input-list.docs-search-hit.is-current .docs-input-list-card,
+        .docs-input-list-node.docs-search-hit.is-current .docs-input-list-card { box-shadow: 0 0 0 2px #d97706; }
         .docs-toolbar-scroll { scrollbar-width: none; }
         .docs-toolbar-scroll::-webkit-scrollbar { display: none; }
         .ProseMirror-widget:has(.docs-section-chips) { display: block; width: 100%; }
