@@ -151,7 +151,6 @@ function SortableSection({
   isCompleted,
   commentCount,
   handleOnly,
-  enterIndex,
   onSelectSection,
   onToggleComplete,
 }: {
@@ -160,23 +159,16 @@ function SortableSection({
   isCompleted: boolean;
   commentCount: number;
   handleOnly: boolean;
-  enterIndex?: number | null;
   onSelectSection: (id: string) => void;
   onToggleComplete: (id: string, e?: React.MouseEvent) => void;
 }) {
   const dragControls = useDragControls();
-  const enter = enterIndex != null;
 
   return (
     <Reorder.Item
       value={section.id}
       dragListener={!handleOnly}
       dragControls={dragControls}
-      initial={enter ? { opacity: 0, y: 12 } : false}
-      animate={{ opacity: 1, y: 0 }}
-      transition={enter
-        ? { delay: enterIndex * 0.05, duration: 0.38, ease: [0.22, 1, 0.36, 1] }
-        : { duration: 0 }}
       className={`group relative p-3 rounded-2xl border transition-colors cursor-pointer flex items-center gap-3 ${
         isActive
           ? 'bg-violet-50/70 border-violet-200 shadow-xs ring-1 ring-violet-200/60'
@@ -252,9 +244,7 @@ export function SectionsNavPanel({
   commentCounts
 }: SectionsNavPanelProps) {
   const handleOnly = useCoarsePointer();
-  const reduceMotion = useReducedMotion();
   const [sortable, setSortable] = useState(false);
-  const stagger = outlineEnter && !reduceMotion;
 
   useEffect(() => {
     setSortable(true);
@@ -341,7 +331,7 @@ export function SectionsNavPanel({
           }}
           className="space-y-1.5"
         >
-          {sections.map((section, index) => (
+          {sections.map((section) => (
             <SortableSection
               key={section.id}
               section={section}
@@ -349,7 +339,6 @@ export function SectionsNavPanel({
               isCompleted={completedSectionIds.includes(section.id)}
               commentCount={commentCounts?.[section.id] ?? 0}
               handleOnly={handleOnly}
-              enterIndex={stagger ? index : null}
               onSelectSection={onSelectSection}
               onToggleComplete={onToggleComplete}
             />
