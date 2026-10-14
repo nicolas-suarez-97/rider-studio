@@ -1,18 +1,19 @@
 .docs-theme {
-  --rider-canvas: #e7e5e4;
+  --rider-canvas: #f0f2f5;
   --rider-page: #ffffff;
-  --rider-ink: #1c1917;
-  --rider-muted: #78716c;
-  --rider-accent: #1c1917;
-  --rider-rule: #1c1917;
-  --rider-line: #e7e5e4;
-  --rider-soft: #f5f5f4;
-  --rider-table-head: #1c1917;
-  --rider-table-head-ink: #fafaf9;
-  --rider-display: "Iowan Old Style", Palatino, Georgia, serif;
-  --rider-body: "Avenir Next", "Segoe UI", sans-serif;
+  --rider-ink: #202124;
+  --rider-muted: #9aa0a6;
+  --rider-accent: #202124;
+  --rider-rule: #dadce0;
+  --rider-line: #dadce0;
+  --rider-soft: #f8f9fa;
+  --rider-table-head: #f8f9fa;
+  --rider-table-head-ink: #202124;
+  --rider-display: Arial, Helvetica, sans-serif;
+  --rider-body: Arial, Helvetica, sans-serif;
+  --rider-leading: 1.15;
   --rider-cover: transparent;
-  --rider-cover-ink: #1c1917;
+  --rider-cover-ink: #202124;
   background: var(--rider-canvas);
   color: var(--rider-ink);
 }
@@ -32,6 +33,7 @@
   --rider-body: Arial, Helvetica, sans-serif;
   --rider-cover: #111111;
   --rider-cover-ink: #fafafa;
+  --rider-leading: 1.35;
 }
 
 .docs-theme-editorial {
@@ -49,32 +51,41 @@
   --rider-body: Georgia, "Iowan Old Style", serif;
   --rider-cover: #f3e6dc;
   --rider-cover-ink: #431407;
+  --rider-leading: 1.35;
 }
 
-.docs-theme .docs-editor,
-.docs-theme .docs-canvas .ProseMirror {
+.docs-theme-festival .docs-editor,
+.docs-theme-editorial .docs-editor,
+.docs-theme-festival .docs-canvas .ProseMirror,
+.docs-theme-editorial .docs-canvas .ProseMirror {
   font-family: var(--rider-body);
   color: var(--rider-ink);
 }
 
-.docs-theme .docs-editor {
+.docs-theme-festival .docs-editor,
+.docs-theme-editorial .docs-editor {
   counter-reset: rider-section;
 }
 
-.docs-theme .docs-editor h1,
-.docs-theme .docs-editor h2,
-.docs-theme .docs-editor h3 {
+.docs-theme-festival .docs-editor h1,
+.docs-theme-editorial .docs-editor h1,
+.docs-theme-festival .docs-editor h2,
+.docs-theme-editorial .docs-editor h2,
+.docs-theme-festival .docs-editor h3,
+.docs-theme-editorial .docs-editor h3 {
   font-family: var(--rider-display);
   color: var(--rider-ink);
 }
 
-.docs-theme .docs-editor h2 {
+.docs-theme-festival .docs-editor h2,
+.docs-theme-editorial .docs-editor h2 {
   counter-increment: rider-section;
   border-top: 1px solid var(--rider-rule);
   padding-top: 0.45em;
 }
 
-.docs-theme .docs-editor h2:not(.is-empty)::before {
+.docs-theme-festival .docs-editor h2:not(.is-empty)::before,
+.docs-theme-editorial .docs-editor h2:not(.is-empty)::before {
   content: counter(rider-section, decimal-leading-zero);
   display: block;
   margin-bottom: 0.15em;
@@ -94,13 +105,15 @@
   font-weight: 600;
 }
 
-.docs-theme .docs-editor .tableWrapper th {
+.docs-theme-festival .docs-editor .tableWrapper th,
+.docs-theme-editorial .docs-editor .tableWrapper th {
   background: var(--rider-table-head);
   color: var(--rider-table-head-ink);
   border-color: var(--rider-table-head);
 }
 
-.docs-theme .docs-editor .tableWrapper td {
+.docs-theme-festival .docs-editor .tableWrapper td,
+.docs-theme-editorial .docs-editor .tableWrapper td {
   border-color: var(--rider-line);
 }
 

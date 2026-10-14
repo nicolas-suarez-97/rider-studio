@@ -293,7 +293,7 @@ export function RiderDocumentSurface({
       attributes: {
         class: 'docs-editor',
         'aria-label': 'Documento del rider',
-        style: `padding:${PAGE_PADDING}px;min-height:${PAGE_HEIGHT}px;font-family:var(--rider-body);font-size:11pt;line-height:1.35;color:var(--rider-ink);outline:none;`,
+        style: `padding:${PAGE_PADDING}px;min-height:${PAGE_HEIGHT}px;font-family:var(--rider-body,Arial,Helvetica,sans-serif);font-size:11pt;line-height:var(--rider-leading,1.15);color:var(--rider-ink,#202124);outline:none;`,
       },
       handleKeyDown(_view, event) {
         return slashKeysRef.current(event);
@@ -510,8 +510,8 @@ export function RiderDocumentSurface({
         .docs-editor hr { border: 0; border-top: 1px solid #dadce0; margin: 1em 0; }
         .docs-editor .tableWrapper { margin: 0.45em 0 0.9em; overflow-x: auto; }
         .docs-editor table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .docs-editor .tableWrapper th { background: var(--rider-table-head); color: var(--rider-table-head-ink); font-weight: 700; text-align: left; }
-        .docs-editor th, .docs-editor td { position: relative; border: 1px solid var(--rider-line, #dadce0); padding: 6px 8px; vertical-align: top; font-size: 10pt; }
+        .docs-editor th { background: #f8f9fa; font-weight: 700; text-align: left; }
+        .docs-editor th, .docs-editor td { position: relative; border: 1px solid #dadce0; padding: 6px 8px; vertical-align: top; font-size: 10pt; }
         .docs-editor .selectedCell:after { position: absolute; inset: 0; background: rgba(124, 58, 237, 0.08); content: ''; pointer-events: none; }
         .docs-editor ul[data-type="taskList"] { list-style: none; padding-left: 0; }
         .docs-editor ul[data-type="taskList"] p { margin: 0; }
@@ -612,10 +612,19 @@ export function RiderDocumentSurface({
                   borderColor: 'var(--rider-line)',
                 }}
               >
-                <span className="docs-sheet-footer">
-                  <span>{footerLabel}</span>
-                  <span>{index + 1}</span>
-                </span>
+                {theme === 'studio' ? (
+                  <span
+                    className="absolute text-[11px] text-[#9aa0a6]"
+                    style={{ right: 24, bottom: 18, fontFamily: 'Arial, Helvetica, sans-serif' }}
+                  >
+                    {index + 1}
+                  </span>
+                ) : (
+                  <span className="docs-sheet-footer">
+                    <span>{footerLabel}</span>
+                    <span>{index + 1}</span>
+                  </span>
+                )}
               </div>
             ))}
             {editor ? (

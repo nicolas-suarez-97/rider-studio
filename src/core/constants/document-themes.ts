@@ -9,7 +9,7 @@ export const RIDER_DOCUMENT_THEMES: Array<{
   {
     id: 'studio',
     label: 'Estudio claro',
-    description: 'Papel blanco y una sola tinta',
+    description: 'El documento básico, sin estilo',
     swatch: '#ffffff',
   },
   {
