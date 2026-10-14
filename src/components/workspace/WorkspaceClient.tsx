@@ -759,7 +759,7 @@ export function WorkspaceClient({
             sessionId={currentSessionId}
             sessionTitle={currentSessionTitle}
             suggestionMode
-            suggestions={documentSuggestions}
+            suggestions={documentSuggestions.filter((item) => item.source !== 'gap')}
             sectionTitles={Object.fromEntries(rider.sections.map((section) => [section.id, section.title]))}
             onAcceptSuggestion={handleAcceptSuggestion}
             onRejectSuggestion={handleRejectSuggestion}

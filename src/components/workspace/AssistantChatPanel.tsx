@@ -50,12 +50,15 @@ export function AssistantChatPanel({
 }: AssistantChatPanelProps) {
   const [inputText, setInputText] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const pendingAgentSuggestions = suggestions.filter(
+    (item) => item.source !== 'gap' && (item.status === 'pending' || item.status === 'stale')
+  );
 
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [messages, isThinking]);
+  }, [messages, isThinking, pendingAgentSuggestions.length]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,16 +168,7 @@ export function AssistantChatPanel({
 
       {/* Flujo de Mensajes */}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5 overscroll-contain">
-        {suggestionMode ? (
-          <SuggestionInbox
-            suggestions={suggestions}
-            sectionTitles={sectionTitles}
-            lastMessage={messages.filter((message) => message.sender === 'ai').at(-1)?.text}
-            onAccept={onAcceptSuggestion}
-            onReject={onRejectSuggestion}
-            onFocus={onFocusSuggestion}
-          />
-        ) : messages.length === 0 ? (
+        {messages.length === 0 && pendingAgentSuggestions.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-4 sm:p-6 space-y-3 text-slate-400">
             <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-xl shadow-xs">
               {info.icon}
@@ -238,6 +232,16 @@ export function AssistantChatPanel({
             );
           })
         )}
+
+        {pendingAgentSuggestions.length > 0 ? (
+          <SuggestionInbox
+            suggestions={pendingAgentSuggestions}
+            sectionTitles={sectionTitles}
+            onAccept={onAcceptSuggestion}
+            onReject={onRejectSuggestion}
+            onFocus={onFocusSuggestion}
+          />
+        ) : null}
 
         {isThinking && (
           <div className="flex items-center gap-2 text-slate-400 text-xs py-2">
@@ -305,33 +309,21 @@ export function AssistantChatPanel({
 function SuggestionInbox({
   suggestions,
   sectionTitles,
-  lastMessage,
   onAccept,
   onReject,
   onFocus,
 }: {
   suggestions: DocumentSuggestion[];
   sectionTitles: Record<string, string>;
-  lastMessage?: string;
   onAccept?: (id: string) => void;
   onReject?: (id: string) => void;
   onFocus?: (id: string) => void;
 }) {
-  const visible = suggestions.filter((item) => item.status === 'pending' || item.status === 'stale');
+  const visible = suggestions.filter(
+    (item) => item.source !== 'gap' && (item.status === 'pending' || item.status === 'stale')
+  );
 
-  if (visible.length === 0) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center text-center p-4 space-y-3 text-slate-400">
-        <h4 className="text-xs font-black text-slate-700">Sugerencias</h4>
-        <p className="text-[11px] leading-relaxed max-w-xs">
-          Pide un cambio o revisa los huecos de la sección activa. El documento solo cambia cuando aceptas.
-        </p>
-        {lastMessage ? (
-          <p className="text-[11px] text-slate-500 bg-white border border-slate-200 rounded-2xl p-3 text-left whitespace-pre-line">{lastMessage}</p>
-        ) : null}
-      </div>
-    );
-  }
+  if (visible.length === 0) return null;
 
   return (
     <div className="space-y-2">
@@ -341,7 +333,7 @@ function SuggestionInbox({
           <article key={suggestion.id} className="bg-white border border-slate-200/80 rounded-2xl p-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 truncate">
-                {sectionTitles[suggestion.sectionId] || 'Sección'} · {suggestion.source === 'gap' ? 'Hueco' : 'Asistente'}
+                {sectionTitles[suggestion.sectionId] || 'Sección'} · Asistente
               </p>
               {stale ? <span className="text-[10px] font-bold text-amber-700">Obsoleta</span> : null}
             </div>
