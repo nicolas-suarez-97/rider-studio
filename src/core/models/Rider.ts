@@ -145,7 +145,7 @@ export class Rider {
   }): Rider {
     const rType: RiderType = (row.rider_type as RiderType) || 'tecnico';
     const channels = Array.isArray(row.channels) ? (row.channels as ChannelData[]) : [];
-    const sections = Array.isArray(row.sections) && row.sections.length > 0
+    const sections = Array.isArray(row.sections)
       ? (row.sections as SectionItem[])
       : (RIDER_DATA[rType]?.sections || []).map(s => ({ ...s, content: '' }));
 
@@ -240,12 +240,9 @@ export class Rider {
       if (this.type === t) {
         sectionsCount = this.sections.length;
         completedCount = this.completedSectionIds.length;
-      } else if (this.modules[t] && this.modules[t]!.sections.length > 0) {
-        sectionsCount = this.modules[t]!.sections.length;
-        completedCount = this.modules[t]!.completedSectionIds?.length || 0;
       } else {
-        sectionsCount = RIDER_DATA[t]?.sections?.length || 0;
-        completedCount = 0;
+        sectionsCount = this.modules[t]?.sections?.length || 0;
+        completedCount = this.modules[t]?.completedSectionIds?.length || 0;
       }
 
       result[t] = {
@@ -388,11 +385,10 @@ export class Rider {
 
   /**
    * Restablece el módulo activo y el rider completo desde ceros:
-   * - Restaura las secciones de la estructura base pero totalmente vacías (content: '')
+   * - Deja cada tipo sin secciones, como un rider nuevo
    * - Limpia artista, temporada y recinto
    * - Restablece el Stage Plot 2D a un plano en blanco sin instrumentos precargados
    * - Limpia los canales del Input List y marcas de completitud
-   * - Sincroniza todos los módulos a un estado limpio sin valores por defecto
    */
   public resetFromScratch(): void {
     this.artistName = '';
@@ -401,13 +397,10 @@ export class Rider {
     this.completedSectionIds = [];
     this.channels = [];
 
-    // 1. Limpiar secciones del módulo activo (conservando estructura pero sin texto por defecto)
+    // 1. Vaciar el documento del módulo activo, igual que un rider nuevo
     const currentTemplate = RIDER_DATA[this.type] || RIDER_DATA.tecnico;
     this.title = currentTemplate.title || 'Rider de Producción';
-    this.sections = (currentTemplate.sections || []).map(s => ({
-      ...s,
-      content: ''
-    }));
+    this.sections = [];
     this.renumberSections();
 
     // 2. Limpiar Stage Plot a un escenario en blanco sin elementos por defecto
@@ -421,9 +414,8 @@ export class Rider {
     // 3. Limpiar todos los módulos secundarios (hospitality, seguridad, técnico)
     const types: RiderType[] = ['tecnico', 'hospitality', 'seguridad'];
     types.forEach((t) => {
-      const tTemplate = RIDER_DATA[t];
       this.modules[t] = {
-        sections: (tTemplate?.sections || []).map(s => ({ ...s, content: '' })),
+        sections: [],
         channels: [],
         completedSectionIds: [],
         stagePlot: t === 'tecnico' ? { ...this.stagePlot } : undefined
@@ -445,14 +437,12 @@ export class Rider {
       };
     }
 
-    if (this.modules[type] && this.modules[type]!.sections && this.modules[type]!.sections.length > 0) {
+    if (this.modules[type]) {
       return this.modules[type]!;
     }
 
-    const template = RIDER_DATA[type];
-    const initialSections = (template?.sections || []).map(s => ({ ...s, content: '' }));
     return {
-      sections: initialSections,
+      sections: [],
       channels: [],
       completedSectionIds: []
     };
@@ -628,17 +618,16 @@ export class Rider {
       ? `${template.title} - ${this.artistName.trim()}`
       : template.title;
 
-    // 3. Restaurar módulo si ya existía o cargar la plantilla en blanco
-    if (this.modules[targetType] && this.modules[targetType]!.sections.length > 0) {
+    // 3. Restaurar módulo si ya existía; si no, empezar vacío como un rider nuevo
+    if (this.modules[targetType]) {
       const existing = this.modules[targetType]!;
-      this.sections = existing.sections;
+      this.sections = existing.sections || [];
       this.channels = (existing.channels || []).map((c, idx) =>
         c instanceof ChannelInput ? c : ChannelInput.fromData(c, idx)
       );
       this.completedSectionIds = existing.completedSectionIds || [];
     } else {
-      const stayBlank = this.sections.length === 0;
-      this.sections = stayBlank ? [] : template.sections.map(s => ({ ...s, content: '' }));
+      this.sections = [];
       this.channels = [];
       this.completedSectionIds = [];
       this.modules[targetType] = {

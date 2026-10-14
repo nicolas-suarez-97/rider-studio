@@ -179,10 +179,8 @@ export function WorkspaceClient({
     const updated = new Rider({ ...rider });
     updated.switchType(type);
     setRider(updated);
-
-    if (updated.sections.length > 0) {
-      setActiveSectionId(updated.sections[0].id);
-    }
+    setIsAddingSection(false);
+    setActiveSectionId(updated.sections[0]?.id || '');
     if (type === 'tecnico') setActiveAgent('audio_foh');
     else if (type === 'hospitality') setActiveAgent('hospitality');
     else if (type === 'seguridad') setActiveAgent('security');
@@ -558,10 +556,8 @@ export function WorkspaceClient({
     const updated = new Rider({ ...rider });
     updated.resetFromScratch();
     setRider(updated);
-
-    if (updated.sections.length > 0) {
-      setActiveSectionId(updated.sections[0].id);
-    }
+    setIsAddingSection(false);
+    setActiveSectionId('');
 
     showToast('🔄 Rider reiniciado en blanco desde ceros');
     await handleSaveRider(updated);
