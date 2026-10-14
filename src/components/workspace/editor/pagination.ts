@@ -72,6 +72,12 @@ function collapsedSize(el: HTMLElement, previousBottomMargin: number, isFirst: b
   return { size: topGap + height, nextMargin: marginBottom };
 }
 
+function isSectionHeading(el: HTMLElement) {
+  if (el.tagName === 'H2') return true;
+  const heading = el.querySelector(':scope > h2');
+  return Boolean(heading && el.firstElementChild === heading);
+}
+
 function collectBlocks(view: EditorView): { pos: number; el: HTMLElement }[] {
   const blocks: { pos: number; el: HTMLElement }[] = [];
   const seen = new Set<HTMLElement>();
@@ -101,13 +107,17 @@ function measureBreaks(view: EditorView): PageBreak[] {
   let used = 0;
   let previousBottomMargin = 0;
   let isFirst = true;
+  let seenSectionHeading = false;
 
   for (const { pos, el } of collectBlocks(view)) {
     const { size, nextMargin } = collapsedSize(el, previousBottomMargin, isFirst);
+    const sectionStart = isSectionHeading(el);
+    const forceNewPage = used > 0 && (used + size > PAGE_INNER || (sectionStart && seenSectionHeading));
     isFirst = false;
     previousBottomMargin = nextMargin;
+    if (sectionStart) seenSectionHeading = true;
     if (size <= 0) continue;
-    if (used > 0 && used + size > PAGE_INNER) {
+    if (forceNewPage) {
       const filled = Math.min(used, PAGE_INNER);
       breaks.push({
         pos,
