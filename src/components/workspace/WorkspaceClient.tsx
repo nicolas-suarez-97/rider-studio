@@ -85,6 +85,8 @@ export function WorkspaceClient({
   // Estado de vista activa en dispositivos móviles (< 1280px)
   const [mobileTab, setMobileTab] = useState<MobileTab>('document');
   const [isAddingSection, setIsAddingSection] = useState(false);
+  const [outlineEnter, setOutlineEnter] = useState(false);
+  const outlineEnterTimer = useRef<number>(0);
 
   // Modales
   const [showExportModal, setShowExportModal] = useState(false);
@@ -263,6 +265,8 @@ export function WorkspaceClient({
     }, 800);
     return () => window.clearTimeout(timer);
   }, [rider]);
+
+  useEffect(() => () => window.clearTimeout(outlineEnterTimer.current), []);
 
   const riderWithId = async (): Promise<Rider | null> => {
     const current = riderRef.current;
@@ -654,6 +658,9 @@ export function WorkspaceClient({
 
   const handleAskFromDocument = (text: string, sectionId?: string) => {
     if (text === '__outline__') {
+      setOutlineEnter(true);
+      window.clearTimeout(outlineEnterTimer.current);
+      outlineEnterTimer.current = window.setTimeout(() => setOutlineEnter(false), 1800);
       setRider((prev) => {
         const updated = new Rider({ ...prev });
         updated.applyTemplateOutline();
@@ -728,6 +735,7 @@ export function WorkspaceClient({
             isAddingSection={isAddingSection}
             onCancelAddSection={() => setIsAddingSection(false)}
             onApplyTemplateOutline={() => handleAskFromDocument('__outline__')}
+            outlineEnter={outlineEnter}
             onResetBlank={handleResetBlank}
             progressPercent={rider.getProgress()}
             masterProgress={rider.getMasterProgress()}
@@ -761,6 +769,7 @@ export function WorkspaceClient({
             onUploadDocumentImage={handleUploadDocumentImage}
             onImageError={showToast}
             isBlankDocument={isBlankDocument}
+            outlineEnter={outlineEnter}
             isAssistantThinking={isAgentThinking}
             onAskAssistant={handleAskFromDocument}
             onDocumentChange={handleDocumentChange}

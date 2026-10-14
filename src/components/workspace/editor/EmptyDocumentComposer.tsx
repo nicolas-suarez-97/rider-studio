@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import { Icon } from '@/components/common/Icon';
 import { RiderType } from '@/core/types/rider.types';
 import { BLANK_COMPOSER_PLACEHOLDER, BLANK_RIDER_PROMPTS } from '@/core/constants/blank-rider-prompts';
@@ -63,7 +64,12 @@ export function EmptyDocumentComposer({
   if (!mounted) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] xl:pb-6">
+    <motion.div
+      initial={false}
+      exit={{ opacity: 0, y: 16 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] xl:pb-6"
+    >
       <div className="pointer-events-auto w-full max-w-[720px]">
         {showPrompts && (
           <div className="mb-2.5 flex items-center gap-2">
@@ -155,6 +161,6 @@ export function EmptyDocumentComposer({
           </button>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 }

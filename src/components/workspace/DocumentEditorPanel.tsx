@@ -29,6 +29,7 @@ interface DocumentEditorPanelProps {
   onUploadDocumentImage?: (file: File) => Promise<string | null | undefined>;
   onImageError?: (message: string) => void;
   isBlankDocument?: boolean;
+  outlineEnter?: boolean;
   isAssistantThinking?: boolean;
   onAskAssistant?: (text: string, sectionId?: string) => void;
   onUpdateChannel?: (chId: string, field: keyof ChannelData, val: string | boolean) => void;
@@ -73,6 +74,7 @@ export function DocumentEditorPanel({
   onImageError,
   riderType,
   isBlankDocument = false,
+  outlineEnter = false,
   isAssistantThinking = false,
   onAskAssistant,
   readOnly = false,
@@ -95,6 +97,7 @@ export function DocumentEditorPanel({
         onImageError={onImageError}
         riderType={riderType}
         isBlankDocument={isBlankDocument}
+        outlineEnter={outlineEnter}
         isAssistantThinking={isAssistantThinking}
         onAskAssistant={onAskAssistant}
       />

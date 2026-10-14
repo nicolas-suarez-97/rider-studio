@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
@@ -120,6 +121,7 @@ interface RiderDocumentSurfaceProps {
   onImageError?: (message: string) => void;
   riderType?: RiderType;
   isBlankDocument?: boolean;
+  outlineEnter?: boolean;
   isAssistantThinking?: boolean;
   onAskAssistant?: (text: string, sectionId?: string) => void;
 }
@@ -139,6 +141,7 @@ export function RiderDocumentSurface({
   onImageError,
   riderType = 'tecnico',
   isBlankDocument = false,
+  outlineEnter = false,
   isAssistantThinking = false,
   onAskAssistant,
 }: RiderDocumentSurfaceProps) {
@@ -152,6 +155,7 @@ export function RiderDocumentSurface({
   );
   const [pages, setPages] = useState(1);
   const [scale, setScale] = useState(1);
+  const reduceMotion = useReducedMotion();
   const documentHeight = pages * PAGE_HEIGHT + Math.max(0, pages - 1) * PAGE_GAP;
   const scrollerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -298,6 +302,31 @@ export function RiderDocumentSurface({
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
+    editor.view.dom.dataset.outlineEnter = outlineEnter && !reduceMotion ? 'true' : 'false';
+    if (!outlineEnter || reduceMotion) return;
+    let frames = 0;
+    let frame = 0;
+    const stamp = () => {
+      if (editor.isDestroyed) return;
+      const headings = editor.view.dom.querySelectorAll('h2');
+      headings.forEach((node, index) => {
+        (node as HTMLElement).style.setProperty('--outline-delay', `${index * 55}ms`);
+      });
+      const chips = editor.view.dom.querySelectorAll('.docs-section-chips');
+      chips.forEach((node, index) => {
+        (node as HTMLElement).style.setProperty('--outline-delay', `${70 + index * 55}ms`);
+      });
+      frames += 1;
+      if (chips.length < headings.length && frames < 10) {
+        frame = requestAnimationFrame(stamp);
+      }
+    };
+    frame = requestAnimationFrame(stamp);
+    return () => cancelAnimationFrame(frame);
+  }, [editor, outlineEnter, reduceMotion, sectionIds]);
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
     setEditorSuggestions(editor, suggestions);
     editor.view.dispatch(editor.state.tr.setMeta('rider-suggestions', true));
   }, [editor, suggestions]);
@@ -392,6 +421,19 @@ export function RiderDocumentSurface({
         .docs-chip-topic { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
         .docs-chip-topic:hover { background: #ede9fe; border-color: #c4b5fd; }
         .docs-editor[data-chips-disabled="true"] .docs-section-chips button { opacity: 0.45; pointer-events: none; }
+        @keyframes docs-outline-in {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: none; }
+        }
+        .docs-editor[data-outline-enter="true"] h2,
+        .docs-editor[data-outline-enter="true"] .docs-section-chips {
+          animation: docs-outline-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+          animation-delay: var(--outline-delay, 0ms);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .docs-editor[data-outline-enter="true"] h2,
+          .docs-editor[data-outline-enter="true"] .docs-section-chips { animation: none; }
+        }
       `}</style>
       {!readOnly && (
         <EditorToolbar
@@ -422,9 +464,16 @@ export function RiderDocumentSurface({
             }}
           >
             {Array.from({ length: pages }, (_, index) => (
-              <div
+              <motion.div
                 key={index}
                 className="absolute left-0 w-full bg-white border border-[#dadce0] shadow-sm"
+                initial={outlineEnter && !reduceMotion ? { opacity: 0, y: 22 } : false}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: outlineEnter && !reduceMotion ? 0.04 + index * 0.06 : 0,
+                  duration: 0.4,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
                 style={{
                   top: index * (PAGE_HEIGHT + PAGE_GAP),
                   height: PAGE_HEIGHT,
@@ -437,7 +486,7 @@ export function RiderDocumentSurface({
                 >
                   {index + 1}
                 </span>
-              </div>
+              </motion.div>
             ))}
             {editor ? (
               <EditorContent editor={editor} className="relative z-10" />
@@ -447,15 +496,17 @@ export function RiderDocumentSurface({
           </div>
         </div>
       </div>
-      {!readOnly && onAskAssistant && isBlankDocument && (
-        <EmptyDocumentComposer
-          riderType={riderType}
-          showPrompts
-          isThinking={isAssistantThinking}
-          onAsk={onAskAssistant}
-          onInsertSection={onInsertSection}
-        />
-      )}
+      <AnimatePresence>
+        {!readOnly && onAskAssistant && isBlankDocument && (
+          <EmptyDocumentComposer
+            riderType={riderType}
+            showPrompts
+            isThinking={isAssistantThinking}
+            onAsk={onAskAssistant}
+            onInsertSection={onInsertSection}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
