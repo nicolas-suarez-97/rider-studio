@@ -390,7 +390,9 @@ export function WorkspaceClient({
 
   const handleStartAddSection = () => {
     setIsAddingSection(true);
-    setMobileTab('sections');
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches) {
+      setMobileTab('sections');
+    }
   };
 
   const handleAddSectionTitle = async (title: string) => {
@@ -699,7 +701,7 @@ export function WorkspaceClient({
       {/* Contenedor de Paneles: 3 columnas simultáneas en desktop (xl:), panel único en móvil/tablet */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Panel 1: Outline y navegación de secciones */}
-        <div className={`h-full ${mobileTab === 'sections' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:w-auto shrink-0`}>
+        <div className={`h-full ${mobileTab === 'sections' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:flex-none xl:w-auto shrink-0`}>
           <SectionsNavPanel
             sections={rider.sections}
             onReorderSections={handleReorderSections}
@@ -793,7 +795,7 @@ export function WorkspaceClient({
         </div>
 
         {/* Panel 3: Copilot Asistente de IA */}
-        <div className={`h-full ${mobileTab === 'assistant' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:w-auto shrink-0`}>
+        <div className={`h-full ${mobileTab === 'assistant' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:flex-none xl:w-auto shrink-0`}>
           <AssistantChatPanel
             activeAgent={activeAgent}
             onSelectAgent={(role) => setActiveAgent(role)}
