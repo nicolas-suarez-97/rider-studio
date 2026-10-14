@@ -239,7 +239,7 @@ function AddSectionTitleForm({
                   }`}
                 >
                   <span className="truncate">{sec.title}</span>
-                  <span className="text-[10px] text-slate-400 shrink-0 ml-2">{sec.num}</span>
+                  {sec.num ? <span className="text-[10px] text-slate-400 shrink-0 ml-2">{sec.num}</span> : null}
                 </button>
               );
             })}
@@ -320,9 +320,11 @@ function SortableSection({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-black text-slate-400 shrink-0">
-            {section.num}
-          </span>
+          {section.num ? (
+            <span className="text-[10px] font-black text-slate-400 shrink-0">
+              {section.num}
+            </span>
+          ) : null}
           <h4 className="text-xs sm:text-xs font-bold text-slate-800 truncate">
             {section.title}
           </h4>
@@ -421,7 +423,9 @@ export function SectionsNavPanel({
                     className="flex-1 min-w-0 text-left cursor-pointer"
                   >
                     <span className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-slate-400 shrink-0">{section.num}</span>
+                      {section.num ? (
+                        <span className="text-[10px] font-black text-slate-400 shrink-0">{section.num}</span>
+                      ) : null}
                       <span className="text-xs font-bold text-slate-800 truncate">{section.title}</span>
                       {(commentCounts?.[section.id] ?? 0) > 0 && (
                         <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCounts?.[section.id]}</span>

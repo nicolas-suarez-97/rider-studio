@@ -1,6 +1,7 @@
 import { formatInputListPlainText, type InputListColumn, type InputListRow } from '@/core/constants/input-list';
 import { SECTION_FIELD_CONFIGS } from '@/core/constants/section-fields';
-import { RiderContentDoc, RiderContentNode, SectionItem } from '@/core/types/rider.types';
+import { formatRiderDate, riderKicker } from '@/core/constants/document-themes';
+import { RiderContentDoc, RiderContentNode, RiderType, SectionItem } from '@/core/types/rider.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 
 interface JsonNode {
@@ -164,6 +165,30 @@ export const DOCUMENT_COVER_ID = 'doc-cover';
 
 export function isDocumentIntro(id: string) {
   return id === DOCUMENT_INTRO_ID || id.startsWith(`${DOCUMENT_INTRO_ID}-`);
+}
+
+export function buildCoverContentDoc(
+  type: RiderType = 'tecnico',
+  artistName = '',
+  title = '',
+  version = 'v1.0'
+): RiderContentDoc {
+  return {
+    type: 'doc',
+    content: [
+      {
+        type: 'riderCover',
+        attrs: {
+          kicker: riderKicker(type),
+          artist: artistName.trim(),
+          title: title.trim(),
+          version: version.trim() || 'v1.0',
+          date: formatRiderDate(),
+          imageSrc: '',
+        },
+      },
+    ],
+  };
 }
 
 export function isDocumentCover(id: string) {

@@ -13,15 +13,18 @@ import { TableKit } from '@tiptap/extension-table';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { EditorToolbar } from '@/components/workspace/editor/EditorToolbar';
+import { LinkModal } from '@/components/workspace/editor/LinkModal';
 import { EmptyDocumentComposer } from '@/components/workspace/editor/EmptyDocumentComposer';
 import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/workspace/editor/document-images';
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
 import { SectionChips } from '@/components/workspace/editor/section-chips';
 import { InputList } from '@/components/workspace/editor/input-list-node';
 import { cloneInputListRows } from '@/core/constants/input-list';
+import { TextAlignExtension, FontSizeExtension } from '@/components/workspace/editor/editor-formatting';
 import {
   Columns,
   Contacts,
+  insertCoverAtStart,
   Notice,
   Requirement,
   RiderCover,
@@ -100,11 +103,8 @@ const RiderKeys = Extension.create({
       'Mod-Alt-3': () => this.editor.commands.toggleHeading({ level: 3 }),
       'Mod-Alt-0': () => this.editor.commands.setParagraph(),
       'Mod-k': () => {
-        const previous = this.editor.getAttributes('link').href as string | undefined;
-        const url = window.prompt('Enlace', previous || 'https://');
-        if (url === null) return true;
-        if (!url.trim()) return this.editor.commands.unsetLink();
-        return this.editor.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run();
+        window.dispatchEvent(new CustomEvent('rider:open-link-dialog'));
+        return true;
       },
     };
   },
@@ -220,6 +220,123 @@ export function RiderDocumentSurface({
   );
   const [pages, setPages] = useState(1);
   const [scale, setScale] = useState(1);
+  const [zoom, setZoom] = useState('100');
+  const [linkDialog, setLinkDialog] = useState<{
+    isOpen: boolean;
+    initialUrl: string;
+    initialText: string;
+    hasLink: boolean;
+    from: number;
+    to: number;
+  }>({
+    isOpen: false,
+    initialUrl: '',
+    initialText: '',
+    hasLink: false,
+    from: 0,
+    to: 0,
+  });
+
+  const openLinkDialog = useCallback(() => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const { from, to } = ed.state.selection;
+    const previous = (ed.getAttributes('link').href as string | undefined) || '';
+    const selectedText = from === to ? '' : ed.state.doc.textBetween(from, to, ' ');
+    setLinkDialog({
+      isOpen: true,
+      initialUrl: previous,
+      initialText: selectedText,
+      hasLink: Boolean(previous),
+      from,
+      to,
+    });
+  }, []);
+
+  useEffect(() => {
+    const handler = () => openLinkDialog();
+    window.addEventListener('rider:open-link-dialog', handler);
+    return () => window.removeEventListener('rider:open-link-dialog', handler);
+  }, [openLinkDialog]);
+
+  const handleApplyLink = useCallback(
+    (url: string, text?: string) => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      const trimmedUrl = url.trim();
+      if (!trimmedUrl) {
+        ed.chain().focus().unsetLink().run();
+        setLinkDialog((prev) => ({ ...prev, isOpen: false }));
+        return;
+      }
+
+      let href = trimmedUrl;
+      if (
+        !/^https?:\/\//i.test(href) &&
+        !/^mailto:/i.test(href) &&
+        !/^tel:/i.test(href) &&
+        !href.startsWith('#') &&
+        !href.startsWith('/')
+      ) {
+        href = `https://${href}`;
+      }
+
+      const { from, to, initialText } = linkDialog;
+      const customText = text?.trim();
+
+      if (customText && customText !== initialText) {
+        if (from !== to) {
+          ed.chain()
+            .focus()
+            .setTextSelection({ from, to })
+            .deleteSelection()
+            .insertContent({
+              type: 'text',
+              text: customText,
+              marks: [{ type: 'link', attrs: { href } }],
+            })
+            .run();
+        } else {
+          ed.chain()
+            .focus()
+            .insertContent({
+              type: 'text',
+              text: customText,
+              marks: [{ type: 'link', attrs: { href } }],
+            })
+            .run();
+        }
+      } else {
+        if (from === to && !initialText) {
+          ed.chain()
+            .focus()
+            .insertContent({
+              type: 'text',
+              text: href,
+              marks: [{ type: 'link', attrs: { href } }],
+            })
+            .run();
+        } else {
+          ed.chain()
+            .focus()
+            .extendMarkRange('link')
+            .setLink({ href })
+            .run();
+        }
+      }
+
+      setLinkDialog((prev) => ({ ...prev, isOpen: false }));
+    },
+    [linkDialog],
+  );
+
+  const handleRemoveLink = useCallback(() => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    ed.chain().focus().extendMarkRange('link').unsetLink().run();
+    setLinkDialog((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
   const documentHeight = pages * PAGE_HEIGHT + Math.max(0, pages - 1) * PAGE_GAP;
   const scrollerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -256,6 +373,8 @@ export function RiderDocumentSurface({
         strike: false,
         link: { openOnClick: false, autolink: true },
       }),
+      TextAlignExtension,
+      FontSizeExtension,
       SectionHeading.configure({ levels: [1, 2, 3] }),
       TableKit.configure({
         table: { resizable: false, renderWrapper: true },
@@ -455,6 +574,22 @@ export function RiderDocumentSurface({
     if (!editor || editor.isDestroyed || readOnly) return null;
     const trimmed = title.trim();
     if (!trimmed) return null;
+
+    if (trimmed.toLowerCase() === 'portada') {
+      let hasCover = false;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'riderCover') {
+          hasCover = true;
+          return false;
+        }
+      });
+      if (!hasCover) {
+        insertCoverAtStart(editor);
+        return DOCUMENT_COVER_ID;
+      }
+      return DOCUMENT_COVER_ID;
+    }
+
     const { $from } = editor.state.selection;
     const pos = $from.depth > 0 ? $from.after(1) : editor.state.doc.content.size;
     const id = newSectionId();
@@ -527,6 +662,11 @@ export function RiderDocumentSurface({
   useEffect(() => {
     const root = scrollerRef.current;
     if (!root) return;
+    if (zoom !== 'fit') {
+      const val = Number(zoom);
+      setScale(Number.isFinite(val) && val > 0 ? val / 100 : 1);
+      return;
+    }
     const update = () => {
       const gutter = root.clientWidth < 768 ? 24 : 48;
       const next = Math.min(1, (root.clientWidth - gutter) / PAGE_WIDTH);
@@ -536,7 +676,7 @@ export function RiderDocumentSurface({
     const observer = new ResizeObserver(update);
     observer.observe(root);
     return () => observer.disconnect();
-  }, []);
+  }, [zoom]);
 
   return (
     <div className={`docs-theme docs-theme-${theme} relative flex-1 h-full min-h-0 min-w-0 flex flex-col`}>
@@ -618,7 +758,10 @@ export function RiderDocumentSurface({
           editor={editor}
           theme={theme}
           onThemeChange={onThemeChange}
+          zoom={zoom}
+          onZoomChange={setZoom}
           onInsertSection={() => onInsertSection?.()}
+          onOpenLinkDialog={openLinkDialog}
           onFind={findInDocument}
           onInsertImages={insertImages}
         />
@@ -626,7 +769,7 @@ export function RiderDocumentSurface({
       <div
         ref={scrollerRef}
         data-docs-scroller
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-40 xl:pb-28"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-auto overscroll-contain pb-40 xl:pb-28"
         style={{ scrollPaddingTop: SECTION_SCROLL_PADDING }}
       >
         <div
@@ -699,6 +842,15 @@ export function RiderDocumentSurface({
           />
         )}
       </AnimatePresence>
+      <LinkModal
+        isOpen={linkDialog.isOpen}
+        initialUrl={linkDialog.initialUrl}
+        initialText={linkDialog.initialText}
+        hasLink={linkDialog.hasLink}
+        onApply={handleApplyLink}
+        onRemove={handleRemoveLink}
+        onClose={() => setLinkDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

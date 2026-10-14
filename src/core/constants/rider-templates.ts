@@ -8,6 +8,16 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
     description: 'Especificaciones acústicas, microfonía, monitores, backline, rigging y distribución de tarima.',
     sections: [
       {
+        id: 'doc-cover',
+        num: '',
+        title: 'Portada',
+        subtitle: 'Portada del rider',
+        tag: 'Portada',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'fileText',
+        content: '',
+      },
+      {
         id: 'tech-contactos',
         num: '01',
         title: 'Info General & Contactos Clave',
@@ -106,6 +116,16 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
     description: 'Requisitos de camerinos, catering, régimen de dietas, lavandería, hotel y transporte de gira.',
     sections: [
       {
+        id: 'doc-cover',
+        num: '',
+        title: 'Portada',
+        subtitle: 'Portada del rider',
+        tag: 'Portada',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'fileText',
+        content: '',
+      },
+      {
         id: 'hosp-camerinos',
         num: '01',
         title: 'Camerinos & Acondicionamiento',
@@ -173,6 +193,16 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
     badgeColor: 'bg-zinc-100 text-zinc-800 border-zinc-200',
     description: 'Protocolos de acceso, custodia de artistas, vallas Mojo de contención, pirotecnia y contingencia.',
     sections: [
+      {
+        id: 'doc-cover',
+        num: '',
+        title: 'Portada',
+        subtitle: 'Portada del rider',
+        tag: 'Portada',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'fileText',
+        content: '',
+      },
       {
         id: 'seg-perimetro',
         num: '01',

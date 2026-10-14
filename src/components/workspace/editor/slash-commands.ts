@@ -242,19 +242,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     group: 'Insertar',
     keywords: ['enlace', 'link', 'url', 'hipervinculo'],
     run: (editor, range) => {
-      const previous = editor.getAttributes('link').href as string | undefined;
-      const url = window.prompt('Enlace', previous || 'https://');
-      if (url === null) return;
-      const href = url.trim();
-      if (!href) {
-        deleteThen(editor, range).run();
-        return;
-      }
-      deleteThen(editor, range).insertContent({
-        type: 'text',
-        text: href,
-        marks: [{ type: 'link', attrs: { href } }],
-      }).run();
+      deleteThen(editor, range).run();
+      window.dispatchEvent(new CustomEvent('rider:open-link-dialog'));
     },
   },
   {

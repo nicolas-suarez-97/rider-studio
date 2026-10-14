@@ -13,7 +13,7 @@ import {
 import { defaultDocumentTheme, isRiderDocumentTheme } from '../constants/document-themes';
 import { coverMedia, parseRiderMedia, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { inputListDoc } from '../constants/input-list';
-import { isDocumentIntro } from '../editor/content-doc';
+import { isDocumentIntro, isDocumentCover, DOCUMENT_COVER_ID, buildCoverContentDoc } from '../editor/content-doc';
 import { RIDER_DATA } from '../constants/rider-templates';
 import { DEFAULT_STAGE_PLOT } from '../constants/stage-plot';
 import { ChannelInput } from './ChannelInput';
@@ -71,7 +71,18 @@ export class Rider {
     this.status = params.status || 'in_progress';
     this.sections = Array.isArray(params.sections)
       ? JSON.parse(JSON.stringify(params.sections))
-      : (template?.sections || []).map(s => ({ ...s, content: '' }));
+      : (template?.sections || []).map(s => {
+          if (isDocumentCover(s.id)) {
+            return {
+              ...s,
+              num: '',
+              content: '',
+              contentDoc: buildCoverContentDoc(this.type, this.artistName, this.title, this.version),
+              pageBreakBefore: false,
+            };
+          }
+          return { ...s, content: '' };
+        });
     
     this.channels = (params.channels || []).map((c, idx) => 
       c instanceof ChannelInput ? c : ChannelInput.fromData(c, idx)
@@ -479,12 +490,23 @@ export class Rider {
 
   /**
    * Reenumera secuencialmente las secciones del módulo activo (01, 02, 03...)
+   * La portada no lleva numeración numérica.
    */
   public renumberSections(): void {
-    this.sections = this.sections.map((sec, idx) => ({
-      ...sec,
-      num: String(idx + 1).padStart(2, '0')
-    }));
+    let count = 0;
+    this.sections = this.sections.map((sec) => {
+      if (isDocumentCover(sec.id)) {
+        return {
+          ...sec,
+          num: '',
+        };
+      }
+      count += 1;
+      return {
+        ...sec,
+        num: String(count).padStart(2, '0'),
+      };
+    });
   }
 
   /**
@@ -492,10 +514,21 @@ export class Rider {
    */
   public reorderSections(newSections: SectionItem[]): void {
     const byId = new Map(this.sections.map((sec) => [sec.id, sec]));
-    this.sections = newSections.map((sec, idx) => ({
-      ...(byId.get(sec.id) || sec),
-      num: String(idx + 1).padStart(2, '0')
-    }));
+    let count = 0;
+    this.sections = newSections.map((sec) => {
+      const full = byId.get(sec.id) || sec;
+      if (isDocumentCover(sec.id)) {
+        return {
+          ...full,
+          num: '',
+        };
+      }
+      count += 1;
+      return {
+        ...full,
+        num: String(count).padStart(2, '0'),
+      };
+    });
     this.syncCurrentModule();
   }
 
@@ -508,21 +541,28 @@ export class Rider {
   ): void {
     const byId = new Map(this.sections.map((sec) => [sec.id, sec]));
     const baseTemplates = Object.values(RIDER_DATA).flatMap((d) => d.sections);
-    this.sections = patches.map((patch, idx) => {
+    let count = 0;
+    this.sections = patches.map((patch) => {
       const current = byId.get(patch.id);
-      const baseMatch = !current
+      const isCover = isDocumentCover(patch.id);
+      const baseMatch = !current && !isCover
         ? baseTemplates.find(
             (b) => b.title.trim().toLowerCase() === (patch.title || '').trim().toLowerCase()
           )
         : null;
+      let num = '';
+      if (!isCover) {
+        count += 1;
+        num = String(count).padStart(2, '0');
+      }
       return {
         id: patch.id,
-        num: String(idx + 1).padStart(2, '0'),
-        title: patch.title || current?.title || 'Sección',
+        num,
+        title: isCover ? 'Portada' : (patch.title || current?.title || 'Sección'),
         subtitle: current?.subtitle || baseMatch?.subtitle || '',
-        tag: current?.tag || baseMatch?.tag || 'Custom',
-        tagColor: current?.tagColor || baseMatch?.tagColor || 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
-        iconName: current?.iconName || baseMatch?.iconName || 'fileText',
+        tag: isCover ? 'Portada' : (current?.tag || baseMatch?.tag || 'Custom'),
+        tagColor: isCover ? 'bg-zinc-100 text-zinc-600 border border-zinc-200/60' : (current?.tagColor || baseMatch?.tagColor || 'bg-zinc-100 text-zinc-600 border border-zinc-200/60'),
+        iconName: isCover ? 'fileText' : (current?.iconName || baseMatch?.iconName || 'fileText'),
         content: patch.content,
         contentDoc: patch.contentDoc,
         pageBreakBefore: patch.pageBreakBefore ?? current?.pageBreakBefore ?? false,
@@ -535,12 +575,40 @@ export class Rider {
 
   public applyTemplateOutline(): void {
     const template = RIDER_DATA[this.type];
-    this.sections = (template?.sections || []).map((section, index) => ({
-      ...section,
+    const rawSections = template?.sections || [];
+    const hasCover = rawSections.some((s) => isDocumentCover(s.id));
+    const coverSection: SectionItem = {
+      id: DOCUMENT_COVER_ID,
+      num: '',
+      title: 'Portada',
+      subtitle: 'Portada del rider',
+      tag: 'Portada',
+      tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+      iconName: 'fileText',
       content: '',
-      contentDoc: section.id === 'tech-inputlist' ? inputListDoc() : undefined,
-      pageBreakBefore: index > 0,
-    }));
+      contentDoc: buildCoverContentDoc(this.type, this.artistName, this.title, this.version),
+      pageBreakBefore: false,
+    };
+
+    const sectionsToProcess = hasCover ? rawSections : [coverSection, ...rawSections];
+
+    this.sections = sectionsToProcess.map((section, index) => {
+      if (isDocumentCover(section.id)) {
+        return {
+          ...section,
+          num: '',
+          content: '',
+          contentDoc: buildCoverContentDoc(this.type, this.artistName, this.title, this.version),
+          pageBreakBefore: false,
+        };
+      }
+      return {
+        ...section,
+        content: '',
+        contentDoc: section.id === 'tech-inputlist' ? inputListDoc() : undefined,
+        pageBreakBefore: index > 0,
+      };
+    });
     this.completedSectionIds = [];
     this.renumberSections();
     this.syncCurrentModule();
