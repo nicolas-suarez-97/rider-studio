@@ -443,14 +443,23 @@ export function RiderDocumentSurface({
         .docs-input-list-head { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: #f8f9fa; border-bottom: 1px solid #dadce0; }
         .docs-input-list-title { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #334155; }
         .docs-input-list-count { font-size: 9px; font-weight: 800; color: #6d28d9; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 999px; padding: 1px 7px; }
-        .docs-input-list-add { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; font-size: 10px; font-weight: 700; color: #334155; cursor: pointer; }
-        .docs-input-list-scroll { overflow: auto; max-height: 640px; }
-        .docs-input-list table { width: 100%; border-collapse: collapse; table-layout: auto; font-size: 9.5pt; }
+        .docs-input-list-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+        .docs-input-list-add { position: relative; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; font-size: 10px; font-weight: 700; color: #334155; cursor: pointer; }
+        .docs-input-list-add select { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 12px; }
+        .docs-input-list-scroll { overflow-x: auto; overflow-y: auto; max-height: 640px; -webkit-overflow-scrolling: touch; }
+        .docs-input-list table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; table-layout: auto; font-size: 9.5pt; }
         .docs-input-list th { text-align: left; font-size: 8px; letter-spacing: 0.04em; text-transform: uppercase; color: #94a3b8; font-weight: 800; padding: 6px 6px; border-bottom: 1px solid #e2e8f0; background: #fafafa; }
         .docs-input-list td { padding: 3px 4px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-        .docs-input-list .col-ch { width: 32px; text-align: center; font-weight: 800; color: #94a3b8; }
-        .docs-input-list .col-48 { width: 44px; text-align: center; }
-        .docs-input-list .col-actions { width: 28px; }
+        .docs-input-list .col-ch { position: sticky; left: 0; z-index: 2; width: 36px; min-width: 36px; text-align: center; font-weight: 800; color: #94a3b8; background: #fafafa; box-shadow: 6px 0 8px -6px rgba(15, 23, 42, 0.25); }
+        .docs-input-list th.col-ch { z-index: 3; }
+        .docs-input-list td.col-ch { background: #fff; }
+        .docs-input-list .col-data { min-width: 132px; }
+        .docs-input-list .col-48 { min-width: 64px; text-align: center; }
+        .docs-input-list .col-actions { width: 28px; min-width: 28px; position: sticky; right: 0; z-index: 2; background: #fff; box-shadow: -6px 0 8px -6px rgba(15, 23, 42, 0.18); }
+        .docs-input-list th.col-actions { z-index: 3; background: #fafafa; }
+        .docs-input-list-colhead { display: flex; align-items: center; gap: 2px; min-width: 0; }
+        .docs-input-list-colhead input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #94a3b8; padding: 0 2px; outline: none; }
+        .docs-input-list-colhead input:focus { color: #5b21b6; box-shadow: inset 0 -1px 0 #c4b5fd; }
         .docs-input-list td input, .docs-combo input { width: 100%; border: 0; background: transparent; font: inherit; color: #1e293b; outline: none; padding: 4px 6px; border-radius: 6px; }
         .docs-input-list td input:focus, .docs-combo input:focus { background: #fff; box-shadow: inset 0 0 0 1px #c4b5fd; }
         .docs-input-list-empty { text-align: center; color: #94a3b8; padding: 16px 8px !important; }

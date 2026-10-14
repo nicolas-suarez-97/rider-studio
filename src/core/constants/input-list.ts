@@ -1,13 +1,24 @@
 import type { RiderContentDoc, RiderContentNode } from '@/core/types/rider.types';
 
+export type InputListColumnKind = 'text' | 'select' | 'toggle';
+export type InputListOptionPreset = 'instruments' | 'positions';
+
+export type InputListColumn = {
+  id: string;
+  label: string;
+  kind: InputListColumnKind;
+  options?: InputListOptionPreset;
+};
+
 export type InputListRow = {
   id: string;
   ch: string;
-  instrument: string;
-  position: string;
-  mic: string;
-  stand: string;
-  phantom: boolean;
+  cells: Record<string, string | boolean>;
+  instrument?: string;
+  position?: string;
+  mic?: string;
+  stand?: string;
+  phantom?: boolean;
 };
 
 export const INPUT_LIST_INSTRUMENTS = [
@@ -55,56 +66,126 @@ export const INPUT_LIST_POSITIONS = [
   'Monitor World',
 ];
 
-function rowId() {
+export const DEFAULT_INPUT_LIST_COLUMNS: InputListColumn[] = [
+  { id: 'instrument', label: 'Instrumento', kind: 'select', options: 'instruments' },
+  { id: 'position', label: 'Posición', kind: 'select', options: 'positions' },
+  { id: 'mic', label: 'Micrófono', kind: 'text' },
+  { id: 'stand', label: 'Atril', kind: 'text' },
+  { id: 'phantom', label: '+48V', kind: 'toggle' },
+];
+
+function uid(prefix: string) {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `ch-${crypto.randomUUID()}`;
+    return `${prefix}-${crypto.randomUUID()}`;
   }
-  return `ch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function columnOptions(column: InputListColumn): string[] {
+  if (column.options === 'instruments') return INPUT_LIST_INSTRUMENTS;
+  if (column.options === 'positions') return INPUT_LIST_POSITIONS;
+  return [];
+}
+
+export function cloneInputListColumns(columns: InputListColumn[] = DEFAULT_INPUT_LIST_COLUMNS): InputListColumn[] {
+  return columns.map((column) => ({ ...column }));
+}
+
+export function createInputListColumn(kind: InputListColumnKind | InputListOptionPreset | 'notes'): InputListColumn {
+  if (kind === 'instruments' || kind === 'select') {
+    return { id: uid('col'), label: 'Instrumento', kind: 'select', options: 'instruments' };
+  }
+  if (kind === 'positions') {
+    return { id: uid('col'), label: 'Posición', kind: 'select', options: 'positions' };
+  }
+  if (kind === 'toggle') {
+    return { id: uid('col'), label: '+48V', kind: 'toggle' };
+  }
+  if (kind === 'notes') {
+    return { id: uid('col'), label: 'Notas', kind: 'text' };
+  }
+  return { id: uid('col'), label: 'Columna', kind: 'text' };
+}
+
+function legacyCells(raw: Partial<InputListRow>): Record<string, string | boolean> {
+  const cells: Record<string, string | boolean> = { ...(raw.cells || {}) };
+  if (typeof raw.instrument === 'string' && cells.instrument == null) cells.instrument = raw.instrument;
+  if (typeof raw.position === 'string' && cells.position == null) cells.position = raw.position;
+  if (typeof raw.mic === 'string' && cells.mic == null) cells.mic = raw.mic;
+  if (typeof raw.stand === 'string' && cells.stand == null) cells.stand = raw.stand;
+  if (typeof raw.phantom === 'boolean' && cells.phantom == null) cells.phantom = raw.phantom;
+  return cells;
 }
 
 export function createInputListRow(index: number, partial?: Partial<InputListRow>): InputListRow {
   return {
-    id: partial?.id || rowId(),
+    id: partial?.id || uid('ch'),
     ch: partial?.ch || String(index + 1).padStart(2, '0'),
-    instrument: partial?.instrument || '',
-    position: partial?.position || '',
-    mic: partial?.mic || '',
-    stand: partial?.stand || '',
-    phantom: partial?.phantom ?? false,
+    cells: legacyCells(partial || {}),
   };
+}
+
+function sampleCells(
+  instrument: string,
+  position: string,
+  mic: string,
+  stand: string,
+  phantom: boolean,
+): Partial<InputListRow> {
+  return { cells: { instrument, position, mic, stand, phantom } };
 }
 
 /** Ejemplo típico de banda pop/rock pequeña para arrancar el patch. */
 export const SAMPLE_INPUT_LIST_ROWS: InputListRow[] = [
-  createInputListRow(0, { instrument: 'Kick In', position: 'Drum Riser', mic: 'Shure Beta 52A', stand: 'Pie corto', phantom: false }),
-  createInputListRow(1, { instrument: 'Snare Top', position: 'Drum Riser', mic: 'Shure SM57', stand: 'Clip', phantom: false }),
-  createInputListRow(2, { instrument: 'OH L', position: 'Drum Riser', mic: 'Neumann KM184', stand: 'Jirafa', phantom: true }),
-  createInputListRow(3, { instrument: 'OH R', position: 'Drum Riser', mic: 'Neumann KM184', stand: 'Jirafa', phantom: true }),
-  createInputListRow(4, { instrument: 'Bass DI', position: 'Stage Right', mic: 'Radial J48', stand: '—', phantom: true }),
-  createInputListRow(5, { instrument: 'Guitar Amp', position: 'Stage Left', mic: 'Sennheiser e906', stand: 'Clip', phantom: false }),
-  createInputListRow(6, { instrument: 'Keys L', position: 'Stage Left', mic: 'Radial JDI', stand: '—', phantom: false }),
-  createInputListRow(7, { instrument: 'Keys R', position: 'Stage Left', mic: 'Radial JDI', stand: '—', phantom: false }),
-  createInputListRow(8, { instrument: 'Lead Vocal', position: 'Downstage Center', mic: 'Shure SM58', stand: 'Jirafa', phantom: false }),
-  createInputListRow(9, { instrument: 'Backing Vocal', position: 'Downstage Left', mic: 'Shure SM58', stand: 'Jirafa', phantom: false }),
+  createInputListRow(0, sampleCells('Kick In', 'Drum Riser', 'Shure Beta 52A', 'Pie corto', false)),
+  createInputListRow(1, sampleCells('Snare Top', 'Drum Riser', 'Shure SM57', 'Clip', false)),
+  createInputListRow(2, sampleCells('OH L', 'Drum Riser', 'Neumann KM184', 'Jirafa', true)),
+  createInputListRow(3, sampleCells('OH R', 'Drum Riser', 'Neumann KM184', 'Jirafa', true)),
+  createInputListRow(4, sampleCells('Bass DI', 'Stage Right', 'Radial J48', '—', true)),
+  createInputListRow(5, sampleCells('Guitar Amp', 'Stage Left', 'Sennheiser e906', 'Clip', false)),
+  createInputListRow(6, sampleCells('Keys L', 'Stage Left', 'Radial JDI', '—', false)),
+  createInputListRow(7, sampleCells('Keys R', 'Stage Left', 'Radial JDI', '—', false)),
+  createInputListRow(8, sampleCells('Lead Vocal', 'Downstage Center', 'Shure SM58', 'Jirafa', false)),
+  createInputListRow(9, sampleCells('Backing Vocal', 'Downstage Left', 'Shure SM58', 'Jirafa', false)),
 ];
 
 export function cloneInputListRows(rows: InputListRow[] = SAMPLE_INPUT_LIST_ROWS): InputListRow[] {
   return rows.map((row, index) => createInputListRow(index, { ...row, id: undefined }));
 }
 
-export function inputListNode(rows: InputListRow[] = SAMPLE_INPUT_LIST_ROWS): RiderContentNode {
-  return { type: 'inputList', attrs: { rows: cloneInputListRows(rows) } };
+export function inputListNode(
+  rows: InputListRow[] = SAMPLE_INPUT_LIST_ROWS,
+  columns: InputListColumn[] = DEFAULT_INPUT_LIST_COLUMNS,
+): RiderContentNode {
+  return {
+    type: 'inputList',
+    attrs: {
+      rows: cloneInputListRows(rows),
+      columns: cloneInputListColumns(columns),
+    },
+  };
 }
 
-export function inputListDoc(rows: InputListRow[] = SAMPLE_INPUT_LIST_ROWS): RiderContentDoc {
-  return { type: 'doc', content: [inputListNode(rows)] };
+export function inputListDoc(
+  rows: InputListRow[] = SAMPLE_INPUT_LIST_ROWS,
+  columns: InputListColumn[] = DEFAULT_INPUT_LIST_COLUMNS,
+): RiderContentDoc {
+  return { type: 'doc', content: [inputListNode(rows, columns)] };
 }
 
-export function formatInputListPlainText(rows: InputListRow[]): string {
+export function formatInputListPlainText(
+  rows: InputListRow[],
+  columns: InputListColumn[] = DEFAULT_INPUT_LIST_COLUMNS,
+): string {
   return rows
     .map((row) => {
-      const phantom = row.phantom ? '+48V' : '';
-      return [row.ch, row.instrument, row.position, row.mic, row.stand, phantom].filter(Boolean).join(' | ');
+      const data = legacyCells(row);
+      const cells = columns.map((column) => {
+        const value = data[column.id];
+        if (column.kind === 'toggle') return value === true ? column.label : '';
+        return typeof value === 'string' ? value : '';
+      });
+      return [row.ch, ...cells].filter(Boolean).join(' | ');
     })
     .join('\n');
 }

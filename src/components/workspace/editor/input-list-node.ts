@@ -1,12 +1,18 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
-import { cloneInputListRows, SAMPLE_INPUT_LIST_ROWS, type InputListRow } from '@/core/constants/input-list';
+import {
+  cloneInputListColumns,
+  cloneInputListRows,
+  SAMPLE_INPUT_LIST_ROWS,
+  type InputListColumn,
+  type InputListRow,
+} from '@/core/constants/input-list';
 import { InputListBlock } from '@/components/workspace/editor/InputListBlock';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     inputList: {
-      insertInputList: (rows?: InputListRow[]) => ReturnType;
+      insertInputList: (rows?: InputListRow[], columns?: InputListColumn[]) => ReturnType;
     };
   }
 }
@@ -34,6 +40,21 @@ export const InputList = Node.create({
           'data-rows': encodeURIComponent(JSON.stringify(attributes.rows || [])),
         }),
       },
+      columns: {
+        default: cloneInputListColumns(),
+        parseHTML: (element) => {
+          const raw = element.getAttribute('data-columns');
+          if (!raw) return cloneInputListColumns();
+          try {
+            return JSON.parse(decodeURIComponent(raw)) as InputListColumn[];
+          } catch {
+            return cloneInputListColumns();
+          }
+        },
+        renderHTML: (attributes) => ({
+          'data-columns': encodeURIComponent(JSON.stringify(attributes.columns || [])),
+        }),
+      },
     };
   },
   parseHTML() {
@@ -51,11 +72,14 @@ export const InputList = Node.create({
   addCommands() {
     return {
       insertInputList:
-        (rows) =>
+        (rows, columns) =>
         ({ commands }) =>
           commands.insertContent({
             type: this.name,
-            attrs: { rows: cloneInputListRows(rows ?? SAMPLE_INPUT_LIST_ROWS) },
+            attrs: {
+              rows: cloneInputListRows(rows ?? SAMPLE_INPUT_LIST_ROWS),
+              columns: cloneInputListColumns(columns),
+            },
           }),
     };
   },

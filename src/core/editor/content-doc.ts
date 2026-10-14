@@ -1,4 +1,4 @@
-import { formatInputListPlainText, type InputListRow } from '@/core/constants/input-list';
+import { formatInputListPlainText, type InputListColumn, type InputListRow } from '@/core/constants/input-list';
 import { SECTION_FIELD_CONFIGS } from '@/core/constants/section-fields';
 import { RiderContentDoc, RiderContentNode, SectionItem } from '@/core/types/rider.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
@@ -6,7 +6,7 @@ import { DocumentSuggestion } from '@/core/types/suggestion.types';
 interface JsonNode {
   type?: string;
   text?: string;
-  attrs?: { id?: unknown; level?: unknown; src?: unknown; alt?: unknown; title?: unknown; width?: unknown; height?: unknown; checked?: unknown; rows?: unknown };
+  attrs?: { id?: unknown; level?: unknown; src?: unknown; alt?: unknown; title?: unknown; width?: unknown; height?: unknown; checked?: unknown; rows?: unknown; columns?: unknown };
   content?: JsonNode[];
 }
 
@@ -81,7 +81,8 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
     }
     if (node.type === 'inputList') {
       const rows = Array.isArray(node.attrs?.rows) ? (node.attrs.rows as InputListRow[]) : [];
-      const text = formatInputListPlainText(rows);
+      const columns = Array.isArray(node.attrs?.columns) ? (node.attrs.columns as InputListColumn[]) : undefined;
+      const text = formatInputListPlainText(rows, columns);
       if (text) lines.push(text);
       return;
     }
