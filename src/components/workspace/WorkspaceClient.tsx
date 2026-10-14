@@ -18,7 +18,7 @@ import { RiderType, SectionItem, ChannelData, ExportScope, StagePlotConfig } fro
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
-import { buildGapSuggestions, type SectionDocumentPatch } from '@/core/editor/content-doc';
+import { buildGapSuggestions, isDocumentIntro, type SectionDocumentPatch } from '@/core/editor/content-doc';
 import { materializeSuggestions } from '@/core/editor/suggestions';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
 import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
@@ -654,7 +654,9 @@ export function WorkspaceClient({
     }
   };
 
-  const isBlankDocument = rider.sections.length === 0 && !rider.artistName.trim();
+  const outlineSections = rider.sections.filter((section) => !isDocumentIntro(section.id));
+  const introHasContent = rider.sections.some((section) => isDocumentIntro(section.id) && Boolean((section.content || '').trim()));
+  const isBlankDocument = outlineSections.length === 0 && !rider.artistName.trim() && !introHasContent;
 
   const handleAskFromDocument = (text: string, sectionId?: string) => {
     if (text === '__outline__') {
@@ -712,7 +714,7 @@ export function WorkspaceClient({
         {/* Panel 1: Outline y navegación de secciones */}
         <div className={`h-full ${mobileTab === 'sections' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:flex-none xl:w-auto shrink-0`}>
           <SectionsNavPanel
-            sections={rider.sections}
+            sections={outlineSections}
             onReorderSections={handleReorderSections}
             activeSectionId={activeSectionId}
             onSelectSection={(id) => {

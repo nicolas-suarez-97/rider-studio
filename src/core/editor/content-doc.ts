@@ -110,13 +110,26 @@ export function headingIdsFromDoc(doc: RiderContentDoc | JsonNode): string[] {
   return ids;
 }
 
+export const DOCUMENT_INTRO_ID = 'doc-intro';
+
+export function isDocumentIntro(id: string) {
+  return id === DOCUMENT_INTRO_ID;
+}
+
 export function sectionStartsOnNewPage(section: SectionItem, index: number): boolean {
   if (typeof section.pageBreakBefore === 'boolean') return section.pageBreakBefore;
   if (index === 0) return false;
-  if (section.id.startsWith('custom-') || section.id.startsWith('section-') || section.id === 'doc-intro') {
+  if (section.id.startsWith('custom-') || section.id.startsWith('section-') || isDocumentIntro(section.id)) {
     return false;
   }
   return true;
+}
+
+function sectionBody(section: SectionItem): RiderContentNode[] {
+  return (sectionToDoc(section).content || []).filter((node) => {
+    if (node.type !== 'heading') return true;
+    return node.attrs?.id !== section.id;
+  });
 }
 
 export function riderDocumentFromSections(
@@ -126,14 +139,16 @@ export function riderDocumentFromSections(
   const content: RiderContentNode[] = [];
   const artist = header?.artistName?.trim();
   const title = header?.title?.trim();
-  if (sections.length === 0 && !artist) {
+  const outline = sections.filter((section) => !isDocumentIntro(section.id));
+  const intro = sections.find((section) => isDocumentIntro(section.id));
+  if (outline.length === 0 && !artist && !intro) {
     return { type: 'doc', content: [{ type: 'paragraph' }] };
   }
-  if (artist || title) {
+  if (artist) {
     content.push({
       type: 'heading',
       attrs: { level: 1 },
-      content: [{ type: 'text', text: artist || 'Documento' }],
+      content: [{ type: 'text', text: artist }],
     });
     if (title) {
       content.push({
@@ -143,7 +158,13 @@ export function riderDocumentFromSections(
     }
   }
 
-  sections.forEach((section, index) => {
+  if (intro) {
+    const body = sectionBody(intro);
+    if (body.length === 0) content.push({ type: 'paragraph' });
+    else content.push(...body);
+  }
+
+  outline.forEach((section, index) => {
     content.push({
       type: 'heading',
       attrs: {
@@ -153,10 +174,7 @@ export function riderDocumentFromSections(
       },
       content: [{ type: 'text', text: section.title || 'Sección' }],
     });
-    const body = (sectionToDoc(section).content || []).filter((node) => {
-      if (node.type !== 'heading') return true;
-      return node.attrs?.id !== section.id;
-    });
+    const body = sectionBody(section);
     if (body.length === 0) content.push({ type: 'paragraph' });
     else content.push(...body);
   });
@@ -215,14 +233,14 @@ export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: stri
       continue;
     }
     if (!current) {
-      current = { id: 'doc-intro', title: 'Documento', nodes: [] };
+      current = { id: DOCUMENT_INTRO_ID, title: '', nodes: [] };
     }
     current.nodes.push(node);
   }
   flush();
   if (
     patches.length === 1
-    && patches[0].id === 'doc-intro'
+    && patches[0].id === DOCUMENT_INTRO_ID
     && !(patches[0].content || '').trim()
   ) {
     return [];
@@ -239,6 +257,7 @@ export function buildGapSuggestions(
   const config = SECTION_FIELD_CONFIGS[section.id];
   const suggestions: DocumentSuggestion[] = [];
 
+  if (isDocumentIntro(section.id)) return suggestions;
   if (!text.trim()) {
     const id = `gap:${section.id}:empty`;
     if (dismissed.has(id)) return suggestions;

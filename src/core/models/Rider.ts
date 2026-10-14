@@ -11,6 +11,7 @@ import {
 } from '../types/rider.types';
 import { coverMedia, parseRiderMedia, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { inputListDoc } from '../constants/input-list';
+import { isDocumentIntro } from '../editor/content-doc';
 import { RIDER_DATA } from '../constants/rider-templates';
 import { DEFAULT_STAGE_PLOT } from '../constants/stage-plot';
 import { ChannelInput } from './ChannelInput';
@@ -222,9 +223,15 @@ export class Rider {
   /**
    * Porcentaje de completado de las secciones del rider activo
    */
+  private outlineSections() {
+    return this.sections.filter((section) => !isDocumentIntro(section.id));
+  }
+
   public getProgress(): number {
-    if (this.sections.length === 0) return 0;
-    return Math.round((this.completedSectionIds.length / this.sections.length) * 100);
+    const total = this.outlineSections().length;
+    if (total === 0) return 0;
+    const completed = this.completedSectionIds.filter((id) => !isDocumentIntro(id)).length;
+    return Math.round((completed / total) * 100);
   }
 
   /**
@@ -239,11 +246,12 @@ export class Rider {
       let completedCount = 0;
 
       if (this.type === t) {
-        sectionsCount = this.sections.length;
-        completedCount = this.completedSectionIds.length;
+        sectionsCount = this.outlineSections().length;
+        completedCount = this.completedSectionIds.filter((id) => !isDocumentIntro(id)).length;
       } else {
-        sectionsCount = this.modules[t]?.sections?.length || 0;
-        completedCount = this.modules[t]?.completedSectionIds?.length || 0;
+        const moduleSections = (this.modules[t]?.sections || []).filter((section) => !isDocumentIntro(section.id));
+        sectionsCount = moduleSections.length;
+        completedCount = (this.modules[t]?.completedSectionIds || []).filter((id) => !isDocumentIntro(id)).length;
       }
 
       result[t] = {

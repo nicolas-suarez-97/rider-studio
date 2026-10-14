@@ -7,6 +7,7 @@ import { Icon } from '@/components/common/Icon';
 import { SectionsNavPanel } from '@/components/workspace/SectionsNavPanel';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
 import { scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
+import { isDocumentIntro } from '@/core/editor/content-doc';
 import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { Rider } from '@/core/models/Rider';
 import { AgentRole } from '@/core/types/agent.types';
@@ -40,10 +41,11 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
   const [commentAuthorName, setCommentAuthorName] = useState('');
 
   const readableTypes = rider.getReadableTypes();
-  const readCount = rider.sections.filter((section) => readSectionIds.includes(section.id)).length;
-  const readPercent = rider.sections.length === 0
+  const outlineSections = rider.sections.filter((section) => !isDocumentIntro(section.id));
+  const readCount = outlineSections.filter((section) => readSectionIds.includes(section.id)).length;
+  const readPercent = outlineSections.length === 0
     ? 0
-    : Math.round((readCount / rider.sections.length) * 100);
+    : Math.round((readCount / outlineSections.length) * 100);
 
   const toggleReadSection = (id: string) => {
     setReadSectionIds((current) => (
@@ -172,7 +174,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
         onSelectRiderType={readableTypes.length > 1 ? handleSelectRiderType : undefined}
         visibleModuleTypes={readableTypes}
         completedCount={readCount}
-        totalCount={rider.sections.length}
+        totalCount={outlineSections.length}
         progressPercent={readPercent}
         contraRiderHref={rider.id ? `/promotor/shows/${rider.id}/contra-rider` : undefined}
       />
@@ -181,7 +183,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
         <div className={`h-full ${mobileTab === 'sections' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:w-auto shrink-0`}>
           <SectionsNavPanel
             readOnly
-            sections={rider.sections}
+            sections={outlineSections}
             onReorderSections={() => {}}
             activeSectionId={activeSectionId}
             onSelectSection={handleSelectSection}

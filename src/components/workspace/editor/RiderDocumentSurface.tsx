@@ -342,8 +342,17 @@ export function RiderDocumentSurface({
     const currentIds = headingIdsFromDoc(editor.getJSON());
     const nextIds = headingIdsFromDoc(nextDoc);
     if (currentIds.join('|') === nextIds.join('|')) return;
-    editor.commands.setContent(nextDoc as JSONContent, { emitUpdate: false });
-    setPages(pageCountFromEditor(editor.view.dom));
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled || editor.isDestroyed) return;
+      editor.commands.setContent(nextDoc as JSONContent, { emitUpdate: false });
+      setPages(pageCountFromEditor(editor.view.dom));
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [editor, documentSignature, artistName, riderTitle, sections]);
 
   useEffect(() => {
