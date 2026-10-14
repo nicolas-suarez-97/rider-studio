@@ -273,6 +273,18 @@ export function WorkspaceClient({
     return (await handleSaveRider(current, { silent: true })) ?? null;
   };
 
+  const handleUploadDocumentImage = async (file: File): Promise<string | null> => {
+    const current = riderRef.current;
+    if (!isPersistedRiderId(current.id)) return null;
+    try {
+      const uploaded = await uploadRiderImage(file, 'gallery', current.id);
+      return uploaded.url;
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'No se pudo subir la imagen');
+      throw err;
+    }
+  };
+
   const handleAddMedia = async (file: File) => {
     try {
       const base = await riderWithId();
@@ -708,6 +720,8 @@ export function WorkspaceClient({
             onDeleteSection={handleDeleteSection}
             onReorderSections={handleReorderSections}
             onInsertSection={() => setShowAddSectionModal(true)}
+            onUploadDocumentImage={handleUploadDocumentImage}
+            onImageError={showToast}
             onDocumentChange={handleDocumentChange}
             onSelectionChange={(sectionId, text) => {
               selectionRef.current = { sectionId, text };

@@ -5,7 +5,7 @@ import { DocumentSuggestion } from '@/core/types/suggestion.types';
 interface JsonNode {
   type?: string;
   text?: string;
-  attrs?: { id?: unknown; level?: unknown };
+  attrs?: { id?: unknown; level?: unknown; src?: unknown; alt?: unknown; title?: unknown; width?: unknown; height?: unknown };
   content?: JsonNode[];
 }
 
@@ -34,8 +34,16 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
   const lines: string[] = [];
 
   const visit = (node: JsonNode) => {
+    if (node.type === 'image') {
+      const alt = typeof node.attrs?.alt === 'string' ? node.attrs.alt.trim() : '';
+      lines.push(alt ? `[imagen: ${alt}]` : '[imagen]');
+      return;
+    }
     if (node.type === 'paragraph' || node.type === 'heading') {
-      lines.push(inlineText(node));
+      const text = inlineText(node);
+      if (text) lines.push(text);
+      const images = (node.content || []).filter((child) => child.type === 'image');
+      for (const image of images) visit(image);
       return;
     }
     if (node.type === 'bulletList') {

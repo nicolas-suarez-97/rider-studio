@@ -187,7 +187,12 @@ export const Pagination = Extension.create({
 
           const watchChildren = () => {
             if (!observer) return;
-            for (const child of Array.from(view.dom.children)) observer.observe(child);
+            for (const child of Array.from(view.dom.children)) {
+              observer.observe(child);
+              if (child instanceof HTMLElement) {
+                for (const img of child.querySelectorAll('img')) observer.observe(img);
+              }
+            }
           };
 
           const retry = () => {
@@ -205,13 +210,15 @@ export const Pagination = Extension.create({
             watchChildren();
             schedule();
           });
-          mutations.observe(view.dom, { childList: true });
+          mutations.observe(view.dom, { childList: true, subtree: true });
+          view.dom.addEventListener('load', schedule, true);
 
           return {
             update: schedule,
             destroy() {
               cancelAnimationFrame(measureFrame);
               cancelAnimationFrame(retryFrame);
+              view.dom.removeEventListener('load', schedule, true);
               observer?.disconnect();
               mutations?.disconnect();
             },

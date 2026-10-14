@@ -110,6 +110,15 @@ body {
   color: #1155cc;
   text-decoration: underline;
 }
+.docs-editor img,
+.docs-editor .docs-image,
+.docs-canvas .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  max-height: 28rem;
+  display: block;
+  object-fit: contain;
+}
 .docs-canvas .ProseMirror p.is-editor-empty:first-child::before {
   color: #9aa0a6;
   content: attr(data-placeholder);

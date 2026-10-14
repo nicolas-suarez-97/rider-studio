@@ -26,6 +26,8 @@ interface DocumentEditorPanelProps {
   suggestions?: DocumentSuggestion[];
   onRegisterBridge?: (bridge: EditorBridge) => void;
   onInsertSection?: () => void;
+  onUploadDocumentImage?: (file: File) => Promise<string | null | undefined>;
+  onImageError?: (message: string) => void;
   onUpdateChannel?: (chId: string, field: keyof ChannelData, val: string | boolean) => void;
   onAddChannel?: () => void;
   onDeleteChannel?: (chId: string) => void;
@@ -64,6 +66,8 @@ export function DocumentEditorPanel({
   suggestions = [],
   onRegisterBridge,
   onInsertSection,
+  onUploadDocumentImage,
+  onImageError,
   readOnly = false,
 }: DocumentEditorPanelProps) {
   return (
@@ -80,6 +84,8 @@ export function DocumentEditorPanel({
         onActivateSection={onActivateSection}
         onSelectionChange={onSelectionChange}
         onRegisterBridge={onRegisterBridge}
+        onUploadDocumentImage={onUploadDocumentImage}
+        onImageError={onImageError}
       />
     </main>
   );

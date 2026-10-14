@@ -9,10 +9,12 @@ interface EditorToolbarProps {
   editor: Editor | null;
   onInsertSection: () => void;
   onFind: (query: string) => void;
+  onInsertImages: (files: File[]) => void;
 }
 
-export function EditorToolbar({ editor, onInsertSection, onFind }: EditorToolbarProps) {
+export function EditorToolbar({ editor, onInsertSection, onFind, onInsertImages }: EditorToolbarProps) {
   const findRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const marks = useEditorState({
     editor,
@@ -108,6 +110,26 @@ export function EditorToolbar({ editor, onInsertSection, onFind }: EditorToolbar
       <ToolbarButton label="Enlace" disabled={!editor} onClick={editLink}>
         Enlace
       </ToolbarButton>
+      <ToolbarButton
+        label="Insertar imagen"
+        disabled={!editor}
+        onClick={() => fileRef.current?.click()}
+      >
+        <Icon name="image" className="w-3.5 h-3.5" />
+        Imagen
+      </ToolbarButton>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        hidden
+        onChange={(event) => {
+          const files = Array.from(event.target.files || []);
+          event.target.value = '';
+          if (files.length) onInsertImages(files);
+        }}
+      />
       <ToolbarButton
         label="Limpiar formato"
         disabled={!editor}

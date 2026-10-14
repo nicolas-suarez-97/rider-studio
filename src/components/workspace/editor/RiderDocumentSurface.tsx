@@ -4,9 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
+import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Extension, type JSONContent } from '@tiptap/core';
+import { Extension, type Editor, type JSONContent } from '@tiptap/core';
 import { EditorToolbar } from '@/components/workspace/editor/EditorToolbar';
+import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/workspace/editor/document-images';
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
 import {
   applySuggestionToEditor,
@@ -76,6 +78,8 @@ interface RiderDocumentSurfaceProps {
   onActivateSection?: (id: string) => void;
   onSelectionChange?: (sectionId: string, text: string) => void;
   onRegisterBridge?: (bridge: EditorBridge) => void;
+  onUploadDocumentImage?: (file: File) => Promise<string | null | undefined>;
+  onImageError?: (message: string) => void;
 }
 
 export function RiderDocumentSurface({
@@ -89,6 +93,8 @@ export function RiderDocumentSurface({
   onActivateSection,
   onSelectionChange,
   onRegisterBridge,
+  onUploadDocumentImage,
+  onImageError,
 }: RiderDocumentSurfaceProps) {
   const sectionIds = useMemo(() => sections.map((section) => section.id).join('|'), [sections]);
   const documentSignature = `${artistName}\0${riderTitle}\0${sectionIds}`;
@@ -102,10 +108,23 @@ export function RiderDocumentSurface({
   const [scale, setScale] = useState(1);
   const documentHeight = pages * PAGE_HEIGHT + Math.max(0, pages - 1) * PAGE_GAP;
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<Editor | null>(null);
   const sectionsRef = useRef(sections);
-  const callbacksRef = useRef({ onDocumentChange, onActivateSection, onSelectionChange });
+  const callbacksRef = useRef({
+    onDocumentChange,
+    onActivateSection,
+    onSelectionChange,
+    onUploadDocumentImage,
+    onImageError,
+  });
   sectionsRef.current = sections;
-  callbacksRef.current = { onDocumentChange, onActivateSection, onSelectionChange };
+  callbacksRef.current = {
+    onDocumentChange,
+    onActivateSection,
+    onSelectionChange,
+    onUploadDocumentImage,
+    onImageError,
+  };
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -121,6 +140,13 @@ export function RiderDocumentSurface({
         link: { openOnClick: false, autolink: true },
       }),
       SectionHeading.configure({ levels: [1, 2, 3] }),
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: {
+          class: 'docs-image',
+        },
+      }),
       Placeholder.configure({
         placeholder: 'Empieza a escribir…',
       }),
@@ -134,6 +160,34 @@ export function RiderDocumentSurface({
         class: 'docs-editor',
         'aria-label': 'Documento del rider',
         style: `padding:${PAGE_PADDING}px;min-height:${PAGE_HEIGHT}px;font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.15;color:#202124;outline:none;`,
+      },
+      handlePaste(_view, event) {
+        const current = editorRef.current;
+        if (!current || readOnly) return false;
+        const files = imageFilesFromDataTransfer(event.clipboardData);
+        if (!files.length) return false;
+        void insertDocumentImages(
+          current,
+          files,
+          callbacksRef.current.onUploadDocumentImage,
+          callbacksRef.current.onImageError,
+        );
+        return true;
+      },
+      handleDrop(view, event, _slice, moved) {
+        const current = editorRef.current;
+        if (!current || readOnly || moved) return false;
+        const files = imageFilesFromDataTransfer(event.dataTransfer);
+        if (!files.length) return false;
+        const coords = view.posAtCoords({ left: event.clientX, top: event.clientY });
+        if (coords) current.chain().focus().setTextSelection(coords.pos).run();
+        void insertDocumentImages(
+          current,
+          files,
+          callbacksRef.current.onUploadDocumentImage,
+          callbacksRef.current.onImageError,
+        );
+        return true;
       },
     },
     onUpdate: ({ editor: current, transaction }) => {
@@ -154,6 +208,18 @@ export function RiderDocumentSurface({
       callbacksRef.current.onSelectionChange?.(sectionId, from === to ? '' : current.state.doc.textBetween(from, to, '\n'));
     },
   }, [readOnly]);
+
+  editorRef.current = editor;
+
+  const insertImages = useCallback((files: File[]) => {
+    if (!editor || readOnly || files.length === 0) return;
+    void insertDocumentImages(
+      editor,
+      files,
+      callbacksRef.current.onUploadDocumentImage,
+      callbacksRef.current.onImageError,
+    );
+  }, [editor, readOnly]);
 
   useEffect(() => {
     if (!editor) return;
@@ -237,6 +303,7 @@ export function RiderDocumentSurface({
         .docs-editor ul { list-style: disc; padding-left: 1.5em; margin: 0.2em 0 0.5em; }
         .docs-editor ol { list-style: decimal; padding-left: 1.5em; margin: 0.2em 0 0.5em; }
         .docs-editor a { color: #1155cc; text-decoration: underline; }
+        .docs-editor img, .docs-editor .docs-image { max-width: 100%; height: auto; max-height: 28rem; display: block; margin: 0.4em 0 0.7em; object-fit: contain; }
         .docs-toolbar-scroll { scrollbar-width: none; }
         .docs-toolbar-scroll::-webkit-scrollbar { display: none; }
       `}</style>
@@ -245,6 +312,7 @@ export function RiderDocumentSurface({
           editor={editor}
           onInsertSection={() => onInsertSection?.()}
           onFind={findInDocument}
+          onInsertImages={insertImages}
         />
       )}
       <div
