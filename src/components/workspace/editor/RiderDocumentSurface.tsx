@@ -9,6 +9,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { Extension, type Editor, type JSONContent } from '@tiptap/core';
 import { Plugin, type Transaction } from '@tiptap/pm/state';
 import { EditorToolbar } from '@/components/workspace/editor/EditorToolbar';
+import { EmptyDocumentComposer } from '@/components/workspace/editor/EmptyDocumentComposer';
 import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/workspace/editor/document-images';
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
 import {
@@ -25,7 +26,7 @@ import {
   splitDocumentToSections,
   type SectionDocumentPatch,
 } from '@/core/editor/content-doc';
-import { SectionItem } from '@/core/types/rider.types';
+import { SectionItem, RiderType } from '@/core/types/rider.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 
 export interface EditorBridge {
@@ -106,6 +107,10 @@ interface RiderDocumentSurfaceProps {
   onRegisterBridge?: (bridge: EditorBridge) => void;
   onUploadDocumentImage?: (file: File) => Promise<string | null | undefined>;
   onImageError?: (message: string) => void;
+  riderType?: RiderType;
+  isBlankDocument?: boolean;
+  isAssistantThinking?: boolean;
+  onAskAssistant?: (text: string) => void;
 }
 
 export function RiderDocumentSurface({
@@ -121,6 +126,10 @@ export function RiderDocumentSurface({
   onRegisterBridge,
   onUploadDocumentImage,
   onImageError,
+  riderType = 'tecnico',
+  isBlankDocument = false,
+  isAssistantThinking = false,
+  onAskAssistant,
 }: RiderDocumentSurfaceProps) {
   const sectionIds = useMemo(() => sections.map((section) => section.id).join('|'), [sections]);
   const documentSignature = `${artistName}\0${riderTitle}\0${sectionIds}`;
@@ -318,7 +327,7 @@ export function RiderDocumentSurface({
   }, []);
 
   return (
-    <div className="flex-1 h-full min-h-0 min-w-0 flex flex-col bg-[#f0f2f5]">
+    <div className="relative flex-1 h-full min-h-0 min-w-0 flex flex-col bg-[#f0f2f5]">
       <style>{`
         .docs-editor { box-sizing: border-box; background: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         .docs-page-break { pointer-events: none; user-select: none; display: block; width: 100%; margin: 0; padding: 0; border: 0; overflow: hidden; box-sizing: content-box; }
@@ -343,7 +352,7 @@ export function RiderDocumentSurface({
       )}
       <div
         ref={scrollerRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-24 xl:pb-8 bg-[#f0f2f5]"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-40 xl:pb-28 bg-[#f0f2f5]"
       >
         <div
           className="mx-auto my-4 sm:my-6"
@@ -387,6 +396,15 @@ export function RiderDocumentSurface({
           </div>
         </div>
       </div>
+      {!readOnly && onAskAssistant && (
+        <EmptyDocumentComposer
+          riderType={riderType}
+          showPrompts={isBlankDocument}
+          isThinking={isAssistantThinking}
+          onAsk={onAskAssistant}
+          onInsertSection={onInsertSection}
+        />
+      )}
     </div>
   );
 }

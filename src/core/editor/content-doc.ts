@@ -87,6 +87,9 @@ export function riderDocumentFromSections(
   const content: RiderContentNode[] = [];
   const artist = header?.artistName?.trim();
   const title = header?.title?.trim();
+  if (sections.length === 0 && !artist) {
+    return { type: 'doc', content: [{ type: 'paragraph' }] };
+  }
   if (artist || title) {
     content.push({
       type: 'heading',
@@ -165,10 +168,19 @@ export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: stri
       };
       continue;
     }
-    if (!current) continue;
+    if (!current) {
+      current = { id: 'doc-intro', title: 'Documento', nodes: [] };
+    }
     current.nodes.push(node);
   }
   flush();
+  if (
+    patches.length === 1
+    && patches[0].id === 'doc-intro'
+    && !(patches[0].content || '').trim()
+  ) {
+    return [];
+  }
   return patches;
 }
 

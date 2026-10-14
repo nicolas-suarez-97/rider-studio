@@ -60,7 +60,7 @@ export class Rider {
     this.venue = params.venue !== undefined ? params.venue : '';
     this.version = params.version || 'v1.0';
     this.status = params.status || 'in_progress';
-    this.sections = params.sections && params.sections.length > 0 
+    this.sections = Array.isArray(params.sections)
       ? JSON.parse(JSON.stringify(params.sections))
       : (template?.sections || []).map(s => ({ ...s, content: '' }));
     
@@ -100,12 +100,6 @@ export class Rider {
   public static createBlank(type: RiderType = 'tecnico'): Rider {
     const template = RIDER_DATA[type];
     
-    // Mantenemos las secciones base como estructura guía, pero con contenido vacío
-    const blankSections: SectionItem[] = (template?.sections || []).map(s => ({
-      ...s,
-      content: ''
-    }));
-
     return new Rider({
       id: '',
       title: template?.title || 'Rider de Producción',
@@ -113,7 +107,7 @@ export class Rider {
       type,
       season: '',
       venue: '',
-      sections: blankSections,
+      sections: [],
       channels: [],
       completedSectionIds: [],
       stagePlot: {
@@ -524,6 +518,18 @@ export class Rider {
     this.syncCurrentModule();
   }
 
+  public applyTemplateOutline(): void {
+    const template = RIDER_DATA[this.type];
+    this.sections = (template?.sections || []).map((section) => ({
+      ...section,
+      content: '',
+      contentDoc: undefined,
+    }));
+    this.completedSectionIds = [];
+    this.renumberSections();
+    this.syncCurrentModule();
+  }
+
   public addSection(section: Omit<SectionItem, 'id' | 'num'>): SectionItem {
     const num = String(this.sections.length + 1).padStart(2, '0');
     const newSec: SectionItem = {
@@ -631,7 +637,8 @@ export class Rider {
       );
       this.completedSectionIds = existing.completedSectionIds || [];
     } else {
-      this.sections = template.sections.map(s => ({ ...s, content: '' }));
+      const stayBlank = this.sections.length === 0;
+      this.sections = stayBlank ? [] : template.sections.map(s => ({ ...s, content: '' }));
       this.channels = [];
       this.completedSectionIds = [];
       this.modules[targetType] = {

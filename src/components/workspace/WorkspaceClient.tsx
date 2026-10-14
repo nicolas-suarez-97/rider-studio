@@ -634,6 +634,24 @@ export function WorkspaceClient({
     }
   };
 
+  const isBlankDocument = rider.sections.length === 0 && !rider.artistName.trim();
+
+  const handleAskFromDocument = (text: string) => {
+    if (text === '__outline__') {
+      setRider((prev) => {
+        const updated = new Rider({ ...prev });
+        updated.applyTemplateOutline();
+        if (updated.sections[0]) setActiveSectionId(updated.sections[0].id);
+        return updated;
+      });
+      showToast('Estructura típica añadida al documento');
+      return;
+    }
+    setIsChatCollapsed(false);
+    setMobileTab('assistant');
+    void handleSendMessage(text);
+  };
+
   const handleOpenExportModal = (scope: ExportScope = 'master') => {
     setExportScope(scope);
     setShowExportModal(true);
@@ -720,6 +738,9 @@ export function WorkspaceClient({
             onInsertSection={() => setShowAddSectionModal(true)}
             onUploadDocumentImage={handleUploadDocumentImage}
             onImageError={showToast}
+            isBlankDocument={isBlankDocument}
+            isAssistantThinking={isAgentThinking}
+            onAskAssistant={handleAskFromDocument}
             onDocumentChange={handleDocumentChange}
             onSelectionChange={(sectionId, text) => {
               selectionRef.current = { sectionId, text };
