@@ -409,14 +409,12 @@ export function WorkspaceClient({
   const handleDocumentChange = (patches: SectionDocumentPatch[]) => {
     setRider((prev) => {
       const updated = new Rider({ ...prev });
-      for (const patch of patches) {
-        updated.updateSection(patch.id, {
-          ...(patch.title ? { title: patch.title } : {}),
-          contentDoc: patch.contentDoc,
-          content: patch.content,
-        });
-      }
+      updated.syncSectionsFromDocument(patches);
       return updated;
+    });
+    setActiveSectionId((current) => {
+      if (patches.some((patch) => patch.id === current)) return current;
+      return patches[0]?.id || '';
     });
   };
 

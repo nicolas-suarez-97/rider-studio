@@ -497,6 +497,33 @@ export class Rider {
     this.syncCurrentModule();
   }
 
+  /**
+   * Reconstruye las secciones a partir de los títulos (h2) del documento.
+   * Conserva metadatos de ids que siguen existiendo y elimina los que ya no están.
+   */
+  public syncSectionsFromDocument(
+    patches: Array<{ id: string; title: string; content: string; contentDoc?: SectionItem['contentDoc'] }>
+  ): void {
+    const byId = new Map(this.sections.map((sec) => [sec.id, sec]));
+    this.sections = patches.map((patch, idx) => {
+      const current = byId.get(patch.id);
+      return {
+        id: patch.id,
+        num: String(idx + 1).padStart(2, '0'),
+        title: patch.title || current?.title || 'Sección',
+        subtitle: current?.subtitle || '',
+        tag: current?.tag || 'Custom',
+        tagColor: current?.tagColor || 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: current?.iconName || 'fileText',
+        content: patch.content,
+        contentDoc: patch.contentDoc,
+      };
+    });
+    const living = new Set(this.sections.map((sec) => sec.id));
+    this.completedSectionIds = this.completedSectionIds.filter((id) => living.has(id));
+    this.syncCurrentModule();
+  }
+
   public addSection(section: Omit<SectionItem, 'id' | 'num'>): SectionItem {
     const num = String(this.sections.length + 1).padStart(2, '0');
     const newSec: SectionItem = {

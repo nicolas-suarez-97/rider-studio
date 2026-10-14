@@ -7,6 +7,7 @@ import Heading from '@tiptap/extension-heading';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Extension, type Editor, type JSONContent } from '@tiptap/core';
+import { Plugin, type Transaction } from '@tiptap/pm/state';
 import { EditorToolbar } from '@/components/workspace/editor/EditorToolbar';
 import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/workspace/editor/document-images';
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
@@ -19,6 +20,7 @@ import {
 } from '@/components/workspace/editor/suggestion-highlight';
 import {
   headingIdsFromDoc,
+  newSectionId,
   riderDocumentFromSections,
   splitDocumentToSections,
   type SectionDocumentPatch,
@@ -63,6 +65,30 @@ const SectionHeading = Heading.extend({
         renderHTML: (attributes) => (attributes.id ? { id: attributes.id } : {}),
       },
     };
+  },
+  addProseMirrorPlugins() {
+    return [
+      ...(this.parent?.() || []),
+      new Plugin({
+        appendTransaction(transactions, _oldState, newState) {
+          if (!transactions.some((transaction) => transaction.docChanged)) return null;
+          let next: Transaction | null = null;
+          const seen = new Set<string>();
+          newState.doc.descendants((node, pos) => {
+            if (node.type.name !== 'heading' || node.attrs.level !== 2) return;
+            const currentId = typeof node.attrs.id === 'string' ? node.attrs.id : '';
+            if (currentId && !seen.has(currentId)) {
+              seen.add(currentId);
+              return;
+            }
+            const id = newSectionId();
+            seen.add(id);
+            next = (next || newState.tr).setNodeMarkup(pos, undefined, { ...node.attrs, id });
+          });
+          return next;
+        },
+      }),
+    ];
   },
 });
 

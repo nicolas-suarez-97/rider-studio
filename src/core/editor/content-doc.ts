@@ -63,11 +63,19 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
   return lines.join('\n');
 }
 
+export function newSectionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `section-${crypto.randomUUID()}`;
+  }
+  return `section-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function headingIdsFromDoc(doc: RiderContentDoc | JsonNode): string[] {
   const ids: string[] = [];
   for (const node of (doc.content || []) as JsonNode[]) {
     const id = typeof node.attrs?.id === 'string' ? node.attrs.id : '';
-    if (node.type === 'heading' && id && !ids.includes(id)) ids.push(id);
+    const level = node.attrs?.level;
+    if (node.type === 'heading' && level === 2 && id && !ids.includes(id)) ids.push(id);
   }
   return ids;
 }
@@ -117,17 +125,29 @@ export interface SectionDocumentPatch {
   content: string;
 }
 
-export function splitDocumentToSections(doc: RiderContentDoc, sectionIds: string[]): SectionDocumentPatch[] {
-  const ids = new Set(sectionIds);
-  const buckets = new Map<string, { title: string; nodes: RiderContentNode[] }>();
-  for (const id of sectionIds) buckets.set(id, { title: '', nodes: [] });
-
-  let currentId: string | null = null;
+export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: string[]): SectionDocumentPatch[] {
+  const patches: SectionDocumentPatch[] = [];
+  let current: { id: string; title: string; nodes: RiderContentNode[] } | null = null;
   let skipSubtitle = false;
+
+  const flush = () => {
+    if (!current) return;
+    const contentDoc: RiderContentDoc = {
+      type: 'doc',
+      content: current.nodes.length ? current.nodes : [{ type: 'paragraph' }],
+    };
+    patches.push({
+      id: current.id,
+      title: current.title,
+      contentDoc,
+      content: docToPlainText(contentDoc),
+    });
+  };
 
   for (const node of doc.content || []) {
     const headingId = typeof node.attrs?.id === 'string' ? node.attrs.id : '';
-    if (node.type === 'heading' && node.attrs?.level === 1 && !headingId) {
+    const level = node.attrs?.level;
+    if (node.type === 'heading' && level === 1 && !headingId) {
       skipSubtitle = true;
       continue;
     }
@@ -136,30 +156,20 @@ export function splitDocumentToSections(doc: RiderContentDoc, sectionIds: string
       continue;
     }
     skipSubtitle = false;
-    if (node.type === 'heading' && headingId && ids.has(headingId)) {
-      currentId = headingId;
-      const bucket = buckets.get(headingId);
-      if (bucket) bucket.title = inlineText(node as JsonNode) || bucket.title;
+    if (node.type === 'heading' && level === 2 && headingId) {
+      flush();
+      current = {
+        id: headingId,
+        title: inlineText(node as JsonNode) || 'Sección',
+        nodes: [],
+      };
       continue;
     }
-    if (!currentId) continue;
-    const bucket = buckets.get(currentId);
-    if (bucket) bucket.nodes.push(node);
+    if (!current) continue;
+    current.nodes.push(node);
   }
-
-  return sectionIds.map((id) => {
-    const bucket = buckets.get(id);
-    const contentDoc: RiderContentDoc = {
-      type: 'doc',
-      content: bucket?.nodes?.length ? bucket.nodes : [{ type: 'paragraph' }],
-    };
-    return {
-      id,
-      title: bucket?.title || '',
-      contentDoc,
-      content: docToPlainText(contentDoc),
-    };
-  });
+  flush();
+  return patches;
 }
 
 export function buildGapSuggestions(
