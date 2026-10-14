@@ -72,7 +72,7 @@ export function EditorToolbar({ editor, onInsertSection, onFind }: EditorToolbar
   };
 
   return (
-    <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 py-2 flex flex-wrap items-center gap-1">
+    <div className="docs-toolbar-scroll sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 overflow-x-auto">
       <ToolbarButton label="Deshacer" disabled={!editor} onClick={() => run((current) => current.chain().focus().undo().run())}>
         ↺
       </ToolbarButton>
@@ -84,7 +84,7 @@ export function EditorToolbar({ editor, onInsertSection, onFind }: EditorToolbar
         value={style}
         disabled={!editor}
         onChange={(event) => setStyle(event.target.value)}
-        className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 disabled:opacity-40"
+        className="h-8 shrink-0 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 disabled:opacity-40"
       >
         <option value="paragraph">Texto</option>
         <option value="heading-2">Título</option>
@@ -135,7 +135,7 @@ export function EditorToolbar({ editor, onInsertSection, onFind }: EditorToolbar
           }}
           placeholder="Buscar"
           aria-label="Buscar en el documento"
-          className="h-8 w-36 sm:w-44 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs text-slate-800 outline-none focus:border-violet-400 focus:bg-white"
+          className="h-8 w-28 sm:w-44 shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs text-slate-800 outline-none focus:border-violet-400 focus:bg-white"
         />
       </form>
     </div>
@@ -163,7 +163,7 @@ function ToolbarButton({
       disabled={disabled}
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
-      className={`h-8 px-2 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-default ${
+      className={`h-8 px-2 shrink-0 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-default ${
         active ? 'bg-violet-100 text-violet-800' : 'text-slate-600 hover:bg-slate-100'
       }`}
     >

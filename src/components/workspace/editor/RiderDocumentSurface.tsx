@@ -99,6 +99,9 @@ export function RiderDocumentSurface({
     []
   );
   const [pages, setPages] = useState(1);
+  const [scale, setScale] = useState(1);
+  const documentHeight = pages * PAGE_HEIGHT + Math.max(0, pages - 1) * PAGE_GAP;
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const sectionsRef = useRef(sections);
   const callbacksRef = useRef({ onDocumentChange, onActivateSection, onSelectionChange });
   sectionsRef.current = sections;
@@ -208,10 +211,24 @@ export function RiderDocumentSurface({
     return () => observer.disconnect();
   }, [editor, sectionIds]);
 
+  useEffect(() => {
+    const root = scrollerRef.current;
+    if (!root) return;
+    const update = () => {
+      const gutter = root.clientWidth < 768 ? 24 : 48;
+      const next = Math.min(1, (root.clientWidth - gutter) / PAGE_WIDTH);
+      setScale(Number.isFinite(next) && next > 0.2 ? next : 1);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="flex-1 h-full min-h-0 flex flex-col bg-[#f0f2f5]">
+    <div className="flex-1 h-full min-h-0 min-w-0 flex flex-col bg-[#f0f2f5]">
       <style>{`
-        .docs-editor { box-sizing: border-box; background: transparent; }
+        .docs-editor { box-sizing: border-box; background: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         .docs-page-break { pointer-events: none; user-select: none; display: block; width: 100%; margin: 0; padding: 0; border: 0; overflow: hidden; box-sizing: content-box; }
         .docs-editor h1 { font-size: 26pt; font-weight: 700; line-height: 1.15; margin: 0 0 0.35em; }
         .docs-editor h2 { font-size: 16pt; font-weight: 700; line-height: 1.2; margin: 1em 0 0.3em; }
@@ -220,6 +237,8 @@ export function RiderDocumentSurface({
         .docs-editor ul { list-style: disc; padding-left: 1.5em; margin: 0.2em 0 0.5em; }
         .docs-editor ol { list-style: decimal; padding-left: 1.5em; margin: 0.2em 0 0.5em; }
         .docs-editor a { color: #1155cc; text-decoration: underline; }
+        .docs-toolbar-scroll { scrollbar-width: none; }
+        .docs-toolbar-scroll::-webkit-scrollbar { display: none; }
       `}</style>
       {!readOnly && (
         <EditorToolbar
@@ -228,37 +247,50 @@ export function RiderDocumentSurface({
           onFind={findInDocument}
         />
       )}
-      <div className="flex-1 overflow-auto overscroll-contain pb-24 xl:pb-8 bg-[#f0f2f5]">
+      <div
+        ref={scrollerRef}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-24 xl:pb-8 bg-[#f0f2f5]"
+      >
         <div
-          className="relative mx-auto my-6"
+          className="mx-auto my-4 sm:my-6"
           style={{
-            width: PAGE_WIDTH,
-            minHeight: pages * PAGE_HEIGHT + Math.max(0, pages - 1) * PAGE_GAP,
+            width: PAGE_WIDTH * scale,
+            height: documentHeight * scale,
           }}
         >
-          {Array.from({ length: pages }, (_, index) => (
-            <div
-              key={index}
-              className="absolute left-0 w-full bg-white border border-[#dadce0]"
-              style={{
-                top: index * (PAGE_HEIGHT + PAGE_GAP),
-                height: PAGE_HEIGHT,
-                zIndex: 0,
-              }}
-            >
-              <span
-                className="absolute text-[11px] text-[#9aa0a6]"
-                style={{ right: 24, bottom: 18 }}
+          <div
+            className="relative"
+            style={{
+              width: PAGE_WIDTH,
+              minHeight: documentHeight,
+              transform: `scale(${scale})`,
+              transformOrigin: 'top left',
+            }}
+          >
+            {Array.from({ length: pages }, (_, index) => (
+              <div
+                key={index}
+                className="absolute left-0 w-full bg-white border border-[#dadce0] shadow-sm"
+                style={{
+                  top: index * (PAGE_HEIGHT + PAGE_GAP),
+                  height: PAGE_HEIGHT,
+                  zIndex: 0,
+                }}
               >
-                {index + 1}
-              </span>
-            </div>
-          ))}
-          {editor ? (
-            <EditorContent editor={editor} className="relative z-10" />
-          ) : (
-            <div className="relative z-10 px-24 py-24 text-slate-400">Cargando documento…</div>
-          )}
+                <span
+                  className="absolute text-[11px] text-[#9aa0a6]"
+                  style={{ right: 24, bottom: 18 }}
+                >
+                  {index + 1}
+                </span>
+              </div>
+            ))}
+            {editor ? (
+              <EditorContent editor={editor} className="relative z-10" />
+            ) : (
+              <div className="relative z-10 px-24 py-24 text-slate-400">Cargando documento…</div>
+            )}
+          </div>
         </div>
       </div>
     </div>

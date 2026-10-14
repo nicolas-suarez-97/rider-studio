@@ -67,7 +67,7 @@ export function DocumentEditorPanel({
   readOnly = false,
 }: DocumentEditorPanelProps) {
   return (
-    <main className="flex-1 h-full min-h-0 overflow-hidden flex flex-col">
+    <main className="flex-1 h-full min-h-0 min-w-0 overflow-hidden flex flex-col">
       <RiderDocumentSurface
         riderTitle={riderTitle}
         artistName={artistName}

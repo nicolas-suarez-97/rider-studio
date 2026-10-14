@@ -695,7 +695,7 @@ export function WorkspaceClient({
         </div>
 
         {/* Panel 2: Editor visual del Documento */}
-        <div className={`h-full flex-1 ${mobileTab === 'document' ? 'flex w-full' : 'hidden'} xl:flex`}>
+        <div className={`h-full min-w-0 flex-1 ${mobileTab === 'document' ? 'flex w-full' : 'hidden'} xl:flex`}>
           <DocumentEditorPanel
             riderTitle={rider.title}
             artistName={rider.artistName}

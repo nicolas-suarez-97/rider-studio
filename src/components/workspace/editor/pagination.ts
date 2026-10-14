@@ -63,7 +63,7 @@ function collapsedSize(el: HTMLElement, previousBottomMargin: number, isFirst: b
   const style = window.getComputedStyle(el);
   const marginTop = parseFloat(style.marginTop) || 0;
   const marginBottom = parseFloat(style.marginBottom) || 0;
-  const height = el.getBoundingClientRect().height;
+  const height = el.offsetHeight;
   const topGap = isFirst ? marginTop : Math.max(previousBottomMargin, marginTop);
   return { size: topGap + height, nextMargin: marginBottom };
 }
