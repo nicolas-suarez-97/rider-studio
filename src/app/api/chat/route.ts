@@ -10,6 +10,7 @@ import {
   saveChatMessage
 } from '@/lib/services/rider-storage';
 import { SendChatMessageSchema } from '@/lib/validations/chat.schema';
+import { parseSuggestionJson, collectSuggestionDrafts } from '@/core/editor/suggestions';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,13 +29,17 @@ export async function POST(req: NextRequest) {
       riderType,
       activeAgent,
       sessionId,
-      riderId
+      riderId,
+      editorContext
     } = parsed.data;
 
     const lastMsgObj = messages[messages.length - 1];
     const lastMessage = lastMsgObj?.content || lastMsgObj?.text || '';
-    const systemPrompt = SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master;
+    const suggestionPrompt = editorContext
+      ? `\n\nEl usuario está editando la sección "${editorContext.sectionTitle}". No afirmes que ya modificaste el documento. Responde únicamente con JSON válido de esta forma: {"message":"explicación breve","suggestions":[{"kind":"insert"|"replace"|"delete","baseText":"fragmento literal del texto actual, o vacío si insertas al final","proposedText":"texto que debe quedar","rationale":"motivo"}]}.\nTexto actual de la sección:\n"""${editorContext.sectionText}"""\nSelección: """${editorContext.selection}"""\nHuecos: ${editorContext.gaps.join('; ') || 'ninguno'}.`
+      : '';
     const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
+    const systemPrompt = `${SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master}${suggestionPrompt}`;
 
     const sessionTitle = lastMessage
       ? (lastMessage.length > 36 ? lastMessage.substring(0, 36) + '...' : lastMessage)
@@ -80,8 +85,8 @@ export async function POST(req: NextRequest) {
                 content: m.content || m.text || ''
               }))
             ],
-            temperature: 0.6,
-            max_tokens: 600,
+            temperature: editorContext ? 0.3 : 0.6,
+            max_tokens: editorContext ? 900 : 600,
           }),
         });
 
@@ -119,6 +124,12 @@ export async function POST(req: NextRequest) {
           ? 'Vercel AI Gateway activo. (Recuerda verificar tarjeta en vercel.com para desbloquear créditos ilimitados en la nube).'
           : undefined
       };
+    }
+
+    if (finalResponse && editorContext) {
+      finalResponse.suggestions = collectSuggestionDrafts(finalResponse.message, finalResponse.actions, editorContext);
+      const parsed = parseSuggestionJson(finalResponse.message);
+      if (parsed?.message) finalResponse.message = parsed.message;
     }
 
     // 5. Persistir respuesta del asistente en Supabase

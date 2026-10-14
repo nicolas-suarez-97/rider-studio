@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/common/Header';
 import { Toast } from '@/components/common/Toast';
@@ -9,7 +9,6 @@ import { SectionsNavPanel } from '@/components/workspace/SectionsNavPanel';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
 import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { AddSectionModal } from '@/components/modals/AddSectionModal';
-import { EditSectionModal } from '@/components/modals/EditSectionModal';
 import { MasterExportModal } from '@/components/modals/MasterExportModal';
 import { StagePlotModal } from '@/components/modals/StagePlotModal';
 import { ShareLinkModal } from '@/components/modals/ShareLinkModal';
@@ -20,11 +19,29 @@ import { RiderType, SectionItem, ChannelData, ExportScope, StagePlotConfig } fro
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
+import { buildGapSuggestions, type SectionDocumentPatch } from '@/core/editor/content-doc';
+import { materializeSuggestions } from '@/core/editor/suggestions';
+import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
+import { EditorBridge } from '@/components/workspace/editor/RiderDocumentSurface';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 import { isPersistedRiderId, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { deleteRiderImage, uploadRiderImage } from '@/lib/media/upload-client';
 
 type MobileTab = 'sections' | 'document' | 'assistant';
+
+function riderEditSnapshot(current: Rider) {
+  return JSON.stringify({
+    artistName: current.artistName,
+    season: current.season,
+    title: current.title,
+    type: current.type,
+    sections: current.sections,
+    channels: current.channels.map((channel) => channel.toJSON()),
+    stagePlot: current.stagePlot,
+    media: current.media,
+    completedSectionIds: current.completedSectionIds,
+  });
+}
 
 interface WorkspaceClientProps {
   initialRiderData: ConstructorParameters<typeof Rider>[0];
@@ -71,7 +88,6 @@ export function WorkspaceClient({
 
   // Modales
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
-  const [editingSection, setEditingSection] = useState<SectionItem | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportScope, setExportScope] = useState<ExportScope>('master');
   const [showStagePlotModal, setShowStagePlotModal] = useState(false);
@@ -79,6 +95,12 @@ export function WorkspaceClient({
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sectionComments, setSectionComments] = useState<SectionCommentItem[]>([]);
   const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
+  const [agentSuggestions, setAgentSuggestions] = useState<DocumentSuggestion[]>([]);
+  const [dismissedGaps, setDismissedGaps] = useState<string[]>([]);
+  const bridgeRef = useRef<EditorBridge | null>(null);
+  const selectionRef = useRef({ sectionId: '', text: '' });
+  const savedSnap = useRef<string | null>(null);
+  const saveEpoch = useRef(0);
 
   // Chat & Sesión Asociada
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(initialSessionId);
@@ -173,7 +195,8 @@ export function WorkspaceClient({
   };
 
   // Guardar en base de datos Supabase
-  const handleSaveRider = async (customRider?: Rider, options?: { silent?: boolean }) => {
+  const handleSaveRider = async (customRider?: Rider, options?: { silent?: boolean; epoch?: number }) => {
+    const epochAtStart = options?.epoch ?? saveEpoch.current;
     const targetRider = customRider ? new Rider(customRider) : new Rider(riderRef.current);
     const hasArtist = Boolean(targetRider.artistName && targetRider.artistName.trim() !== '');
 
@@ -190,8 +213,20 @@ export function WorkspaceClient({
       if (!hasArtist) {
         saved.artistName = '';
       }
+      const changedDuringSave = !customRider && saveEpoch.current !== epochAtStart;
+      if (changedDuringSave) {
+        if (saved.id && riderRef.current.id !== saved.id) {
+          const merged = new Rider({ ...riderRef.current, id: saved.id });
+          riderRef.current = merged;
+          setRider(merged);
+        }
+        setDbSyncStatus('saved');
+        setTimeout(() => setDbSyncStatus('idle'), 4000);
+        return saved;
+      }
       riderRef.current = saved;
       setRider(saved);
+      savedSnap.current = riderEditSnapshot(saved);
       setDbSyncStatus('saved');
       if (!options?.silent) {
         showToast('✅ Rider sincronizado y guardado en Supabase');
@@ -216,6 +251,21 @@ export function WorkspaceClient({
       setIsSaving(false);
     }
   };
+
+  useEffect(() => {
+    const snap = riderEditSnapshot(rider);
+    if (savedSnap.current === null) {
+      savedSnap.current = snap;
+      return;
+    }
+    if (snap === savedSnap.current) return;
+    saveEpoch.current += 1;
+    const epoch = saveEpoch.current;
+    const timer = window.setTimeout(() => {
+      void handleSaveRider(undefined, { silent: true, epoch });
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [rider]);
 
   const riderWithId = async (): Promise<Rider | null> => {
     const current = riderRef.current;
@@ -343,13 +393,85 @@ export function WorkspaceClient({
     await handleSaveRider(updated);
   };
 
-  // Editar sección
-  const handleSaveEditedSection = async (updatedSection: SectionItem) => {
-    const updated = new Rider({ ...rider });
-    updated.updateSection(updatedSection.id, updatedSection);
-    setRider(updated);
-    showToast('✅ Sección actualizada');
-    await handleSaveRider(updated);
+  // Editar el texto de una sección sin salir del documento
+  const handleDocumentChange = (patches: SectionDocumentPatch[]) => {
+    setRider((prev) => {
+      const updated = new Rider({ ...prev });
+      for (const patch of patches) {
+        updated.updateSection(patch.id, {
+          ...(patch.title ? { title: patch.title } : {}),
+          contentDoc: patch.contentDoc,
+          content: patch.content,
+        });
+      }
+      return updated;
+    });
+  };
+
+  const documentSuggestions = useMemo(() => {
+    const dismissed = new Set(dismissedGaps);
+    const gaps = rider.sections.flatMap((section) => (
+      buildGapSuggestions(section, dismissed, section.id === activeSectionId)
+    ));
+    const pending = agentSuggestions
+      .filter((item) => item.status === 'pending' || item.status === 'stale')
+      .map((suggestion) => {
+        if (suggestion.status !== 'pending' || !suggestion.baseText) return suggestion;
+        const section = rider.sections.find((item) => item.id === suggestion.sectionId);
+        if ((section?.content || '').includes(suggestion.baseText)) return suggestion;
+        return { ...suggestion, status: 'stale' as const };
+      });
+    return [...pending, ...gaps];
+  }, [rider.sections, activeSectionId, dismissedGaps, agentSuggestions]);
+
+  const dismissSuggestion = (suggestion: DocumentSuggestion) => {
+    if (suggestion.source === 'gap') {
+      setDismissedGaps((current) => current.includes(suggestion.id) ? current : [...current, suggestion.id]);
+      return;
+    }
+    setAgentSuggestions((current) => current.filter((item) => item.id !== suggestion.id));
+  };
+
+  const handleAcceptSuggestion = (id: string) => {
+    const suggestion = documentSuggestions.find((item) => item.id === id);
+    if (!suggestion || suggestion.status === 'stale') return;
+    if (suggestion.kind === 'add_channel' && suggestion.channel) {
+      const channel = suggestion.channel;
+      setRider((prev) => {
+        const updated = new Rider({ ...prev });
+        updated.addChannel(channel.name, channel.mic, channel.stand);
+        return updated;
+      });
+      dismissSuggestion(suggestion);
+      showToast('Canal agregado a la Input List');
+      return;
+    }
+    if (suggestion.kind === 'switch_type' && suggestion.riderType) {
+      handleSelectRiderType(suggestion.riderType);
+      dismissSuggestion(suggestion);
+      return;
+    }
+    const applied = bridgeRef.current?.apply(suggestion) ?? false;
+    if (!applied) {
+      setAgentSuggestions((current) => current.map((item) => (
+        item.id === id ? { ...item, status: 'stale' } : item
+      )));
+      showToast('La sugerencia ya no coincide con el texto');
+      return;
+    }
+    dismissSuggestion(suggestion);
+  };
+
+  const handleRejectSuggestion = (id: string) => {
+    const suggestion = documentSuggestions.find((item) => item.id === id);
+    if (suggestion) dismissSuggestion(suggestion);
+  };
+
+  const handleFocusSuggestion = (id: string) => {
+    const suggestion = documentSuggestions.find((item) => item.id === id);
+    if (!suggestion) return;
+    setActiveSectionId(suggestion.sectionId);
+    bridgeRef.current?.focus(suggestion);
   };
 
   const handleDeleteSection = async (secId: string, title: string) => {
@@ -433,6 +555,18 @@ export function WorkspaceClient({
     setIsAgentThinking(true);
 
     try {
+      const section = rider.sections.find((item) => item.id === activeSectionId) || rider.sections[0];
+      const editorContext: EditorContextPayload | undefined = section
+        ? {
+            sectionId: section.id,
+            sectionTitle: section.title,
+            sectionText: (section.content || '').slice(0, 7000),
+            selection: selectionRef.current.sectionId === section.id ? selectionRef.current.text.slice(0, 1800) : '',
+            gaps: documentSuggestions
+              .filter((item) => item.source === 'gap' && item.sectionId === section.id)
+              .map((item) => item.rationale),
+          }
+        : undefined;
       const data = await chatService.sendMessage({
         messages: updatedMessages.map(m => ({
           role: m.sender === 'user' ? 'user' : 'assistant',
@@ -441,7 +575,8 @@ export function WorkspaceClient({
         riderType: rider.type,
         activeAgent,
         sessionId: currentSessionId || undefined,
-        riderId: rider.id || undefined
+        riderId: rider.id || undefined,
+        editorContext,
       });
 
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -463,20 +598,12 @@ export function WorkspaceClient({
         router.replace(currentUrl.pathname + currentUrl.search);
       }
 
-      // Ejecutar acciones sugeridas por el agente (si hay)
-      if (Array.isArray(data.actions)) {
-        data.actions.forEach((act) => {
-          if (act.type === 'add_input_channel' && typeof act.payload === 'object' && act.payload !== null) {
-            const p = act.payload as { source?: string; name?: string; mic?: string; stand?: string };
-            const channelName = p.source || p.name || 'Nuevo Canal';
-            setRider(prev => {
-              const updated = new Rider({ ...prev });
-              updated.addChannel(channelName, p.mic, p.stand);
-              return updated;
-            });
-            showToast(`🎛️ Canal "${channelName}" agregado por el agente`);
-          }
-        });
+      if (editorContext && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+        setAgentSuggestions((current) => [
+          ...current,
+          ...materializeSuggestions(data.suggestions || [], editorContext),
+        ]);
+        showToast('Sugerencia lista para revisar');
       }
     } catch (err) {
       console.error(err);
@@ -577,8 +704,19 @@ export function WorkspaceClient({
             channels={rider.channels}
             completedSectionIds={rider.completedSectionIds}
             onToggleComplete={handleToggleComplete}
-            onEditSection={(s) => setEditingSection(s)}
             onDeleteSection={handleDeleteSection}
+            onReorderSections={handleReorderSections}
+            onInsertSection={() => setShowAddSectionModal(true)}
+            onDocumentChange={handleDocumentChange}
+            onSelectionChange={(sectionId, text) => {
+              selectionRef.current = { sectionId, text };
+            }}
+            suggestions={documentSuggestions}
+            onRegisterBridge={(bridge) => {
+              bridgeRef.current = bridge;
+            }}
+            activeSectionId={activeSectionId}
+            onActivateSection={setActiveSectionId}
             onUpdateChannel={handleUpdateChannel}
             onAddChannel={handleAddChannel}
             onDeleteChannel={handleDeleteChannel}
@@ -619,6 +757,12 @@ export function WorkspaceClient({
             rider={rider}
             sessionId={currentSessionId}
             sessionTitle={currentSessionTitle}
+            suggestionMode
+            suggestions={documentSuggestions}
+            sectionTitles={Object.fromEntries(rider.sections.map((section) => [section.id, section.title]))}
+            onAcceptSuggestion={handleAcceptSuggestion}
+            onRejectSuggestion={handleRejectSuggestion}
+            onFocusSuggestion={handleFocusSuggestion}
           />
         </div>
       </div>
@@ -686,7 +830,7 @@ export function WorkspaceClient({
               </span>
             ) : null}
           </div>
-          <span className="text-[10px] leading-tight">Copilot IA</span>
+          <span className="text-[10px] leading-tight">Sugerencias</span>
         </button>
       </nav>
 
@@ -697,13 +841,6 @@ export function WorkspaceClient({
         onAddSection={handleAddSection}
         currentRiderTitle={rider.title}
         nextSectionNum={String(rider.sections.length + 1).padStart(2, '0')}
-      />
-
-      <EditSectionModal
-        section={editingSection}
-        onClose={() => setEditingSection(null)}
-        onSave={handleSaveEditedSection}
-        onDelete={handleDeleteSection}
       />
 
       <MasterExportModal

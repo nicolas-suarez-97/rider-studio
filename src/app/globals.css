@@ -35,6 +35,109 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.75);
 }
+@layer components {
+.docs-workspace {
+  background: #f0f2f5;
+}
+.docs-scroll {
+  background: #f0f2f5;
+}
+.docs-canvas {
+  position: relative;
+  margin: 24px auto 48px;
+  min-height: 1056px;
+}
+.docs-sheet {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #dadce0;
+  pointer-events: none;
+  z-index: 0;
+}
+.docs-sheet-number {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  font-size: 11px;
+  color: #9aa0a6;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.docs-editor,
+.docs-canvas .ProseMirror {
+  position: relative;
+  z-index: 1;
+  outline: none;
+  min-height: 1056px;
+  padding: 96px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11pt;
+  line-height: 1.15;
+  color: #202124;
+}
+.docs-canvas .ProseMirror p {
+  margin: 0 0 0.35em;
+}
+.docs-canvas .ProseMirror h1 {
+  font-size: 26pt;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0 0 0.4em;
+  color: #202124;
+}
+.docs-canvas .ProseMirror h2 {
+  font-size: 16pt;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 1.1em 0 0.35em;
+  color: #202124;
+}
+.docs-canvas .ProseMirror h3 {
+  font-size: 13pt;
+  font-weight: 700;
+  margin: 0.9em 0 0.3em;
+  color: #202124;
+}
+.docs-canvas .ProseMirror ul,
+.docs-canvas .ProseMirror ol {
+  margin: 0.2em 0 0.6em;
+  padding-left: 1.5em;
+}
+.docs-canvas .ProseMirror ul { list-style: disc; }
+.docs-canvas .ProseMirror ol { list-style: decimal; }
+.docs-canvas .ProseMirror a {
+  color: #1155cc;
+  text-decoration: underline;
+}
+.docs-canvas .ProseMirror p.is-editor-empty:first-child::before {
+  color: #9aa0a6;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.docs-page-break {
+  pointer-events: none;
+}
+.rider-suggestion-delete {
+  background: #ffe4e6;
+  color: #9f1239;
+  text-decoration: line-through;
+}
+.rider-suggestion-insert {
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 4px;
+  padding: 0 3px;
+}
+.rider-suggestion-block {
+  display: block;
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  white-space: pre-wrap;
+}
+}
 
 /* Ambient glow floating animation */
 @keyframes floatSlow {

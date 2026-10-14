@@ -14,7 +14,14 @@ export const SendChatMessageSchema = z.object({
   riderType: RiderTypeSchema.optional().default('tecnico'),
   activeAgent: AgentRoleSchema.optional().default('master'),
   sessionId: z.string().optional(),
-  riderId: z.string().optional()
+  riderId: z.string().optional(),
+  editorContext: z.object({
+    sectionId: z.string().max(120),
+    sectionTitle: z.string().max(200),
+    sectionText: z.string().max(8000).optional().default(''),
+    selection: z.string().max(2000).optional().default(''),
+    gaps: z.array(z.string().max(200)).max(30).optional().default([]),
+  }).optional()
 });
 
 export const CreateChatSessionSchema = z.object({

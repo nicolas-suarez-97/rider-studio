@@ -824,7 +824,6 @@ export function ContraRiderClient({
                 current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
               ));
             }}
-            onEditSection={() => {}}
             onUpdateChannel={() => {}}
             onAddChannel={() => {}}
             onDeleteChannel={() => {}}

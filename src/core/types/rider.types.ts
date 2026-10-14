@@ -1,5 +1,18 @@
 export type RiderType = 'tecnico' | 'hospitality' | 'seguridad';
 
+export interface RiderContentNode {
+  type?: string;
+  text?: string;
+  attrs?: Record<string, unknown>;
+  marks?: RiderContentNode[];
+  content?: RiderContentNode[];
+}
+
+export interface RiderContentDoc {
+  type: 'doc';
+  content?: RiderContentNode[];
+}
+
 export interface SectionItem {
   id: string;
   num: string;
@@ -9,6 +22,7 @@ export interface SectionItem {
   tagColor: string;
   iconName: string;
   content?: string;
+  contentDoc?: RiderContentDoc;
 }
 
 export interface RiderDefinition {

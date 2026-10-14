@@ -7,6 +7,7 @@ import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { Rider } from '@/core/models/Rider';
 import { AGENT_PROFILES, AGENT_INFO, SAMPLE_FAQS } from '@/core/constants/agent-profiles';
+import { DocumentSuggestion } from '@/core/types/suggestion.types';
 
 interface AssistantChatPanelProps {
   activeAgent: AgentRole;
@@ -20,6 +21,12 @@ interface AssistantChatPanelProps {
   sessionId?: string | null;
   sessionTitle?: string | null;
   consultMode?: boolean;
+  suggestionMode?: boolean;
+  suggestions?: DocumentSuggestion[];
+  sectionTitles?: Record<string, string>;
+  onAcceptSuggestion?: (id: string) => void;
+  onRejectSuggestion?: (id: string) => void;
+  onFocusSuggestion?: (id: string) => void;
 }
 
 export function AssistantChatPanel({
@@ -33,7 +40,13 @@ export function AssistantChatPanel({
   rider,
   sessionId,
   sessionTitle,
-  consultMode = false
+  consultMode = false,
+  suggestionMode = false,
+  suggestions = [],
+  sectionTitles = {},
+  onAcceptSuggestion,
+  onRejectSuggestion,
+  onFocusSuggestion,
 }: AssistantChatPanelProps) {
   const [inputText, setInputText] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -58,7 +71,7 @@ export function AssistantChatPanel({
 
   const profile = AGENT_PROFILES[activeAgent];
   const info = AGENT_INFO[activeAgent];
-  const suggestions = consultMode
+  const prompts = consultMode
     ? [
         '¿Qué pide el rider para la voz principal?',
         '¿Qué requisitos de hospitality están escritos?',
@@ -89,7 +102,7 @@ export function AssistantChatPanel({
             {info.icon}
           </div>
           <span className="text-[10px] font-black uppercase text-slate-400 group-hover:text-violet-600 transition-colors [writing-mode:vertical-rl] rotate-180 tracking-widest">
-            {consultMode ? 'Consulta' : 'Copilot IA'}
+            {consultMode ? 'Consulta' : suggestionMode ? 'Sugerencias' : 'Copilot IA'}
           </span>
         </div>
         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -109,7 +122,7 @@ export function AssistantChatPanel({
                 {profile.name}
               </h3>
               <p className="text-[10px] text-slate-400 font-medium">
-                {profile.title}
+                {suggestionMode ? 'Nada entra al documento hasta que aceptes' : profile.title}
               </p>
             </div>
           </div>
@@ -152,7 +165,16 @@ export function AssistantChatPanel({
 
       {/* Flujo de Mensajes */}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5 overscroll-contain">
-        {messages.length === 0 ? (
+        {suggestionMode ? (
+          <SuggestionInbox
+            suggestions={suggestions}
+            sectionTitles={sectionTitles}
+            lastMessage={messages.filter((message) => message.sender === 'ai').at(-1)?.text}
+            onAccept={onAcceptSuggestion}
+            onReject={onRejectSuggestion}
+            onFocus={onFocusSuggestion}
+          />
+        ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-4 sm:p-6 space-y-3 text-slate-400">
             <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-xl shadow-xs">
               {info.icon}
@@ -169,7 +191,7 @@ export function AssistantChatPanel({
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                 Sugerencias rápidas:
               </span>
-              {suggestions.map((faq, idx) => (
+              {prompts.map((faq, idx) => (
                 <button
                   key={idx}
                   type="button"
@@ -234,7 +256,7 @@ export function AssistantChatPanel({
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder={consultMode ? 'Pregunta sobre este rider...' : `Consulta a ${profile.name}...`}
+            placeholder={suggestionMode ? 'Pide un cambio para esta sección…' : consultMode ? 'Pregunta sobre este rider...' : `Consulta a ${profile.name}...`}
             className="w-full bg-transparent text-base sm:text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 outline-none font-medium"
             disabled={isThinking}
           />
@@ -277,5 +299,86 @@ export function AssistantChatPanel({
         </div>
       </form>
     </aside>
+  );
+}
+
+function SuggestionInbox({
+  suggestions,
+  sectionTitles,
+  lastMessage,
+  onAccept,
+  onReject,
+  onFocus,
+}: {
+  suggestions: DocumentSuggestion[];
+  sectionTitles: Record<string, string>;
+  lastMessage?: string;
+  onAccept?: (id: string) => void;
+  onReject?: (id: string) => void;
+  onFocus?: (id: string) => void;
+}) {
+  const visible = suggestions.filter((item) => item.status === 'pending' || item.status === 'stale');
+
+  if (visible.length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center p-4 space-y-3 text-slate-400">
+        <h4 className="text-xs font-black text-slate-700">Sugerencias</h4>
+        <p className="text-[11px] leading-relaxed max-w-xs">
+          Pide un cambio o revisa los huecos de la sección activa. El documento solo cambia cuando aceptas.
+        </p>
+        {lastMessage ? (
+          <p className="text-[11px] text-slate-500 bg-white border border-slate-200 rounded-2xl p-3 text-left whitespace-pre-line">{lastMessage}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {visible.map((suggestion) => {
+        const stale = suggestion.status === 'stale';
+        return (
+          <article key={suggestion.id} className="bg-white border border-slate-200/80 rounded-2xl p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 truncate">
+                {sectionTitles[suggestion.sectionId] || 'Sección'} · {suggestion.source === 'gap' ? 'Hueco' : 'Asistente'}
+              </p>
+              {stale ? <span className="text-[10px] font-bold text-amber-700">Obsoleta</span> : null}
+            </div>
+            <p className="text-xs text-slate-700 leading-relaxed">{suggestion.rationale}</p>
+            {suggestion.baseText ? (
+              <p className="text-[11px] text-rose-700 line-through whitespace-pre-line">{suggestion.baseText}</p>
+            ) : null}
+            {suggestion.proposedText ? (
+              <p className="text-[11px] text-emerald-800 bg-emerald-50 rounded-xl px-2 py-1.5 whitespace-pre-line">{suggestion.proposedText}</p>
+            ) : null}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={stale}
+                onClick={() => onAccept?.(suggestion.id)}
+                className="px-2.5 py-1 rounded-lg bg-violet-600 text-white text-[11px] font-bold cursor-pointer disabled:opacity-40"
+              >
+                Aceptar
+              </button>
+              <button
+                type="button"
+                onClick={() => onReject?.(suggestion.id)}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-bold cursor-pointer"
+              >
+                Rechazar
+              </button>
+              <button
+                type="button"
+                onClick={() => onFocus?.(suggestion.id)}
+                className="px-2.5 py-1 rounded-lg text-violet-700 text-[11px] font-bold cursor-pointer"
+              >
+                Ver
+              </button>
+            </div>
+          </article>
+        );
+      })}
+    </div>
   );
 }

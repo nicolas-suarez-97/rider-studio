@@ -33,6 +33,16 @@ export interface AgentAction {
   payload: AgentActionPayload;
 }
 
+export interface AgentSuggestionDraft {
+  kind: 'insert' | 'replace' | 'delete' | 'add_channel' | 'switch_type';
+  sectionId?: string;
+  baseText?: string;
+  proposedText?: string;
+  rationale?: string;
+  channel?: { name: string; mic?: string; stand?: string };
+  riderType?: string;
+}
+
 export interface AgentResponse {
   sessionId?: string;
   role: AgentRole;
@@ -40,6 +50,7 @@ export interface AgentResponse {
   roleAvatar: string;
   message: string;
   actions?: AgentAction[];
+  suggestions?: AgentSuggestionDraft[];
   gatewayProvider: 'vercel_ai_gateway' | 'production_expert_engine';
   notice?: string;
 }

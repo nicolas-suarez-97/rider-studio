@@ -204,7 +204,6 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
             channels={rider.channels}
             completedSectionIds={readSectionIds}
             onToggleComplete={toggleReadSection}
-            onEditSection={() => {}}
             onUpdateChannel={() => {}}
             onAddChannel={() => {}}
             onDeleteChannel={() => {}}

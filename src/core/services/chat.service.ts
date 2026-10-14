@@ -2,6 +2,7 @@ import { ChatMessage } from '../models/ChatConversation';
 import { ChatSessionSummary } from '../types/chat.types';
 import { AgentRole, AgentResponse } from '../types/agent.types';
 import { RiderType } from '../types/rider.types';
+import { EditorContextPayload } from '../types/suggestion.types';
 
 export interface SendMessageParams {
   messages: Array<{ role?: string; content?: string; text?: string; sender?: string }>;
@@ -9,6 +10,7 @@ export interface SendMessageParams {
   activeAgent: AgentRole;
   sessionId?: string;
   riderId?: string;
+  editorContext?: EditorContextPayload;
 }
 
 export interface IChatService {
