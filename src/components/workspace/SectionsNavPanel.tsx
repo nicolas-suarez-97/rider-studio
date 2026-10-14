@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { Reorder, useDragControls } from 'motion/react';
 import { Icon } from '../common/Icon';
 import { SectionItem, RiderType } from '@/core/types/rider.types';
@@ -27,6 +27,9 @@ interface SectionsNavPanelProps {
   completedSectionIds: string[];
   onToggleComplete: (id: string, e?: React.MouseEvent) => void;
   onOpenAddSection: () => void;
+  onAddSectionTitle?: (title: string) => void;
+  isAddingSection?: boolean;
+  onCancelAddSection?: () => void;
   onApplyTemplateOutline?: () => void;
   onResetBlank: () => void;
   progressPercent: number;
@@ -78,6 +81,66 @@ function IndexActionButton({
         <span className="block text-[10px] text-slate-400 truncate mt-0.5">{subtitle}</span>
       </div>
     </button>
+  );
+}
+
+function AddSectionTitleForm({
+  onSubmit,
+  onCancel,
+}: {
+  onSubmit: (title: string) => void;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const submit = (event?: FormEvent) => {
+    event?.preventDefault();
+    const next = title.trim();
+    if (!next) return;
+    onSubmit(next);
+  };
+
+  return (
+    <form
+      onSubmit={submit}
+      className="p-3 rounded-2xl border border-violet-300 bg-violet-50/70 shadow-xs ring-1 ring-violet-200/60"
+    >
+      <input
+        ref={inputRef}
+        value={title}
+        onChange={(event) => setTitle(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onCancel();
+        }}
+        placeholder="Título de la sección"
+        aria-label="Título de la sección"
+        className="w-full bg-transparent text-base sm:text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none"
+      />
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="text-[10px] text-slate-400">Enter para agregar</span>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-2 py-1 rounded-lg text-[10px] font-semibold text-slate-500 hover:bg-white cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={!title.trim()}
+            className="px-2 py-1 rounded-lg text-[10px] font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-40 cursor-pointer disabled:cursor-default"
+          >
+            Agregar
+          </button>
+        </div>
+      </div>
+    </form>
   );
 }
 
@@ -135,9 +198,11 @@ function SortableSection({
             <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCount}</span>
           )}
         </div>
-        <p className="text-[10px] text-slate-400 truncate mt-0.5">
-          {section.subtitle}
-        </p>
+        {section.subtitle ? (
+          <p className="text-[10px] text-slate-400 truncate mt-0.5">
+            {section.subtitle}
+          </p>
+        ) : null}
       </div>
 
       <button
@@ -164,6 +229,9 @@ export function SectionsNavPanel({
   completedSectionIds,
   onToggleComplete,
   onOpenAddSection,
+  onAddSectionTitle,
+  isAddingSection = false,
+  onCancelAddSection,
   onApplyTemplateOutline,
   onResetBlank,
   progressPercent,
@@ -226,7 +294,9 @@ export function SectionsNavPanel({
                         <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCounts?.[section.id]}</span>
                       )}
                     </span>
-                    <span className="block text-[10px] text-slate-400 truncate mt-0.5">{section.subtitle}</span>
+                    {section.subtitle ? (
+                      <span className="block text-[10px] text-slate-400 truncate mt-0.5">{section.subtitle}</span>
+                    ) : null}
                   </button>
                   <button
                     type="button"
@@ -284,12 +354,19 @@ export function SectionsNavPanel({
                 highlighted
               />
             )}
-            <IndexActionButton
-              icon="plus"
-              title="Agregar sección"
-              subtitle="Añade un título al documento"
-              onClick={onOpenAddSection}
-            />
+            {isAddingSection && onAddSectionTitle ? (
+              <AddSectionTitleForm
+                onSubmit={onAddSectionTitle}
+                onCancel={() => onCancelAddSection?.()}
+              />
+            ) : (
+              <IndexActionButton
+                icon="plus"
+                title="Agregar sección"
+                subtitle="Añade un título al documento"
+                onClick={onOpenAddSection}
+              />
+            )}
           </>
         )}
       </div>

@@ -8,7 +8,6 @@ import { Icon } from '@/components/common/Icon';
 import { SectionsNavPanel } from '@/components/workspace/SectionsNavPanel';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
 import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
-import { AddSectionModal } from '@/components/modals/AddSectionModal';
 import { MasterExportModal } from '@/components/modals/MasterExportModal';
 import { StagePlotModal } from '@/components/modals/StagePlotModal';
 import { ShareLinkModal } from '@/components/modals/ShareLinkModal';
@@ -85,9 +84,9 @@ export function WorkspaceClient({
 
   // Estado de vista activa en dispositivos móviles (< 1280px)
   const [mobileTab, setMobileTab] = useState<MobileTab>('document');
+  const [isAddingSection, setIsAddingSection] = useState(false);
 
   // Modales
-  const [showAddSectionModal, setShowAddSectionModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportScope, setExportScope] = useState<ExportScope>('master');
   const [showStagePlotModal, setShowStagePlotModal] = useState(false);
@@ -389,19 +388,28 @@ export function WorkspaceClient({
     });
   };
 
-  // Agregar sección
-  const handleAddSection = async (newSec: { title: string; subtitle: string; tag: string; content: string }) => {
+  const handleStartAddSection = () => {
+    setIsAddingSection(true);
+    setMobileTab('sections');
+  };
+
+  const handleAddSectionTitle = async (title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
     const updated = new Rider({ ...rider });
-    updated.addSection({
-      title: newSec.title,
-      subtitle: newSec.subtitle,
-      tag: newSec.tag,
+    const section = updated.addSection({
+      title: trimmed,
+      subtitle: '',
+      tag: 'Personalizado',
       tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
       iconName: 'fileText',
-      content: newSec.content
+      content: '',
     });
     setRider(updated);
-    showToast('✨ Nueva sección agregada al rider');
+    setActiveSectionId(section.id);
+    setIsAddingSection(false);
+    setMobileTab('document');
+    showToast('Nueva sección agregada');
     await handleSaveRider(updated);
   };
 
@@ -705,7 +713,10 @@ export function WorkspaceClient({
             }}
             completedSectionIds={rider.completedSectionIds}
             onToggleComplete={handleToggleComplete}
-            onOpenAddSection={() => setShowAddSectionModal(true)}
+            onOpenAddSection={handleStartAddSection}
+            onAddSectionTitle={handleAddSectionTitle}
+            isAddingSection={isAddingSection}
+            onCancelAddSection={() => setIsAddingSection(false)}
             onApplyTemplateOutline={() => handleAskFromDocument('__outline__')}
             onResetBlank={handleResetBlank}
             progressPercent={rider.getProgress()}
@@ -736,7 +747,7 @@ export function WorkspaceClient({
             onToggleComplete={handleToggleComplete}
             onDeleteSection={handleDeleteSection}
             onReorderSections={handleReorderSections}
-            onInsertSection={() => setShowAddSectionModal(true)}
+            onInsertSection={handleStartAddSection}
             onUploadDocumentImage={handleUploadDocumentImage}
             onImageError={showToast}
             isBlankDocument={isBlankDocument}
@@ -868,15 +879,6 @@ export function WorkspaceClient({
           <span className="text-[10px] leading-tight">Sugerencias</span>
         </button>
       </nav>
-
-      {/* Modales */}
-      <AddSectionModal
-        isOpen={showAddSectionModal}
-        onClose={() => setShowAddSectionModal(false)}
-        onAddSection={handleAddSection}
-        currentRiderTitle={rider.title}
-        nextSectionNum={String(rider.sections.length + 1).padStart(2, '0')}
-      />
 
       <MasterExportModal
         isOpen={showExportModal}
