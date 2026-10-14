@@ -18,7 +18,7 @@ import { RiderType, RiderDocumentTheme, SectionItem, ChannelData, ExportScope, S
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
-import { buildGapSuggestions, isDocumentIntro, type SectionDocumentPatch } from '@/core/editor/content-doc';
+import { buildGapSuggestions, isDocumentIntro, sectionsForOutline, type SectionDocumentPatch } from '@/core/editor/content-doc';
 import { materializeSuggestions } from '@/core/editor/suggestions';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
 import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
@@ -665,7 +665,7 @@ export function WorkspaceClient({
     }
   };
 
-  const outlineSections = rider.sections.filter((section) => !isDocumentIntro(section.id));
+  const outlineSections = sectionsForOutline(rider.sections);
   const introHasContent = rider.sections.some((section) => isDocumentIntro(section.id) && Boolean((section.content || '').trim()));
   const isBlankDocument = outlineSections.length === 0 && !rider.artistName.trim() && !introHasContent;
 
@@ -715,6 +715,8 @@ export function WorkspaceClient({
         isSharing={isSharing || isSaving}
         chatSessionId={currentSessionId}
         riderId={rider.id}
+        documentTitle={rider.title}
+        onDocumentTitleChange={(title) => setRider((prev) => new Rider({ ...prev, title }))}
       />
 
       {/* Contenedor de Paneles: 3 columnas simultáneas en desktop (xl:), panel único en móvil/tablet */}

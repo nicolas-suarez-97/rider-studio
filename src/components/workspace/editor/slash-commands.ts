@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core';
-import { coverAttrsFromEditor, removeSyntheticHeader } from '@/components/workspace/editor/rider-blocks';
+import { insertCoverAtStart } from '@/components/workspace/editor/rider-blocks';
 import { cloneInputListRows } from '@/core/constants/input-list';
 import { newSectionId } from '@/core/editor/content-doc';
 
@@ -48,11 +48,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     group: 'Rider',
     keywords: ['portada', 'cover', 'artista', 'foto'],
     run: (editor, range) => {
-      const inserted = deleteThen(editor, range).insertContent({
-        type: 'riderCover',
-        attrs: coverAttrsFromEditor(editor),
-      }).run();
-      if (inserted) removeSyntheticHeader(editor);
+      editor.chain().focus().deleteRange(range).run();
+      insertCoverAtStart(editor);
     },
   },
   {

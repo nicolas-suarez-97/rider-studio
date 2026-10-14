@@ -47,7 +47,10 @@ import {
   SuggestionHighlights,
 } from '@/components/workspace/editor/suggestion-highlight';
 import {
-  headingIdsFromDoc,
+  DOCUMENT_COVER_ID,
+  coverIndexFromId,
+  documentStructureKey,
+  isDocumentIntro,
   newSectionId,
   riderDocumentFromSections,
   splitDocumentToSections,
@@ -67,7 +70,10 @@ export interface EditorBridge {
 const SECTION_SCROLL_PADDING = 96;
 
 export function scrollSectionIntoCanvas(sectionId: string) {
-  const heading = document.getElementById(sectionId);
+  const coverIndex = coverIndexFromId(sectionId);
+  const heading = coverIndex >= 0
+    ? document.querySelectorAll('[data-type="rider-cover"]')[coverIndex] || null
+    : document.getElementById(sectionId);
   if (!heading) return;
   const scroller = heading.closest('[data-docs-scroller]') as HTMLElement | null;
   if (!scroller) {
@@ -335,8 +341,13 @@ export function RiderDocumentSurface({
     },
     onSelectionUpdate: ({ editor: current }) => {
       const { from, to } = current.state.selection;
-      let sectionId = sectionsRef.current[0]?.id || '';
+      let sectionId = sectionsRef.current.find((section) => !isDocumentIntro(section.id))?.id || '';
+      let covers = 0;
       current.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'riderCover' && pos <= from) {
+          covers += 1;
+          sectionId = covers === 1 ? DOCUMENT_COVER_ID : `${DOCUMENT_COVER_ID}-${covers}`;
+        }
         if (node.type.name === 'heading' && node.attrs.id && pos <= from) {
           sectionId = node.attrs.id as string;
         }
@@ -347,6 +358,14 @@ export function RiderDocumentSurface({
   }, [readOnly]);
 
   editorRef.current = editor;
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed || readOnly) return;
+    const patches = splitDocumentToSections(editor.getJSON());
+    const nextIds = patches.map((patch) => patch.id).join('|');
+    const currentIds = sectionsRef.current.map((section) => section.id).join('|');
+    if (nextIds !== currentIds) callbacksRef.current.onDocumentChange?.(patches);
+  }, [editor, readOnly]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
@@ -382,9 +401,7 @@ export function RiderDocumentSurface({
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     const nextDoc = riderDocumentFromSections(sections, { artistName, title: riderTitle });
-    const currentIds = headingIdsFromDoc(editor.getJSON());
-    const nextIds = headingIdsFromDoc(nextDoc);
-    if (currentIds.join('|') === nextIds.join('|')) return;
+    if (documentStructureKey(editor.getJSON()) === documentStructureKey(nextDoc)) return;
 
     let cancelled = false;
     queueMicrotask(() => {

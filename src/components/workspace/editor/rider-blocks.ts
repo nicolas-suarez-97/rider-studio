@@ -104,17 +104,32 @@ export function removeSyntheticHeader(editor: Editor) {
     if (node.type.name === 'riderCover') hasCover = true;
   });
   if (!hasCover) return;
-  const first = doc.firstChild;
-  if (!first || first.type.name !== 'heading' || first.attrs.level !== 1 || first.attrs.id) return;
-  let end = first.nodeSize;
-  if (doc.childCount > 1) {
-    const second = doc.child(1);
-    const title = editor.storage.riderDocumentMeta?.riderTitle?.trim() || '';
-    const text = second.textContent.trim();
-    const dropSecond = second.type.name === 'paragraph' && (text === '' || (Boolean(title) && text === title));
-    if (dropSecond) end += second.nodeSize;
+  let cursor = 0;
+  for (let index = 0; index < doc.childCount; index += 1) {
+    const child = doc.child(index);
+    if (child.type.name === 'heading' && child.attrs.level === 1 && !child.attrs.id) {
+      let end = cursor + child.nodeSize;
+      if (index + 1 < doc.childCount) {
+        const second = doc.child(index + 1);
+        const title = editor.storage.riderDocumentMeta?.riderTitle?.trim() || '';
+        const text = second.textContent.trim();
+        const dropSecond = second.type.name === 'paragraph' && (text === '' || (Boolean(title) && text === title));
+        if (dropSecond) end += second.nodeSize;
+      }
+      editor.commands.deleteRange({ from: cursor, to: end });
+      return;
+    }
+    cursor += child.nodeSize;
   }
-  editor.commands.deleteRange({ from: 0, to: end });
+}
+
+export function insertCoverAtStart(editor: Editor) {
+  const inserted = editor.chain().focus().insertContentAt(0, {
+    type: 'riderCover',
+    attrs: coverAttrsFromEditor(editor),
+  }).run();
+  if (inserted) removeSyntheticHeader(editor);
+  return inserted;
 }
 
 export const RiderCover = Node.create({
@@ -144,10 +159,7 @@ export const RiderCover = Node.create({
   },
   addCommands() {
     return {
-      insertRiderCover: () => ({ editor, commands }) => commands.insertContent({
-        type: this.name,
-        attrs: coverAttrsFromEditor(editor),
-      }),
+      insertRiderCover: () => ({ editor }) => insertCoverAtStart(editor),
     };
   },
 });

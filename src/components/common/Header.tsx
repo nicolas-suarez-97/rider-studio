@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Icon } from './Icon';
@@ -26,6 +26,46 @@ interface HeaderProps {
   contraRiderHref?: string;
   chatSessionId?: string | null;
   riderId?: string | null;
+  documentTitle?: string;
+  onDocumentTitleChange?: (title: string) => void;
+}
+
+function DocumentName({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange?: (title: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  if (!onChange) {
+    return (
+      <p className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-slate-800 sm:text-base" title={value}>
+        {value}
+      </p>
+    );
+  }
+
+  return (
+    <input
+      aria-label="Nombre del documento"
+      value={draft}
+      onChange={(event) => {
+        const next = event.target.value;
+        setDraft(next);
+        if (next.trim()) onChange(next);
+      }}
+      onBlur={() => {
+        if (!draft.trim()) setDraft(value);
+      }}
+      className="min-w-0 flex-1 truncate rounded-md bg-transparent px-2 py-1 text-sm font-medium text-slate-800 outline-none hover:bg-slate-100 focus:bg-slate-100 focus:ring-1 focus:ring-slate-200 sm:text-base"
+    />
+  );
 }
 
 export function Header({
@@ -41,7 +81,9 @@ export function Header({
   onOpenExportModal,
   onShare,
   isSharing = false,
-  contraRiderHref
+  contraRiderHref,
+  documentTitle,
+  onDocumentTitleChange,
 }: HeaderProps) {
   const openExport = () => {
     if (onOpenExportModal) {
@@ -64,7 +106,7 @@ export function Header({
           1. HEADER PRINCIPAL GLOBAL (Idéntico en todas las vistas)
          ======================================================== */}
       <header className="h-14 sm:h-16 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
-        <div className="h-full w-full px-3 sm:px-6 flex items-center justify-between">
+        <div className="h-full w-full px-3 sm:px-6 flex items-center gap-2 sm:gap-4">
         {/* Logo de Marca */}
         <Link 
           href={homeHref}
@@ -79,7 +121,7 @@ export function Header({
               <circle cx="18.5" cy="5.5" r="2" fill="#F59E0B" />
             </svg>
           </div>
-          <div className="flex flex-col leading-none">
+          <div className={`${documentTitle ? 'hidden sm:flex' : 'flex'} flex-col leading-none`}>
             <div className="flex items-center gap-0.5 sm:gap-1">
               <span className="font-black text-base sm:text-lg tracking-tight text-slate-900">Rider</span>
               <span className="font-black text-base sm:text-lg tracking-tight bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent font-bold">Studio</span>
@@ -90,6 +132,12 @@ export function Header({
             </span>
           </div>
         </Link>
+
+        {documentTitle ? (
+          <DocumentName value={documentTitle} onChange={onDocumentTitleChange} />
+        ) : (
+          <div className="flex-1" />
+        )}
 
         {/* Acciones y Navegación Global */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
 import { Icon } from '@/components/common/Icon';
-import { coverAttrsFromEditor, removeSyntheticHeader } from '@/components/workspace/editor/rider-blocks';
+import { insertCoverAtStart } from '@/components/workspace/editor/rider-blocks';
 import { RIDER_DOCUMENT_THEMES } from '@/core/constants/document-themes';
 import { cloneInputListRows } from '@/core/constants/input-list';
 import type { RiderDocumentTheme } from '@/core/types/rider.types';
@@ -23,11 +23,7 @@ const RIDER_INSERTS: Array<{ id: string; label: string; icon: string }> = [
 function insertRiderBlock(editor: Editor, id: string) {
   const chain = editor.chain().focus();
   if (id === 'cover') {
-    const inserted = chain.insertContent({
-      type: 'riderCover',
-      attrs: coverAttrsFromEditor(editor),
-    }).run();
-    if (inserted) removeSyntheticHeader(editor);
+    insertCoverAtStart(editor);
     return;
   }
   if (id === 'requirement') chain.insertRequirement().run();

@@ -7,7 +7,7 @@ import { Icon } from '@/components/common/Icon';
 import { SectionsNavPanel } from '@/components/workspace/SectionsNavPanel';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
 import { scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
-import { isDocumentIntro } from '@/core/editor/content-doc';
+import { sectionsForOutline } from '@/core/editor/content-doc';
 import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { Rider } from '@/core/models/Rider';
 import { AgentRole } from '@/core/types/agent.types';
@@ -41,7 +41,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
   const [commentAuthorName, setCommentAuthorName] = useState('');
 
   const readableTypes = rider.getReadableTypes();
-  const outlineSections = rider.sections.filter((section) => !isDocumentIntro(section.id));
+  const outlineSections = sectionsForOutline(rider.sections);
   const readCount = outlineSections.filter((section) => readSectionIds.includes(section.id)).length;
   const readPercent = outlineSections.length === 0
     ? 0
@@ -177,6 +177,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
         totalCount={outlineSections.length}
         progressPercent={readPercent}
         contraRiderHref={rider.id ? `/promotor/shows/${rider.id}/contra-rider` : undefined}
+        documentTitle={rider.title}
       />
 
       <div className="flex-1 flex overflow-hidden relative">
