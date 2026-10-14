@@ -49,6 +49,25 @@ export interface EditorBridge {
   focus: (suggestion: DocumentSuggestion) => void;
   find: (query: string, direction?: SearchDirection) => SearchStats;
   insertSectionTitle: (title: string) => string | null;
+  scrollToSection: (sectionId: string) => void;
+}
+
+const SECTION_SCROLL_PADDING = 96;
+
+export function scrollSectionIntoCanvas(sectionId: string) {
+  const heading = document.getElementById(sectionId);
+  if (!heading) return;
+  const scroller = heading.closest('[data-docs-scroller]') as HTMLElement | null;
+  if (!scroller) {
+    heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  const box = scroller.getBoundingClientRect();
+  const rect = heading.getBoundingClientRect();
+  scroller.scrollTo({
+    top: Math.max(0, scroller.scrollTop + rect.top - box.top - SECTION_SCROLL_PADDING),
+    behavior: 'smooth',
+  });
 }
 
 const RiderKeys = Extension.create({
@@ -420,6 +439,7 @@ export function RiderDocumentSurface({
       },
       find: findInDocument,
       insertSectionTitle,
+      scrollToSection: scrollSectionIntoCanvas,
     });
   }, [editor, findInDocument, insertSectionTitle, onRegisterBridge]);
 
@@ -451,9 +471,9 @@ export function RiderDocumentSurface({
       <style>{`
         .docs-editor { box-sizing: border-box; background: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         .docs-page-break { pointer-events: none; user-select: none; display: block; width: 100%; margin: 0; padding: 0; border: 0; overflow: hidden; box-sizing: content-box; }
-        .docs-editor h1 { font-size: 26pt; font-weight: 700; line-height: 1.15; margin: 0 0 0.35em; }
-        .docs-editor h2 { font-size: 16pt; font-weight: 700; line-height: 1.2; margin: 1em 0 0.3em; }
-        .docs-editor h3 { font-size: 13pt; font-weight: 700; margin: 0.8em 0 0.25em; }
+        .docs-editor h1 { font-size: 26pt; font-weight: 700; line-height: 1.15; margin: 0 0 0.35em; scroll-margin-top: 96px; }
+        .docs-editor h2 { font-size: 16pt; font-weight: 700; line-height: 1.2; margin: 1em 0 0.3em; scroll-margin-top: 96px; }
+        .docs-editor h3 { font-size: 13pt; font-weight: 700; margin: 0.8em 0 0.25em; scroll-margin-top: 72px; }
         .docs-editor p { margin: 0 0 0.35em; }
         .docs-editor .is-empty::before { color: #9aa0a6; content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }
         .docs-editor ul { list-style: disc; padding-left: 1.5em; margin: 0.2em 0 0.5em; }
@@ -544,7 +564,9 @@ export function RiderDocumentSurface({
       )}
       <div
         ref={scrollerRef}
+        data-docs-scroller
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-40 xl:pb-28 bg-[#f0f2f5]"
+        style={{ scrollPaddingTop: SECTION_SCROLL_PADDING }}
       >
         <div
           className="mx-auto my-4 sm:my-6"

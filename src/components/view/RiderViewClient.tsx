@@ -6,6 +6,7 @@ import { Toast } from '@/components/common/Toast';
 import { Icon } from '@/components/common/Icon';
 import { SectionsNavPanel } from '@/components/workspace/SectionsNavPanel';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
+import { scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
 import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { Rider } from '@/core/models/Rider';
 import { AgentRole } from '@/core/types/agent.types';
@@ -100,7 +101,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
     setActiveSectionId(id);
     setMobileTab('document');
     window.requestAnimationFrame(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      scrollSectionIntoCanvas(id);
     });
   };
 

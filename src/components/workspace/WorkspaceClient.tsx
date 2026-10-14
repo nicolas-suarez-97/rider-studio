@@ -21,7 +21,7 @@ import { SectionCommentItem } from '@/lib/share/comments';
 import { buildGapSuggestions, type SectionDocumentPatch } from '@/core/editor/content-doc';
 import { materializeSuggestions } from '@/core/editor/suggestions';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
-import { EditorBridge } from '@/components/workspace/editor/RiderDocumentSurface';
+import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 import { isPersistedRiderId, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { deleteRiderImage, uploadRiderImage } from '@/lib/media/upload-client';
@@ -720,8 +720,8 @@ export function WorkspaceClient({
               // Al tocar una sección en móvil, cambiar automáticamente al documento y hacer scroll
               setMobileTab('document');
               setTimeout(() => {
-                const el = document.getElementById(id);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (bridgeRef.current?.scrollToSection) bridgeRef.current.scrollToSection(id);
+                else scrollSectionIntoCanvas(id);
               }, 80);
             }}
             completedSectionIds={rider.completedSectionIds}
