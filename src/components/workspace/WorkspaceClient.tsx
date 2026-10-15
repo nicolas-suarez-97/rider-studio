@@ -118,6 +118,7 @@ export function WorkspaceClient({
   const [currentSessionTitle] = useState<string | null>(initialSessionTitle);
   const [messages, setMessages] = useState<ChatMessageItem[]>(initialMessages);
   const [isAgentThinking, setIsAgentThinking] = useState(false);
+  const [incomingDraftPrompt, setIncomingDraftPrompt] = useState<{ text: string; id: number } | null>(null);
 
   const isFirstMount = useRef(true);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -802,6 +803,30 @@ export function WorkspaceClient({
     void handleSendMessage(text, sectionId);
   };
 
+  const handleDraftWithSelection = useCallback((selectedText: string, sectionId?: string, mode?: 'quote' | 'adjust' | 'analyze') => {
+    if (!selectedText.trim()) return;
+    setIsChatCollapsed(false);
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches) {
+      setMobileTab('assistant');
+    }
+    const targetSectionId = sectionId || activeSectionId;
+    setActiveSectionId(targetSectionId);
+    selectionRef.current = { sectionId: targetSectionId, text: selectedText };
+
+    const clean = selectedText.replace(/\s+/g, ' ').trim();
+    let draft = `Sobre "${clean}": `;
+    if (mode === 'adjust') {
+      draft = `Modificar "${clean}": `;
+    } else if (mode === 'analyze') {
+      draft = `Analizar "${clean}": `;
+    }
+
+    setIncomingDraftPrompt({
+      text: draft,
+      id: Date.now(),
+    });
+  }, [activeSectionId]);
+
   const handleOpenExportModal = (scope: ExportScope = 'master') => {
     setExportScope(scope);
     setShowExportModal(true);
@@ -896,6 +921,7 @@ export function WorkspaceClient({
             isBlankDocument={isBlankDocument}
             isAssistantThinking={isAgentThinking}
             onAskAssistant={handleAskFromDocument}
+            onDraftWithSelection={handleDraftWithSelection}
             onDocumentChange={handleDocumentChange}
             onSelectionChange={(sectionId, text) => {
               selectionRef.current = { sectionId, text };
@@ -946,6 +972,7 @@ export function WorkspaceClient({
             rider={rider}
             sessionId={currentSessionId}
             sessionTitle={currentSessionTitle}
+            incomingDraft={incomingDraftPrompt}
             suggestionMode
             suggestions={documentSuggestions.filter((item) => item.source !== 'gap')}
             sectionTitles={Object.fromEntries(rider.sections.map((section) => [section.id, section.title]))}

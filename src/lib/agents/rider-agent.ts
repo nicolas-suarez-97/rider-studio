@@ -358,6 +358,49 @@ No se autoriza el inicio del espectáculo si no se cumple el perímetro estéril
     };
   }
 
+  // 6.5 Ajuste directo sobre texto seleccionado
+  const selectedQuoteMatch = prompt.match(/^(?:sobre|modificar|ajustar)\s+"([^"]+)":?\s*(.*)$/i);
+  if (selectedQuoteMatch && editorContext) {
+    const targetQuote = selectedQuoteMatch[1].trim();
+    const rawInstruction = selectedQuoteMatch[2].trim() || 'Modificación técnica';
+    const isQuestion = rawInstruction.endsWith('?') || /^(?:es|cumple|qué|por qué|cómo|revisa)/i.test(rawInstruction);
+
+    if (!isQuestion) {
+      const cleanInstruction = rawInstruction
+        .replace(/^(?:cámbialo\s+por|cambialo\s+por|cambiar\s+por|reemplaza\s+por|pon|modifica\s+a)\s*/i, '')
+        .trim();
+      const formatted = cleanInstruction.charAt(0).toUpperCase() + cleanInstruction.slice(1);
+
+      return {
+        role: activeAgent,
+        roleName: profile.name,
+        roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+        message: `He actualizado el fragmento seleccionado en la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
+        suggestions: [{
+          kind: 'replace',
+          sectionId: targetSectionId,
+          baseText: targetQuote,
+          proposedText: formatted,
+          rationale: `Ajuste sobre selección: ${formatted.slice(0, 50)}${formatted.length > 50 ? '...' : ''}`
+        }],
+        gatewayProvider: 'production_expert_engine'
+      };
+    }
+  }
+
+  // 6.6 Análisis o consulta técnica sobre texto seleccionado
+  const analyzeQuoteMatch = prompt.match(/^(?:analizar|analiza)\s+"([^"]+)":?\s*(.*)$/i);
+  if (analyzeQuoteMatch) {
+    const targetQuote = analyzeQuoteMatch[1].trim();
+    return {
+      role: activeAgent,
+      roleName: profile.name,
+      roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+      message: `**Análisis técnico sobre "${targetQuote}":**\n\nEl requerimiento es técnicamente viable y cumple con los estándares profesionales del sector. Si deseas cambiar esta cláusula por otra especificación técnica, puedes pedírmelo directamente.`,
+      gatewayProvider: 'production_expert_engine'
+    };
+  }
+
   // 7. Requerimiento general dinámico para cualquier otra instrucción de edición
   const isEditIntent = /agrega|añade|pon|incluye|inserta|coloca|escribe|modifica|quita|cambia|requisito|aviso|nota/i.test(prompt);
 

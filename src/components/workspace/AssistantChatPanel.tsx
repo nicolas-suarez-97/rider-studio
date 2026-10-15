@@ -27,6 +27,7 @@ interface AssistantChatPanelProps {
   onAcceptSuggestion?: (id: string) => void;
   onRejectSuggestion?: (id: string) => void;
   onFocusSuggestion?: (id: string) => void;
+  incomingDraft?: { text: string; id: number } | null;
 }
 
 export function AssistantChatPanel({
@@ -47,15 +48,37 @@ export function AssistantChatPanel({
   onAcceptSuggestion,
   onRejectSuggestion,
   onFocusSuggestion,
+  incomingDraft,
 }: AssistantChatPanelProps) {
   const [inputText, setInputText] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [messages, isThinking]);
+
+  useEffect(() => {
+    if (incomingDraft?.text) {
+      setInputText(incomingDraft.text);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const len = incomingDraft.text.length;
+          textareaRef.current.setSelectionRange(len, len);
+        }
+      }, 50);
+    }
+  }, [incomingDraft]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(Math.max(34, textareaRef.current.scrollHeight), 120)}px`;
+    }
+  }, [inputText]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,12 +266,35 @@ export function AssistantChatPanel({
       {/* Input de Chat con padding inferior para no solapar la barra de navegación móvil */}
       <form onSubmit={handleSubmit} className="p-3 border-t border-slate-200/60 bg-white/50 shrink-0 pb-20 xl:pb-3">
         <div className="flex flex-col gap-1.5 bg-slate-50 border border-slate-200/80 rounded-2xl p-1.5 focus-within:border-violet-500 focus-within:bg-white transition-all">
-          <input
-            type="text"
+          {incomingDraft && inputText.startsWith(incomingDraft.text.slice(0, 10)) && (
+            <div className="flex items-center justify-between px-2 pt-1 pb-0.5 text-[10px] text-violet-700 font-semibold border-b border-violet-100">
+              <span className="flex items-center gap-1.5 truncate">
+                <Icon name="sparkles" className="w-3 h-3 text-violet-600 shrink-0" />
+                <span className="truncate">Redactando sobre texto seleccionado</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setInputText('')}
+                className="text-slate-400 hover:text-slate-600 ml-1 text-xs cursor-pointer p-0.5 hover:bg-violet-100 rounded"
+                title="Limpiar"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
             placeholder={suggestionMode ? 'Pide un cambio para esta sección…' : consultMode ? 'Pregunta sobre este rider...' : `Consulta a ${profile.name}...`}
-            className="w-full bg-transparent text-base sm:text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 outline-none font-medium"
+            className="w-full bg-transparent text-base sm:text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 outline-none font-medium resize-none min-h-[34px] max-h-28 overflow-y-auto leading-relaxed"
             disabled={isThinking}
           />
           <div className="flex items-center gap-1.5">

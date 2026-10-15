@@ -32,6 +32,7 @@ import {
   Tiers,
 } from '@/components/workspace/editor/rider-blocks';
 import { SlashCommandMenu } from '@/components/workspace/editor/SlashCommandMenu';
+import { SelectionFloatingAi } from '@/components/workspace/editor/SelectionFloatingAi';
 import '@/components/workspace/editor/document-theme.css';
 import { defaultDocumentTheme } from '@/core/constants/document-themes';
 import type { RiderDocumentTheme } from '@/core/types/rider.types';
@@ -205,6 +206,7 @@ interface RiderDocumentSurfaceProps {
   isBlankDocument?: boolean;
   isAssistantThinking?: boolean;
   onAskAssistant?: (text: string, sectionId?: string) => void;
+  onDraftWithSelection?: (selectedText: string, sectionId?: string, mode?: 'quote' | 'adjust' | 'analyze') => void;
 }
 
 export function RiderDocumentSurface({
@@ -227,6 +229,7 @@ export function RiderDocumentSurface({
   isBlankDocument = false,
   isAssistantThinking = false,
   onAskAssistant,
+  onDraftWithSelection,
 }: RiderDocumentSurfaceProps) {
   const theme = documentTheme || defaultDocumentTheme();
   const coverArtist = useMemo(() => {
@@ -874,6 +877,13 @@ export function RiderDocumentSurface({
           enabled={!readOnly}
           keysRef={slashKeysRef}
           onInsertImages={insertImages}
+        />
+      )}
+      {!readOnly && (
+        <SelectionFloatingAi
+          editor={editor}
+          enabled={!readOnly}
+          onDraftWithSelection={onDraftWithSelection}
         />
       )}
       <AnimatePresence>
