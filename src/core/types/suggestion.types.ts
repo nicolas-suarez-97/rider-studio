@@ -1,7 +1,15 @@
-import { RiderType } from '@/core/types/rider.types';
+import { RiderDocumentTheme, RiderType } from '@/core/types/rider.types';
 
-export type SuggestionKind = 'insert' | 'replace' | 'delete' | 'add_channel' | 'switch_type';
-export type SuggestionStatus = 'pending' | 'accepted' | 'rejected' | 'stale';
+export type SuggestionKind =
+  | 'insert'
+  | 'replace'
+  | 'delete'
+  | 'add_channel'
+  | 'switch_type'
+  | 'add_section'
+  | 'switch_theme';
+
+export type SuggestionStatus = 'pending' | 'applied' | 'accepted' | 'rejected' | 'stale';
 export type SuggestionSource = 'agent' | 'gap';
 
 export interface DocumentSuggestion {
@@ -13,6 +21,10 @@ export interface DocumentSuggestion {
   rationale: string;
   status: SuggestionStatus;
   source: SuggestionSource;
+  applied?: boolean;
+  appliedRange?: { from: number; to: number };
+  newSectionTitle?: string;
+  theme?: RiderDocumentTheme;
   channel?: { name: string; mic?: string; stand?: string };
   riderType?: RiderType;
 }
@@ -23,4 +35,8 @@ export interface EditorContextPayload {
   sectionText: string;
   selection: string;
   gaps: string[];
+  allSections?: Array<{ id: string; title: string }>;
+  riderTitle?: string;
+  artistName?: string;
+  currentTheme?: RiderDocumentTheme;
 }

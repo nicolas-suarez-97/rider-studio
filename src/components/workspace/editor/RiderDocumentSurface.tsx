@@ -45,8 +45,10 @@ import {
 } from '@/components/workspace/editor/document-search';
 import {
   applySuggestionToEditor,
+  ApplySuggestionResult,
   findSectionBounds,
   locateText,
+  revertSuggestionFromEditor,
   setEditorSuggestions,
   SuggestionHighlights,
 } from '@/components/workspace/editor/suggestion-highlight';
@@ -64,7 +66,8 @@ import { SectionItem, RiderType } from '@/core/types/rider.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 
 export interface EditorBridge {
-  apply: (suggestion: DocumentSuggestion) => boolean;
+  apply: (suggestion: DocumentSuggestion) => ApplySuggestionResult;
+  revert: (suggestion: DocumentSuggestion) => boolean;
   focus: (suggestion: DocumentSuggestion) => void;
   find: (query: string, direction?: SearchDirection) => SearchStats;
   insertSectionTitle: (title: string) => string | null;
@@ -657,6 +660,7 @@ export function RiderDocumentSurface({
     if (!editor) return;
     onRegisterBridge?.({
       apply: (suggestion) => applySuggestionToEditor(editor, suggestion),
+      revert: (suggestion) => revertSuggestionFromEditor(editor, suggestion),
       focus: (suggestion) => {
         const bounds = findSectionBounds(editor.state.doc, suggestion.sectionId);
         const range = suggestion.baseText

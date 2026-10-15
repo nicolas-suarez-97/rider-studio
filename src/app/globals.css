@@ -146,6 +146,135 @@ body {
   padding: 0.4rem 0.55rem;
   white-space: pre-wrap;
 }
+
+.rider-applied-highlight {
+  background-color: rgba(16, 185, 129, 0.12);
+  border-bottom: 2px solid #10b981;
+  border-radius: 2px;
+}
+
+.rider-applied-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 14px 0;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border: 1px solid #c4b5fd;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px -2px rgba(124, 58, 237, 0.12), 0 2px 4px -2px rgba(124, 58, 237, 0.06);
+  user-select: none;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  animation: riderFadeIn 0.2s ease-out;
+}
+
+@keyframes riderFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rider-applied-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rider-applied-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: #7c3aed;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rider-applied-rationale {
+  color: #4c1d95;
+  font-weight: 500;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rider-applied-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.rider-applied-btn-accept {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(5, 150, 105, 0.2);
+}
+
+.rider-applied-btn-accept:hover {
+  background: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.3);
+}
+
+.rider-applied-btn-reject {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(225, 29, 72, 0.05);
+}
+
+.rider-applied-btn-reject:hover {
+  background: #fff1f2;
+  border-color: #fda4af;
+  transform: translateY(-1px);
+}
+
+@media print {
+  .rider-applied-banner {
+    display: none !important;
+  }
+  .rider-applied-highlight {
+    background: transparent !important;
+    border-bottom: none !important;
+  }
+}
 }
 
 /* Ambient glow floating animation */

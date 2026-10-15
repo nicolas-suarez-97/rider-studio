@@ -22,15 +22,40 @@ export function parseSuggestionJson(raw: string): { message: string; suggestions
     const message = typeof data.message === 'string' ? data.message : '';
     const list = Array.isArray(data.suggestions) ? data.suggestions : [];
     const suggestions: AgentSuggestionDraft[] = [];
+    const validKinds = new Set([
+      'insert',
+      'replace',
+      'delete',
+      'add_channel',
+      'switch_type',
+      'add_section',
+      'switch_theme'
+    ]);
+
     for (const item of list) {
       if (!isRecord(item)) continue;
       const kind = item.kind;
-      if (kind !== 'insert' && kind !== 'replace' && kind !== 'delete') continue;
+      if (typeof kind !== 'string' || !validKinds.has(kind)) continue;
+
+      let channel: { name: string; mic?: string; stand?: string } | undefined;
+      if (isRecord(item.channel) && typeof item.channel.name === 'string') {
+        channel = {
+          name: item.channel.name,
+          mic: typeof item.channel.mic === 'string' ? item.channel.mic : undefined,
+          stand: typeof item.channel.stand === 'string' ? item.channel.stand : undefined,
+        };
+      }
+
       suggestions.push({
-        kind,
+        kind: kind as AgentSuggestionDraft['kind'],
+        sectionId: typeof item.sectionId === 'string' && item.sectionId.trim() ? item.sectionId.trim() : undefined,
+        newSectionTitle: typeof item.newSectionTitle === 'string' && item.newSectionTitle.trim() ? item.newSectionTitle.trim() : undefined,
+        theme: typeof item.theme === 'string' && item.theme.trim() ? item.theme.trim() : undefined,
         baseText: typeof item.baseText === 'string' ? item.baseText.slice(0, 2000) : '',
-        proposedText: typeof item.proposedText === 'string' ? item.proposedText.slice(0, 4000) : '',
+        proposedText: typeof item.proposedText === 'string' ? item.proposedText.slice(0, 6000) : '',
         rationale: typeof item.rationale === 'string' ? item.rationale.slice(0, 500) : '',
+        channel,
+        riderType: typeof item.riderType === 'string' ? item.riderType : undefined,
       });
     }
     return { message, suggestions };
@@ -54,7 +79,26 @@ export function suggestionsFromActions(
         sectionId,
         baseText: '',
         proposedText: note,
-        rationale: 'El asistente propone añadir este texto a la sección.',
+        rationale: 'El asistente propone añadir este requerimiento.',
+      });
+    }
+    if (action.type === 'add_section' && isRecord(action.payload)) {
+      const title = typeof action.payload.title === 'string' ? action.payload.title : 'Nueva Sección';
+      const content = typeof action.payload.content === 'string' ? action.payload.content : '';
+      drafts.push({
+        kind: 'add_section',
+        newSectionTitle: title,
+        proposedText: content,
+        rationale: `Crear la sección "${title}".`,
+      });
+    }
+    if (action.type === 'switch_theme' && typeof action.payload === 'string') {
+      drafts.push({
+        kind: 'switch_theme',
+        sectionId: context.sectionId,
+        theme: action.payload,
+        proposedText: action.payload,
+        rationale: `Cambiar tema del documento a ${action.payload}.`,
       });
     }
     if (action.type === 'add_input_channel' && isRecord(action.payload)) {
@@ -98,7 +142,10 @@ export function collectSuggestionDrafts(
 ): AgentSuggestionDraft[] {
   const parsed = parseSuggestionJson(message);
   if (parsed && parsed.suggestions.length > 0) {
-    return parsed.suggestions.map((draft) => ({ ...draft, sectionId: context.sectionId }));
+    return parsed.suggestions.map((draft) => ({
+      ...draft,
+      sectionId: draft.sectionId || context.sectionId,
+    }));
   }
 
   const fromActions = suggestionsFromActions(actions, context);
@@ -150,6 +197,8 @@ export function materializeSuggestions(
       source: 'agent',
       channel: draft.channel,
       riderType,
+      newSectionTitle: draft.newSectionTitle,
+      theme: draft.theme as any,
     };
   });
 }

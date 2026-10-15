@@ -2,6 +2,16 @@ import { z } from 'zod';
 
 export const AgentRoleSchema = z.enum(['master', 'audio_foh', 'hospitality', 'security']);
 export const RiderTypeSchema = z.enum(['tecnico', 'hospitality', 'seguridad']);
+export const RiderDocumentThemeSchema = z.enum([
+  'studio',
+  'festival',
+  'editorial',
+  'blueprint',
+  'electronic',
+  'carbon',
+  'acoustic',
+  'nordic',
+]);
 
 export const ChatMessageInputSchema = z.object({
   role: z.string().optional().default('user'),
@@ -21,6 +31,13 @@ export const SendChatMessageSchema = z.object({
     sectionText: z.string().max(8000).optional().default(''),
     selection: z.string().max(2000).optional().default(''),
     gaps: z.array(z.string().max(200)).max(30).optional().default([]),
+    allSections: z.array(z.object({
+      id: z.string(),
+      title: z.string(),
+    })).optional().default([]),
+    riderTitle: z.string().max(200).optional().default(''),
+    artistName: z.string().max(200).optional().default(''),
+    currentTheme: RiderDocumentThemeSchema.optional().default('studio'),
   }).optional()
 });
 

@@ -459,7 +459,7 @@ export function WorkspaceClient({
       buildGapSuggestions(section, dismissed, section.id === activeSectionId)
     ));
     const pending = agentSuggestions
-      .filter((item) => item.status === 'pending' || item.status === 'stale')
+      .filter((item) => item.status === 'pending' || item.status === 'applied' || item.status === 'stale')
       .map((suggestion) => {
         if (suggestion.status !== 'pending' || !suggestion.baseText) return suggestion;
         const section = rider.sections.find((item) => item.id === suggestion.sectionId);
@@ -480,37 +480,83 @@ export function WorkspaceClient({
   const handleAcceptSuggestion = (id: string) => {
     const suggestion = documentSuggestions.find((item) => item.id === id);
     if (!suggestion || suggestion.status === 'stale') return;
-    if (suggestion.kind === 'add_channel' && suggestion.channel) {
-      const channel = suggestion.channel;
-      setRider((prev) => {
-        const updated = new Rider({ ...prev });
-        updated.addChannel(channel.name, channel.mic, channel.stand);
-        return updated;
-      });
-      dismissSuggestion(suggestion);
-      showToast('Canal agregado a la Input List');
-      return;
+
+    if (suggestion.status === 'pending') {
+      if (suggestion.kind === 'add_channel' && suggestion.channel) {
+        const channel = suggestion.channel;
+        setRider((prev) => {
+          const updated = new Rider({ ...prev });
+          updated.addChannel(channel.name, channel.mic, channel.stand);
+          return updated;
+        });
+      } else if (suggestion.kind === 'switch_type' && suggestion.riderType) {
+        handleSelectRiderType(suggestion.riderType);
+      } else if (suggestion.kind === 'switch_theme' && suggestion.theme) {
+        handleThemeChange(suggestion.theme);
+      } else if (suggestion.kind === 'add_section' && suggestion.newSectionTitle) {
+        void handleAddSectionTitle(suggestion.newSectionTitle);
+      } else {
+        const applied = bridgeRef.current?.apply(suggestion);
+        if (!applied?.success) {
+          setAgentSuggestions((current) => current.map((item) => (
+            item.id === id ? { ...item, status: 'stale' } : item
+          )));
+          showToast('La sugerencia ya no coincide con el texto');
+          return;
+        }
+      }
     }
-    if (suggestion.kind === 'switch_type' && suggestion.riderType) {
-      handleSelectRiderType(suggestion.riderType);
-      dismissSuggestion(suggestion);
-      return;
-    }
-    const applied = bridgeRef.current?.apply(suggestion) ?? false;
-    if (!applied) {
-      setAgentSuggestions((current) => current.map((item) => (
-        item.id === id ? { ...item, status: 'stale' } : item
-      )));
-      showToast('La sugerencia ya no coincide con el texto');
-      return;
-    }
+
     dismissSuggestion(suggestion);
+    showToast('✅ Modificación confirmada');
   };
 
   const handleRejectSuggestion = (id: string) => {
     const suggestion = documentSuggestions.find((item) => item.id === id);
-    if (suggestion) dismissSuggestion(suggestion);
+    if (!suggestion) return;
+
+    if (suggestion.status === 'applied') {
+      if (suggestion.kind === 'switch_theme' && suggestion.baseText) {
+        handleThemeChange(suggestion.baseText as RiderDocumentTheme);
+      } else if (suggestion.kind === 'add_section' && suggestion.sectionId) {
+        const updated = new Rider({ ...riderRef.current });
+        updated.deleteSection(suggestion.sectionId);
+        setRider(updated);
+      } else if (suggestion.kind === 'add_channel' && suggestion.channel) {
+        const ch = riderRef.current.channels.find(
+          (c) => c.name === suggestion.channel?.name || c.mic === suggestion.channel?.mic
+        );
+        if (ch) handleDeleteChannel(ch.id);
+      } else {
+        bridgeRef.current?.revert(suggestion);
+      }
+    }
+
+    dismissSuggestion(suggestion);
+    showToast('↩️ Modificación revertida');
   };
+
+  const acceptRef = useRef(handleAcceptSuggestion);
+  const rejectRef = useRef(handleRejectSuggestion);
+  acceptRef.current = handleAcceptSuggestion;
+  rejectRef.current = handleRejectSuggestion;
+
+  useEffect(() => {
+    const onAccept = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string }>).detail;
+      if (detail?.id) acceptRef.current(detail.id);
+    };
+    const onReject = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string }>).detail;
+      if (detail?.id) rejectRef.current(detail.id);
+    };
+    window.addEventListener('rider:accept-suggestion', onAccept);
+    window.addEventListener('rider:reject-suggestion', onReject);
+    return () => {
+      window.removeEventListener('rider:accept-suggestion', onAccept);
+      window.removeEventListener('rider:reject-suggestion', onReject);
+    };
+  }, []);
 
   const handleFocusSuggestion = (id: string) => {
     const suggestion = documentSuggestions.find((item) => item.id === id);
@@ -611,6 +657,10 @@ export function WorkspaceClient({
             gaps: documentSuggestions
               .filter((item) => item.source === 'gap' && item.sectionId === section.id)
               .map((item) => item.rationale),
+            allSections: rider.sections.map((s) => ({ id: s.id, title: s.title })),
+            riderTitle: rider.title,
+            artistName: rider.artistName,
+            currentTheme: rider.documentTheme,
           }
         : undefined;
       const data = await chatService.sendMessage({
@@ -645,11 +695,72 @@ export function WorkspaceClient({
       }
 
       if (editorContext && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
-        setAgentSuggestions((current) => [
-          ...current,
-          ...materializeSuggestions(data.suggestions || [], editorContext),
-        ]);
-        showToast('Sugerencia lista para revisar');
+        const drafts = materializeSuggestions(data.suggestions || [], editorContext);
+        const appliedItems: DocumentSuggestion[] = [];
+
+        for (const draft of drafts) {
+          if (draft.kind === 'add_section') {
+            const newTitle = draft.newSectionTitle || draft.proposedText || 'Nueva Sección';
+            const insertedId = bridgeRef.current?.insertSectionTitle(newTitle);
+            if (insertedId) {
+              draft.sectionId = insertedId;
+              draft.applied = true;
+              draft.status = 'applied';
+              setActiveSectionId(insertedId);
+              if (draft.proposedText && draft.proposedText !== newTitle) {
+                const res = bridgeRef.current?.apply({
+                  ...draft,
+                  sectionId: insertedId,
+                  kind: 'insert',
+                  baseText: '',
+                });
+                if (res?.appliedRange) draft.appliedRange = res.appliedRange;
+              }
+            }
+            appliedItems.push(draft);
+          } else if (draft.kind === 'switch_theme' && draft.theme) {
+            draft.baseText = rider.documentTheme;
+            handleThemeChange(draft.theme);
+            draft.applied = true;
+            draft.status = 'applied';
+            appliedItems.push(draft);
+          } else if (draft.kind === 'switch_type' && draft.riderType) {
+            handleSelectRiderType(draft.riderType);
+            draft.applied = true;
+            draft.status = 'applied';
+            appliedItems.push(draft);
+          } else if (draft.kind === 'add_channel' && draft.channel) {
+            const ch = draft.channel;
+            setRider((prev) => {
+              const updated = new Rider({ ...prev });
+              updated.addChannel(ch.name, ch.mic, ch.stand);
+              return updated;
+            });
+            draft.applied = true;
+            draft.status = 'applied';
+            appliedItems.push(draft);
+          } else {
+            // Modificación directa de texto o bloques en el editor TipTap
+            if (draft.sectionId) {
+              setActiveSectionId(draft.sectionId);
+              setTimeout(() => {
+                bridgeRef.current?.scrollToSection(draft.sectionId);
+              }, 40);
+            }
+            const res = bridgeRef.current?.apply(draft);
+            if (res?.success) {
+              draft.applied = true;
+              draft.status = 'applied';
+              draft.appliedRange = res.appliedRange;
+            } else {
+              draft.status = 'stale';
+            }
+            appliedItems.push(draft);
+          }
+        }
+
+        setAgentSuggestions((current) => [...current, ...appliedItems]);
+        showToast('✨ Modificación aplicada en el documento');
       }
     } catch (err) {
       console.error(err);

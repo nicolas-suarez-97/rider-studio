@@ -35,8 +35,59 @@ export async function POST(req: NextRequest) {
 
     const lastMsgObj = messages[messages.length - 1];
     const lastMessage = lastMsgObj?.content || lastMsgObj?.text || '';
+
+    const sectionsList = editorContext?.allSections?.length
+      ? editorContext.allSections.map((s) => `- ID: "${s.id}", Título: "${s.title}"`).join('\n')
+      : editorContext ? `- ID: "${editorContext.sectionId}", Título: "${editorContext.sectionTitle}"` : '';
+
     const suggestionPrompt = editorContext
-      ? `\n\nEl usuario está editando la sección "${editorContext.sectionTitle}". No afirmes que ya modificaste el documento. Responde únicamente con JSON válido de esta forma: {"message":"explicación breve","suggestions":[{"kind":"insert"|"replace"|"delete","baseText":"fragmento literal del texto actual, o vacío si insertas al final","proposedText":"texto que debe quedar","rationale":"motivo"}]}.\nSi el texto propuesto es un bloque de rider, usa estas marcas dentro de proposedText:\n[[requisito:Etiqueta]]\ntexto del requisito\n[[aviso:nota]] o [[aviso:obligatorio]] o [[aviso:veto]]\ntexto del aviso\n[[tiers]]\npreferido | alternativa | no aceptado\n[[contactos]]\nRol | Nombre | Teléfono | Correo\n[[columnas]]\ncolumna izquierda\n---\ncolumna derecha\nEl resto puede ir en párrafos normales.\nTexto actual de la sección:\n"""${editorContext.sectionText}"""\nSelección: """${editorContext.selection}"""\nHuecos: ${editorContext.gaps.join('; ') || 'ninguno'}.`
+      ? `\n\n=== CONTEXTO DEL DOCUMENTO (JSON) ===
+Rider: "${editorContext.riderTitle || 'Rider de Producción'}" | Artista: "${editorContext.artistName || 'Sin artista'}" | Tema: "${editorContext.currentTheme || 'studio'}"
+Secciones disponibles en el documento:
+${sectionsList}
+
+El usuario está ubicado actualmente en la sección "${editorContext.sectionTitle}" (ID: "${editorContext.sectionId}").
+Texto actual de esta sección:
+"""${editorContext.sectionText}"""
+Texto seleccionado por el usuario: """${editorContext.selection}"""
+Huecos o pendientes detectados: ${editorContext.gaps.join('; ') || 'ninguno'}.
+
+=== INSTRUCCIONES DE SALIDA ESTRUCTURADA (JSON) ===
+Responde SIEMPRE con un objeto JSON válido con la siguiente estructura:
+{
+  "message": "Explicación clara y concisa en español para el usuario en el chat, describiendo qué se aplicó o respondiendo a su consulta.",
+  "suggestions": [
+    {
+      "kind": "insert" | "replace" | "delete" | "add_section" | "add_channel" | "switch_theme" | "switch_type",
+      "sectionId": "ID de la sección a editar (ej. '${editorContext.sectionId}' u otro ID de la lista de secciones)",
+      "newSectionTitle": "Título de la nueva sección si kind es 'add_section'",
+      "theme": "classic" | "modern" | "minimal" | "technical" | "festival" | "studio",
+      "baseText": "fragmento literal exacto del texto existente para reemplazar o borrar, o vacío para insertar al final",
+      "proposedText": "texto o contenido con formato de rider que se agregará o reemplazará",
+      "rationale": "motivo técnico o breve explicación del cambio para el banner visual de confirmación",
+      "channel": { "name": "Voz Principal", "mic": "Shure Beta 58A", "stand": "Pie jirafa" }
+    }
+  ]
+}
+
+Reglas importantes:
+1. Si el usuario pide añadir o redactar requerimientos, agrega las sugerencias correspondientes indicando el sectionId adecuado.
+2. Si el usuario hace una pregunta puramente conversacional o informativa sin pedir cambios, deja "suggestions": [] y responde en "message".
+3. Dentro de "proposedText", puedes estructurar contenido profesional de rider usando estas marcas:
+   [[requisito:Etiqueta]]
+   texto del requisito
+   [[aviso:nota]] o [[aviso:obligatorio]] o [[aviso:veto]]
+   texto del aviso
+   [[tiers]]
+   preferido | alternativa | no aceptado
+   [[contactos]]
+   Rol | Nombre | Teléfono | Correo
+   [[columnas]]
+   columna izquierda
+   ---
+   columna derecha
+   Los párrafos normales van sin marcas especiales.
+4. Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       : '';
     const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
     const systemPrompt = `${SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master}${suggestionPrompt}`;
@@ -78,15 +129,16 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             model: 'openai/gpt-4o-mini',
+            response_format: { type: 'json_object' },
             messages: [
-              { role: 'system', content: `${systemPrompt}\n\nContexto actual: El usuario está editando un Rider de tipo: "${riderType}".` },
+              { role: 'system', content: `${systemPrompt}\n\nContexto actual: El usuario está editando un Rider de tipo: "${riderType}". Recuerda responder SIEMPRE en formato JSON válido.` },
               ...messages.map((m) => ({
                 role: m.role === 'ai' ? 'assistant' : 'user',
                 content: m.content || m.text || ''
               }))
             ],
-            temperature: editorContext ? 0.3 : 0.6,
-            max_tokens: editorContext ? 900 : 600,
+            temperature: 0.3,
+            max_tokens: editorContext ? 1200 : 600,
           }),
         });
 
@@ -94,7 +146,10 @@ export async function POST(req: NextRequest) {
           const data = (await response.json()) as {
             choices?: Array<{ message?: { content?: string } }>;
           };
-          const replyText = data.choices?.[0]?.message?.content || 'Entendido.';
+          const replyRaw = data.choices?.[0]?.message?.content || '{}';
+          const parsed = parseSuggestionJson(replyRaw);
+          const replyText = parsed?.message || 'He procesado tu solicitud en el documento.';
+          const suggestions = parsed?.suggestions || [];
 
           finalResponse = {
             sessionId: session.id,
@@ -102,6 +157,7 @@ export async function POST(req: NextRequest) {
             roleName: profile.name,
             roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
             message: replyText,
+            suggestions,
             gatewayProvider: 'vercel_ai_gateway',
             actions: []
           };
@@ -126,7 +182,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    if (finalResponse && editorContext) {
+    if (finalResponse && editorContext && (!finalResponse.suggestions || finalResponse.suggestions.length === 0)) {
       finalResponse.suggestions = collectSuggestionDrafts(finalResponse.message, finalResponse.actions, editorContext);
       const parsed = parseSuggestionJson(finalResponse.message);
       if (parsed?.message) finalResponse.message = parsed.message;

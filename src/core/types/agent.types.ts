@@ -29,13 +29,22 @@ export type AgentActionPayload =
   | Record<string, unknown>;
 
 export interface AgentAction {
-  type: 'update_section' | 'add_input_channel' | 'update_backline' | 'switch_rider_type' | 'update_metadata';
+  type:
+    | 'update_section'
+    | 'add_section'
+    | 'add_input_channel'
+    | 'update_backline'
+    | 'switch_rider_type'
+    | 'switch_theme'
+    | 'update_metadata';
   payload: AgentActionPayload;
 }
 
 export interface AgentSuggestionDraft {
-  kind: 'insert' | 'replace' | 'delete' | 'add_channel' | 'switch_type';
+  kind: 'insert' | 'replace' | 'delete' | 'add_channel' | 'switch_type' | 'add_section' | 'switch_theme';
   sectionId?: string;
+  newSectionTitle?: string;
+  theme?: string;
   baseText?: string;
   proposedText?: string;
   rationale?: string;

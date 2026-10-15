@@ -51,7 +51,7 @@ export function AssistantChatPanel({
   const [inputText, setInputText] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const pendingAgentSuggestions = suggestions.filter(
-    (item) => item.source !== 'gap' && (item.status === 'pending' || item.status === 'stale')
+    (item) => item.source !== 'gap' && (item.status === 'pending' || item.status === 'applied' || item.status === 'stale')
   );
 
   useEffect(() => {
@@ -320,7 +320,7 @@ function SuggestionInbox({
   onFocus?: (id: string) => void;
 }) {
   const visible = suggestions.filter(
-    (item) => item.source !== 'gap' && (item.status === 'pending' || item.status === 'stale')
+    (item) => item.source !== 'gap' && (item.status === 'pending' || item.status === 'applied' || item.status === 'stale')
   );
 
   if (visible.length === 0) return null;
@@ -328,42 +328,67 @@ function SuggestionInbox({
   return (
     <div className="space-y-2">
       {visible.map((suggestion) => {
+        const isApplied = suggestion.status === 'applied';
         const stale = suggestion.status === 'stale';
+
         return (
-          <article key={suggestion.id} className="bg-white border border-slate-200/80 rounded-2xl p-3 space-y-2">
+          <article
+            key={suggestion.id}
+            className={`border rounded-2xl p-3 space-y-2 transition-all ${
+              isApplied
+                ? 'bg-emerald-50/40 border-emerald-200/80 shadow-xs'
+                : 'bg-white border-slate-200/80'
+            }`}
+          >
             <div className="flex items-center justify-between gap-2">
               <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 truncate">
                 {sectionTitles[suggestion.sectionId] || 'Sección'} · Asistente
               </p>
-              {stale ? <span className="text-[10px] font-bold text-amber-700">Obsoleta</span> : null}
+              {isApplied ? (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-300/60 flex items-center gap-1 shrink-0">
+                  <span>✨</span> Aplicada en documento
+                </span>
+              ) : stale ? (
+                <span className="text-[10px] font-bold text-amber-700 shrink-0">Obsoleta</span>
+              ) : null}
             </div>
-            <p className="text-xs text-slate-700 leading-relaxed">{suggestion.rationale}</p>
-            {suggestion.baseText ? (
-              <p className="text-[11px] text-rose-700 line-through whitespace-pre-line">{suggestion.baseText}</p>
+            <p className="text-xs text-slate-700 leading-relaxed font-medium">{suggestion.rationale}</p>
+            {suggestion.baseText && !isApplied ? (
+              <p className="text-[11px] text-rose-700 line-through whitespace-pre-line bg-rose-50 rounded-xl px-2 py-1">
+                {suggestion.baseText}
+              </p>
             ) : null}
-            {suggestion.proposedText ? (
-              <p className="text-[11px] text-emerald-800 bg-emerald-50 rounded-xl px-2 py-1.5 whitespace-pre-line">{suggestion.proposedText}</p>
+            {suggestion.proposedText && !isApplied ? (
+              <p className="text-[11px] text-emerald-800 bg-emerald-50 rounded-xl px-2 py-1.5 whitespace-pre-line font-mono">
+                {suggestion.proposedText}
+              </p>
             ) : null}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 pt-1">
               <button
                 type="button"
                 disabled={stale}
                 onClick={() => onAccept?.(suggestion.id)}
-                className="px-2.5 py-1 rounded-lg bg-violet-600 text-white text-[11px] font-bold cursor-pointer disabled:opacity-40"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all disabled:opacity-40 flex items-center gap-1 ${
+                  isApplied
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                    : 'bg-violet-600 hover:bg-violet-700 text-white shadow-xs'
+                }`}
               >
-                Aceptar
+                <span>✓</span>
+                <span>Aceptar</span>
               </button>
               <button
                 type="button"
                 onClick={() => onReject?.(suggestion.id)}
-                className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-bold cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
               >
-                Rechazar
+                <span>✕</span>
+                <span>Rechazar</span>
               </button>
               <button
                 type="button"
                 onClick={() => onFocus?.(suggestion.id)}
-                className="px-2.5 py-1 rounded-lg text-violet-700 text-[11px] font-bold cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl text-slate-600 hover:text-violet-700 hover:bg-violet-50 text-xs font-bold cursor-pointer transition-all"
               >
                 Ver
               </button>
