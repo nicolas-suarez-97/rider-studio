@@ -62,4 +62,6 @@ export interface AgentResponse {
   suggestions?: AgentSuggestionDraft[];
   gatewayProvider: 'vercel_ai_gateway' | 'production_expert_engine' | 'openai';
   notice?: string;
+  isError?: boolean;
+  retryable?: boolean;
 }

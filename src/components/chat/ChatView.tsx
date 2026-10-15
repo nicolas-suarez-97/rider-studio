@@ -559,13 +559,15 @@ export function ChatView({
                   )}
                   <div
                     className={`max-w-[88%] sm:max-w-[80%] rounded-2xl sm:rounded-3xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm leading-relaxed ${
-                      isAi
+                      m.isError
+                        ? 'bg-rose-50/90 border border-rose-200 text-rose-900 shadow-xs'
+                        : isAi
                         ? 'bg-white border border-slate-200/80 text-slate-800 shadow-xs'
                         : 'bg-violet-600 text-white font-medium shadow-md shadow-violet-500/10'
                     }`}
                   >
                     {isAi && m.roleName && (
-                      <span className="block text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                      <span className={`block text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 ${m.isError ? 'text-rose-600' : 'text-slate-400'}`}>
                         {m.roleName}
                       </span>
                     )}
@@ -590,7 +592,26 @@ export function ChatView({
                       </div>
                     )}
                     {m.text ? <p className="whitespace-pre-line">{m.text}</p> : null}
-                    <span className={`block text-[9px] sm:text-[10px] mt-1 text-right ${isAi ? 'text-slate-400' : 'text-violet-200'}`}>
+
+                    {m.isError && (
+                      <div className="mt-3 pt-2.5 border-t border-rose-200/70 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[11px] text-rose-600 font-medium">¿Deseas intentar de nuevo?</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const promptToRetry = m.retryPrompt || [...messages.slice(0, idx)].reverse().find(msg => msg.sender === 'user')?.text;
+                            if (promptToRetry) onSendMessage(promptToRetry);
+                          }}
+                          disabled={isThinking}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer active:scale-95"
+                        >
+                          <Icon name="refresh" className="w-3.5 h-3.5" />
+                          <span>Volver a intentar</span>
+                        </button>
+                      </div>
+                    )}
+
+                    <span className={`block text-[9px] sm:text-[10px] mt-1 text-right ${m.isError ? 'text-rose-400' : isAi ? 'text-slate-400' : 'text-violet-200'}`}>
                       {m.time}
                     </span>
                   </div>

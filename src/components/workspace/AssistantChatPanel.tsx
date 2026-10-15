@@ -233,18 +233,39 @@ export function AssistantChatPanel({
                 )}
                 <div
                   className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
-                    isAi
+                    m.isError
+                      ? 'bg-rose-50/90 border border-rose-200 text-rose-900 shadow-xs'
+                      : isAi
                       ? 'bg-white border border-slate-200/80 text-slate-800 shadow-xs'
                       : 'bg-violet-600 text-white font-medium shadow-xs'
                   }`}
                 >
                   {isAi && m.roleName && (
-                    <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                    <span className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${m.isError ? 'text-rose-600' : 'text-slate-400'}`}>
                       {m.roleName}
                     </span>
                   )}
                   <p className="whitespace-pre-line">{m.text}</p>
-                  <span className={`block text-[9px] mt-1 text-right ${isAi ? 'text-slate-400' : 'text-violet-200'}`}>
+                  
+                  {m.isError && (
+                    <div className="mt-2.5 pt-2 border-t border-rose-200/70 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-[10px] text-rose-600 font-medium">¿Deseas intentar de nuevo?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const promptToRetry = m.retryPrompt || [...messages.slice(0, idx)].reverse().find(msg => msg.sender === 'user')?.text;
+                          if (promptToRetry) onSendMessage(promptToRetry);
+                        }}
+                        disabled={isThinking}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <Icon name="refresh" className="w-3.5 h-3.5" />
+                        <span>Volver a intentar</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <span className={`block text-[9px] mt-1 text-right ${m.isError ? 'text-rose-400' : isAi ? 'text-slate-400' : 'text-violet-200'}`}>
                     {m.time}
                   </span>
                 </div>

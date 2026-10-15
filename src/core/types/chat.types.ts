@@ -28,6 +28,8 @@ export interface ChatMessageItem {
   roleName?: string;
   roleAvatar?: string;
   attachments?: ChatAttachment[];
+  isError?: boolean;
+  retryPrompt?: string;
 }
 
 export interface ChatSessionSummary {

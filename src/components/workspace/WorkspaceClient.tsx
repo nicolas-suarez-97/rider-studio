@@ -684,11 +684,13 @@ export function WorkspaceClient({
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const aiMsg: ChatMessageItem = {
         sender: 'ai',
-        text: data.message || 'Entendido. Procesando requerimiento de escenario.',
+        text: data.message || (data.isError ? '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.' : 'Entendido. Procesando requerimiento de escenario.'),
         time: replyTime,
         role: activeAgent,
         roleName: data.roleName || AGENT_PROFILES[activeAgent].name,
-        roleAvatar: data.roleAvatar || (activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠')
+        roleAvatar: data.roleAvatar || (data.isError ? '⚠️' : activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠'),
+        isError: data.isError,
+        retryPrompt: data.isError ? text : undefined
       };
       setMessages(prev => [...prev, aiMsg]);
 
@@ -776,10 +778,13 @@ export function WorkspaceClient({
         ...prev,
         {
           sender: 'ai',
-          text: 'Hubo un error de conexión con el agente. Por favor reintenta.',
+          text: '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
           time: errTime,
           role: activeAgent,
-          roleName: AGENT_PROFILES[activeAgent].name
+          roleName: AGENT_PROFILES[activeAgent].name,
+          roleAvatar: '⚠️',
+          isError: true,
+          retryPrompt: text
         }
       ]);
     } finally {

@@ -276,15 +276,24 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       };
     }
 
-    // 4. Fallback de Agente Experto Inteligente si la llamada a la nube no fue completada
+    // 4. Si la llamada a la IA falló o no devolvió resultado, emitir mensaje de error explícito para reintentar
     if (!finalResponse) {
-      const fallbackResponse = generateExpertAgentResponse(lastMessage, riderType, activeAgent, editorContext);
       const diagnostics = getAiDiagnostics();
+      console.warn('[API Chat] No se obtuvo respuesta del servicio de IA. Diagnóstico:', diagnostics);
+      const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
       finalResponse = {
         sessionId: session.id,
-        ...fallbackResponse,
+        role: activeAgent,
+        roleName: profile.name,
+        roleAvatar: '⚠️',
+        message: '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
+        isError: true,
+        retryable: true,
+        suggestions: [],
+        gatewayProvider: 'openai',
+        actions: [],
         notice: diagnostics.configured
-          ? `Proveedores IA detectados: ${diagnostics.activeProviders.join(', ')}, pero la llamada a la nube falló. Ejecutando contingencia experta local.`
+          ? `Proveedores IA detectados: ${diagnostics.activeProviders.join(', ')}, pero la llamada a la nube falló.`
           : 'Token de IA no detectado en producción. Configura AI_GATEWAY_API_KEY o OPENAI_API_KEY en las variables de entorno de Vercel.'
       };
     }
@@ -295,8 +304,8 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       if (parsed?.message) finalResponse.message = parsed.message;
     }
 
-    // 5. Persistir respuesta del asistente en Supabase
-    if (finalResponse?.message) {
+    // 5. Persistir respuesta del asistente en Supabase (solo si no es un error transitorio de red)
+    if (finalResponse?.message && !finalResponse.isError) {
       await saveChatMessage({
         sessionId: session.id,
         role: 'assistant',
@@ -313,7 +322,12 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
   } catch (error: unknown) {
     console.error('[API Chat Error]', error);
     return NextResponse.json(
-      { error: 'Error interno al procesar el mensaje con el agente de IA' },
+      {
+        error: 'Error interno al procesar el mensaje con el agente de IA',
+        message: '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
+        isError: true,
+        retryable: true
+      },
       { status: 500 }
     );
   }

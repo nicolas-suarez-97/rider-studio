@@ -133,11 +133,13 @@ export function ChatClient({
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const aiMsg: ChatMessageItem = {
         sender: 'ai',
-        text: data.message || 'Entendido. Procesando requerimiento.',
+        text: data.message || (data.isError ? '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.' : 'Entendido. Procesando requerimiento.'),
         time: replyTime,
         role: activeAgent,
         roleName: data.roleName || AGENT_PROFILES[activeAgent].name,
-        roleAvatar: data.roleAvatar || '🧠'
+        roleAvatar: data.roleAvatar || (data.isError ? '⚠️' : '🧠'),
+        isError: data.isError,
+        retryPrompt: data.isError ? text : undefined
       };
       setMessages(prev => [...prev, aiMsg]);
 
@@ -155,10 +157,13 @@ export function ChatClient({
         ...prev,
         {
           sender: 'ai',
-          text: 'Error de comunicación con el agente. Por favor verifica tu conexión.',
+          text: '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
           time: errTime,
           role: activeAgent,
-          roleName: AGENT_PROFILES[activeAgent].name
+          roleName: AGENT_PROFILES[activeAgent].name,
+          roleAvatar: '⚠️',
+          isError: true,
+          retryPrompt: text
         }
       ]);
     } finally {
