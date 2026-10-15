@@ -84,6 +84,7 @@ async function WorkspaceServer({ searchParams }: PageProps) {
 
   return (
     <WorkspaceClient
+      key={riderIdParam ? `rider-${riderIdParam}` : `blank-${targetType}`}
       initialRiderData={initialRiderData!}
       initialSessionId={resolvedSessionId}
       initialSessionTitle={resolvedSessionTitle}

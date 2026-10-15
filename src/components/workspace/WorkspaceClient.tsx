@@ -67,7 +67,7 @@ export function WorkspaceClient({
   const riderRef = useRef(rider);
   riderRef.current = rider;
   const [activeSectionId, setActiveSectionId] = useState<string>(() => {
-    return initialRiderData?.sections?.[0]?.id || 'tech-contactos';
+    return initialRiderData?.sections?.[0]?.id || '';
   });
   const [activeAgent, setActiveAgent] = useState<AgentRole>(() => {
     const t = initialRiderData?.type || initialType;
@@ -91,13 +91,18 @@ export function WorkspaceClient({
 
   // Sincronizar rider si el usuario navega a un rider diferente desde URL
   useEffect(() => {
-    if (initialRiderData?.id && initialRiderData.id !== riderRef.current.id) {
-      const incoming = new Rider(initialRiderData);
+    const incomingId = initialRiderData?.id || '';
+    if (incomingId !== riderRef.current.id) {
+      const incoming = new Rider(initialRiderData || { type: initialType, sections: [] });
       setRider(incoming);
       riderRef.current = incoming;
-      setActiveSectionId(incoming.sections[0]?.id || 'tech-contactos');
+      setActiveSectionId(incoming.sections[0]?.id || '');
+      setCurrentSessionId(initialSessionId || null);
+      setMessages(initialMessages || []);
+      setAgentSuggestions([]);
+      savedSnap.current = null;
     }
-  }, [initialRiderData]);
+  }, [initialRiderData, initialSessionId, initialMessages, initialType]);
 
   // Modales
   const [showExportModal, setShowExportModal] = useState(false);
@@ -205,6 +210,21 @@ export function WorkspaceClient({
     router.replace(`/artista/workspace?type=${type}${idQuery}${sessionQuery}`);
     showToast(`✨ Cambiado a Módulo ${type.toUpperCase()} (${updated.artistName || 'Mismo Artista'})`);
   };
+
+  // Crear un nuevo rider en blanco sin secciones prellenadas
+  const handleNewRider = useCallback(() => {
+    const blank = Rider.createBlank(rider.type || initialType);
+    setRider(blank);
+    riderRef.current = blank;
+    setActiveSectionId('');
+    setCurrentSessionId(null);
+    setMessages([]);
+    setAgentSuggestions([]);
+    savedSnap.current = null;
+    saveEpoch.current += 1;
+    router.replace(`/artista/workspace?type=${rider.type || initialType}`);
+    showToast('✨ Nuevo rider en blanco listo');
+  }, [rider.type, initialType, router, showToast]);
 
   // Guardar en base de datos Supabase
   const handleSaveRider = async (customRider?: Rider, options?: { silent?: boolean; epoch?: number }) => {
@@ -911,6 +931,7 @@ export function WorkspaceClient({
         onExport={() => handleOpenExportModal('master')}
         onOpenExportModal={handleOpenExportModal}
         onOpenImportModal={() => setShowImportModal(true)}
+        onNewRider={handleNewRider}
         onOpenStagePlot={handleOpenStagePlot}
         onShare={handleShare}
         isSharing={isSharing || isSaving}

@@ -71,18 +71,7 @@ export class Rider {
     this.status = params.status || 'in_progress';
     this.sections = Array.isArray(params.sections)
       ? JSON.parse(JSON.stringify(params.sections))
-      : (template?.sections || []).map(s => {
-          if (isDocumentCover(s.id)) {
-            return {
-              ...s,
-              num: '',
-              content: '',
-              contentDoc: buildCoverContentDoc(this.type, this.artistName, this.title, this.version),
-              pageBreakBefore: false,
-            };
-          }
-          return { ...s, content: '' };
-        });
+      : [];
     
     this.channels = (params.channels || []).map((c, idx) => 
       c instanceof ChannelInput ? c : ChannelInput.fromData(c, idx)
@@ -167,7 +156,7 @@ export class Rider {
     const channels = Array.isArray(row.channels) ? (row.channels as ChannelData[]) : [];
     const sections = Array.isArray(row.sections)
       ? (row.sections as SectionItem[])
-      : (RIDER_DATA[rType]?.sections || []).map(s => ({ ...s, content: '' }));
+      : [];
 
     const linkedSessions: LinkedChatSession[] = Array.isArray(row.chat_sessions)
       ? row.chat_sessions.map((cs) => ({

@@ -29,6 +29,7 @@ interface HeaderProps {
   documentTitle?: string;
   onDocumentTitleChange?: (title: string) => void;
   onOpenImportModal?: () => void;
+  onNewRider?: () => void;
 }
 
 function DocumentName({
@@ -86,6 +87,7 @@ export function Header({
   documentTitle,
   onDocumentTitleChange,
   onOpenImportModal,
+  onNewRider,
 }: HeaderProps) {
   const openExport = () => {
     if (onOpenExportModal) {
@@ -197,15 +199,28 @@ export function Header({
             >
               <Icon name="sparkles" className="w-4 h-4" />
             </Link>
-            <Link
-              href="/artista/workspace?type=tecnico"
-              prefetch={false}
-              className="bg-violet-600 hover:bg-violet-700 text-white h-7 sm:h-8 px-2.5 sm:px-4 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1 sm:gap-1.5 active:scale-95 shrink-0"
-            >
-              <Icon name="plus" className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Nuevo Rider</span>
-              <span className="sm:hidden">Rider</span>
-            </Link>
+            {onNewRider ? (
+              <button
+                type="button"
+                onClick={onNewRider}
+                className="bg-violet-600 hover:bg-violet-700 text-white h-7 sm:h-8 px-2.5 sm:px-4 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1 sm:gap-1.5 active:scale-95 shrink-0 cursor-pointer"
+                title="Crear un nuevo rider en blanco"
+              >
+                <Icon name="plus" className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Nuevo Rider</span>
+                <span className="sm:hidden">Rider</span>
+              </button>
+            ) : (
+              <Link
+                href="/artista/workspace?type=tecnico"
+                prefetch={false}
+                className="bg-violet-600 hover:bg-violet-700 text-white h-7 sm:h-8 px-2.5 sm:px-4 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1 sm:gap-1.5 active:scale-95 shrink-0"
+              >
+                <Icon name="plus" className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Nuevo Rider</span>
+                <span className="sm:hidden">Rider</span>
+              </Link>
+            )}
           </nav>
 
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-[11px] sm:text-xs flex items-center justify-center border-2 border-white shadow-xs shrink-0">
