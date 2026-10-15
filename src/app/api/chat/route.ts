@@ -52,59 +52,52 @@ Texto actual de esta sección:
 Texto seleccionado por el usuario: """${editorContext.selection}"""
 Huecos o pendientes detectados: ${editorContext.gaps.join('; ') || 'ninguno'}.
 
-=== INSTRUCCIONES DE SALIDA ESTRUCTURADA (JSON) ===
-Responde SIEMPRE con un objeto JSON válido con la siguiente estructura:
+=== REGLA FUNDAMENTAL: ¿CONSULTA O MODIFICACIÓN? ===
+Debes clasificar el último mensaje del usuario en una de estas dos categorías antes de responder:
+
+CASO 1: CONSULTA O CONVERSACIÓN INFORMATIVA (NO MODIFICAR EL DOCUMENTO)
+Aplica SIEMPRE que el usuario:
+- Hace una pregunta o duda técnica (ej: "¿Qué consola me recomiendas?", "¿Por qué se pide late check-out?", "¿Es suficiente este equipo?").
+- Pide tu opinión, recomendaciones, ideas o comparativas (ej: "¿Qué opinas de esta sección?", "¿Qué micrófonos son mejores?", "Recomiéndame opciones").
+- Pide explicaciones o análisis técnicos (ej: "Explícame qué es FOH", "¿Cómo funciona el backline?", "Analiza si este rider es viable").
+- Saluda, agradece o conversa de forma general.
+-> ACCIÓN ESTRICTA:
+   1. Responde de forma completa, profesional, conversacional y detallada con Markdown en el campo "message".
+   2. DEBES DEVOLVER OBLIGATORIAMENTE "suggestions": [].
+   3. ESTÁ TOTALMENTE PROHIBIDO modificar el documento o crear sugerencias cuando el usuario solo está consultando o preguntando.
+
+CASO 2: ORDEN DIRECTA DE EDICIÓN (MODIFICAR EL DOCUMENTO)
+Aplica ÚNICAMENTE cuando el usuario ordene explícitamente ejecutar un cambio en el documento mediante verbos imperativos como: "agrega...", "modifica...", "cambia...", "pon...", "reemplaza...", "elimina...", "quita...", "inserta...", "escribe un requisito sobre...":
+-> ACCIÓN:
+   1. Si es modificar o actualizar texto existente (o si el usuario seleccionó texto):
+      * kind: "replace"
+      * "baseText": fragmento exacto que se reemplaza
+      * "proposedText": nueva versión completa
+   2. Si es agregar un nuevo requerimiento sin alterar lo existente:
+      * kind: "insert"
+      * "baseText": ""
+   3. Si es borrar:
+      * kind: "delete"
+      * "baseText": fragmento a borrar
+      * "proposedText": ""
+   4. En "message": describe brevemente en 1 línea qué cambio aplicaste en el documento.
+
+=== FORMATO DE RESPUESTA JSON ===
+Responde SIEMPRE con un objeto JSON válido:
 {
-  "message": "Explicación clara y concisa en español para el usuario en el chat, describiendo qué se aplicó o respondiendo a su consulta.",
+  "message": "Tu respuesta al usuario en español enriquecida con Markdown.",
   "suggestions": [
-    {
-      "kind": "insert" | "replace" | "delete" | "add_section" | "add_channel" | "switch_theme" | "switch_type",
-      "sectionId": "ID de la sección a editar (ej. '${editorContext.sectionId}' u otro ID de la lista de secciones)",
-      "newSectionTitle": "Título de la nueva sección si kind es 'add_section'",
-      "theme": "classic" | "modern" | "minimal" | "technical" | "festival" | "studio",
-      "baseText": "fragmento literal exacto del texto existente para reemplazar o borrar, o vacío para insertar al final",
-      "proposedText": "texto o contenido con formato de rider que se agregará o reemplazará",
-      "rationale": "motivo técnico o breve explicación del cambio para el banner visual de confirmación",
-      "channel": { "name": "Voz Principal", "mic": "Shure Beta 58A", "stand": "Pie jirafa" }
-    }
+    // Lista vacía [] SIEMPRE que sea una consulta, duda, pregunta o análisis.
+    // Solo incluir objetos de sugerencia cuando el usuario ordenó explícitamente editar el documento.
   ]
 }
 
-Reglas importantes:
-1. MODIFICACIÓN VS INSERCIÓN (CRUCIAL):
-   - Si el usuario pide modificar, cambiar, actualizar, reescribir, corregir, traducir o ajustar un texto, requerimiento o sección ya existente (o si tiene texto en "Texto seleccionado por el usuario"):
-     * Usa OBLIGATORIAMENTE kind: "replace".
-     * En "baseText" incluye el fragmento exacto o el texto actual que se sustituirá. NUNCA lo dejes vacío en una modificación.
-     * En "proposedText" pon la nueva versión completa que reemplazará al texto anterior.
-     * De esta forma, el documento mostrará la versión previa sombreada en rojo con tachado y la nueva en verde con los botones para Aprobar o Rechazar.
-   - Si el usuario pide agregar o redactar requerimientos nuevos sin reemplazar lo existente, usa kind: "insert" con baseText: "".
-   - Si el usuario pide borrar o quitar algo, usa kind: "delete" indicando el fragmento en baseText y proposedText: "".
-2. Si el usuario hace una pregunta puramente conversacional o informativa sin pedir cambios, deja "suggestions": [] y responde en "message".
-3. Dentro de "proposedText", puedes estructurar contenido profesional con formato enriquecido y bloques de rider:
-   - Para subtítulos dentro de la sección, usa "### Subtítulo".
-   - Para listas de especificaciones, usa viñetas en negrita: "- **Parámetro:** Valor requerido".
-   - Bloque Requisito:
-     [[requisito:Nombre del Requisito]]
-     Descripción técnica o especificaciones.
-   - Bloque Aviso/Alerta técnica:
-     [[aviso:obligatorio]] (o [[aviso:nota]] o [[aviso:veto]])
-     Texto de la directriz o prohibición técnica.
-   - Bloque Tiers de Equipamiento (3 columnas):
-     [[tiers]]
-     - **Preferido:** Modelos de primera opción (ej. Meyer Sound, DiGiCo Quantum)
-     - **Alternativa:** Modelos secundarios aceptables (ej. d&b, Yamaha CL5)
-     - **No Aceptado:** Marcas o modelos no admitidos
-   - Bloque Contactos de Producción:
-     [[contactos]]
-     (Solo las líneas de datos con formato Rol | Nombre | Teléfono | Correo, sin encabezados ni separadores "---"):
-     Técnico de Monitores | Carlos Gómez | +34 600 111 222 | audio@rider.com
-   - Bloque Columnas paralelas:
-     [[columnas]]
-     Contenido columna izquierda
-     ---
-     Contenido columna derecha
-   Los párrafos normales van sin etiquetas especiales.
-4. Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
+Dentro de "proposedText" (solo cuando aplique una modificación), puedes usar:
+- Subtítulos: "### Subtítulo"
+- Listas con negrita: "- **Parámetro:** Valor requerido"
+- Bloques de rider: [[requisito:Nombre]], [[aviso:obligatorio|nota|veto]], [[tiers]], [[contactos]], [[columnas]].
+
+Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       : '';
     const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
     const systemPrompt = `${SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master}${suggestionPrompt}`;
@@ -221,7 +214,7 @@ Reglas importantes:
       };
     }
 
-    if (finalResponse && editorContext && (!finalResponse.suggestions || finalResponse.suggestions.length === 0)) {
+    if (finalResponse && editorContext && finalResponse.suggestions === undefined) {
       finalResponse.suggestions = collectSuggestionDrafts(finalResponse.message, finalResponse.actions, editorContext);
       const parsed = parseSuggestionJson(finalResponse.message);
       if (parsed?.message) finalResponse.message = parsed.message;

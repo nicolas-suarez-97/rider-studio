@@ -181,6 +181,92 @@ export function generateExpertAgentResponse(
   const targetSectionId = editorContext?.sectionId || 'tech-audio';
   const sectionTitle = editorContext?.sectionTitle || 'Documento';
 
+  // 0. Clasificación de intención: ¿Es una consulta/pregunta o una orden directa de edición?
+  const isQuestionOrInquiry =
+    prompt.includes('?') ||
+    /^(?:qué|que|cuál|cual|cuáles|cuales|cómo|como|por qué|porque|cuándo|cuando|dónde|donde|quién|quien|es|son|puedes explicar|explica|explícame|recomienda|recomiendas|recomiéndame|qué opinas|que opinas|cuéntame|dime|tienes|hay|crees|opinas|revisa|analiza|valida|consulta|aconseja|aconséjame)\b/i.test(prompt.trim()) ||
+    /(?:qué opinas|que opinas|qué recomiendas|que recomiendas|qué sugieres|que sugieres|qué diferencia|cuál es|cual es|cómo ves|como ves|me recomiendas|te parece|está bien|esta bien|es correcto|es necesario|me aconsejas)/i.test(prompt);
+
+  const isExplicitEditCommand =
+    /^(?:agrega|añade|pon|incluye|inserta|coloca|escribe|modifica|cambia|actualiza|corrige|reemplaza|elimina|quita|borra|sustituye)\b/i.test(prompt.trim()) ||
+    /\b(?:agrega|añade|pon|incluye|inserta|modifica|cambia|actualiza|reemplaza|elimina|quita|borra)\s+(?:un\s+|una\s+|el\s+|la\s+|este\s+|esta\s+|al\s+|en\s+|sección|canal|requerimiento|texto|cláusula|consola|micrófono|hotel|valla|parámetro)/i.test(prompt) ||
+    p.includes('agrega canal') || p.includes('añade canal') ||
+    p.includes('genera sugerencias') || p.includes('aplica sugerencias');
+
+  // MODO CONSULTA: Si es una pregunta o duda y no es una orden explícita de edición,
+  // responder EXCLUSIVAMENTE en el chat sin modificar el documento (suggestions: []).
+  if (isQuestionOrInquiry && !isExplicitEditCommand) {
+    // Consulta sobre consolas / sonido
+    if (p.includes('consola') || p.includes('digico') || p.includes('yamaha') || p.includes('avid') || p.includes('foh') || p.includes('mezcla')) {
+      return {
+        role: 'audio_foh',
+        roleName: AGENT_PROFILES.audio_foh.name,
+        roleAvatar: '🎛️',
+        message: `**Recomendaciones sobre Consolas de Sala (FOH):**\n\nEn riders profesionales para directos y festivales, los tres estándares de la industria son:\n\n1. **DiGiCo Quantum / SD Series (SD12, SD10, Quantum 338):** Es el estándar de oro en giras internacionales. Sobresale por su procesamiento FPGA sin latencia, buses dinámicos y total libertad de configuración de faders.\n2. **Yamaha CL5 / Rivage PM Series:** Muy fiable, con integración nativa de red Dante redundante y preamplificadores premium Rupert Neve.\n3. **Avid Venue S6L:** Ideal para ingenieros que integran plugins directos de Pro Tools en vivo.\n\n*Consejo técnico:* En el rider siempre es crucial exigir **doble fuente de poder redundante** y dejar una cláusula explícita de veto para consolas analógicas o modelos fuera del estándar acordado.\n\n💡 *Si deseas que incorpore alguna de estas consolas en la sección de audio de tu rider, solo pídeme (por ejemplo: "Agrega consola DiGiCo SD12") y la aplicaré directamente al documento.*`,
+        suggestions: [],
+        gatewayProvider: 'production_expert_engine'
+      };
+    }
+
+    // Consulta sobre micrófonos / RF / canales
+    if (p.includes('micr') || p.includes('inalámbrico') || p.includes('canal') || p.includes('input') || p.includes('rf')) {
+      return {
+        role: 'audio_foh',
+        roleName: AGENT_PROFILES.audio_foh.name,
+        roleAvatar: '🎛️',
+        message: `**Criterio Técnico de Microfonía & Radiofrecuencias:**\n\n- **Voces Líderes:** Sistemas inalámbricos digitales de gama alta como **Shure Axient Digital (AD4Q)** con cápsula **KSM9** (condensador para voces con matices y amplia dinámica) o **Beta 58A** (supercardioide para alta ganancia antes de retroalimentación).\n- **Coordinación RF:** En festivales es obligatorio solicitar un escaneo y coordinación de espectro 2 horas antes de la prueba de sonido, con antenas direccionales activas elevadas.\n- **Monitoreo In-Ear (IEM):** Shure PSM 1000 o Sennheiser 2000 con antenas helicoidales y combinador activo.\n\n💡 *Si quieres que agregue estos requerimientos a la sección o un nuevo canal a la Input List, dímelo y lo registraré en el documento.*`,
+        suggestions: [],
+        gatewayProvider: 'production_expert_engine'
+      };
+    }
+
+    // Consulta sobre hospitality / catering / hotel / bebidas
+    if (p.includes('hospitality') || p.includes('catering') || p.includes('camerino') || p.includes('hotel') || p.includes('bebida') || p.includes('vocal') || p.includes('agua') || p.includes('jengibre') || p.includes('dieta')) {
+      const isHotel = p.includes('hotel') || p.includes('check-out') || p.includes('habitación');
+      const isDrink = p.includes('agua') || p.includes('bebida') || p.includes('jengibre') || p.includes('vocal');
+
+      let responseText = '';
+      if (isHotel) {
+        responseText = `**Normativa de Hotelería y Descanso en Gira:**\n\nEl requerimiento de **Late Check-Out a las 16:00 hrs** garantizado por contrato es fundamental: tras un espectáculo que finaliza de madrugada y el posterior load-out técnico, el equipo y los artistas no pueden abandonar el hotel al mediodía habitual. Se exigen hoteles 5★ con habitaciones insonorizadas a no más de 25 minutos del venue.`;
+      } else if (isDrink) {
+        responseText = `**Protocolo de Bebidas & Cuidado Vocal:**\n\n- **Agua al natural obligatoria:** El agua fría puede generar espasmos en las cuerdas vocales antes de cantar; se exigen botellas de agua mineral sin gas a temperatura ambiente.\n- **Kit de recuperación laríngea:** Raíz fresca de jengibre orgánico en rodajas, miel pura de abeja y limón fresco en dispensador estéril.`;
+      } else {
+        responseText = `**Estándar de Camerino & Confort:**\n\nUn camerino principal profesional debe incluir climatización individual regulada a 21°C, sofá cómodo, espejo de cuerpo entero con iluminación cálida neutra, toallas de mano negras de algodón y catering balanceado coordinado 48h antes (con alternativas veganas y celíacas).`;
+      }
+
+      return {
+        role: 'hospitality',
+        roleName: AGENT_PROFILES.hospitality.name,
+        roleAvatar: '☕',
+        message: `${responseText}\n\n💡 *Si deseas que añada o ajuste alguna de estas cláusulas en tu rider, solo pídemelo.*`,
+        suggestions: [],
+        gatewayProvider: 'production_expert_engine'
+      };
+    }
+
+    // Consulta sobre seguridad / vallas / pit
+    if (p.includes('seguridad') || p.includes('valla') || p.includes('mojo') || p.includes('foso') || p.includes('perímetro') || p.includes('escolta') || p.includes('aforo')) {
+      return {
+        role: 'security',
+        roleName: AGENT_PROFILES.security.name,
+        roleAvatar: '🛡️',
+        message: `**Normativas de Seguridad y Control de Masas:**\n\n- **Vallas de contención Mojo Barriers:** Deben ser de aluminio certificadas bajo norma europea con resistencia a empuje de mínimo **4.5 kN/m**.\n- **Pasillo de Foso (Pit):** Debe mantenerse libre de cables u obstáculos con una anchura mínima de 2.5 metros para permitir el libre tránsito de seguridad y camilleros.\n- **Escalón de Rescate Frontal:** Obligatorio para que los custodios y paramédicos puedan acceder rápidamente al público en caso de emergencia.\n- **Acreditaciones:** Perímetro backstage estéril con credenciales holográficas diferenciadas.\n\n💡 *Si deseas que registre este protocolo de seguridad en tu rider, indícamelo (ej. "Agrega vallas mojo a seguridad") y lo aplicaré al documento.*`,
+        suggestions: [],
+        gatewayProvider: 'production_expert_engine'
+      };
+    }
+
+    // Consulta general sobre el rider o sección
+    return {
+      role: activeAgent,
+      roleName: profile.name,
+      roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+      message: `**Consulta sobre "${sectionTitle}":**\n\nHe analizado tu consulta. Para este tipo de producción es importante contar con especificaciones claras, marcas preferidas y cláusulas de veto bien definidas para evitar ambigüedades con promotores o salas.\n\nPuedes hacerme cualquier consulta técnica con total tranquilidad. Y si en algún momento deseas aplicar o modificar algo en el documento, solo debes darme la instrucción (por ejemplo: *"agrega..."*, *"cambia..."* o *"elimina..."*).`,
+      suggestions: [],
+      gatewayProvider: 'production_expert_engine'
+    };
+  }
+
   // 1. Detección de creación de nueva sección
   if (p.includes('nueva sección') || p.includes('agrega una sección') || p.includes('crea una sección') || p.includes('añade una sección')) {
     const rawTitle = prompt.replace(/(?:crea|agrega|añade|nueva)\s+(?:una\s+)?sección\s*(?:de|titulada|llamada|:)?\s*/i, '').trim();
@@ -201,8 +287,8 @@ export function generateExpertAgentResponse(
   }
 
   // 2. Detección de cambio de tema visual
-  const themeMatch = p.match(/tema\s+(festival|editorial|blueprint|electronic|carbon|acoustic|nordic|studio)/i);
-  if (themeMatch) {
+  const themeMatch = p.match(/(?:cambia|pon|aplica|usar)?\s*tema\s+(festival|editorial|blueprint|electronic|carbon|acoustic|nordic|studio)/i);
+  if (themeMatch && !p.includes('?')) {
     const themeName = themeMatch[1].toLowerCase();
     return {
       role: activeAgent,
@@ -220,7 +306,7 @@ export function generateExpertAgentResponse(
     };
   }
 
-  // 3. Reglas específicas de audio / consolas
+  // 3. Reglas específicas de audio / consolas (ORDEN DE EDICIÓN)
   if (p.includes('consola') || p.includes('digico') || p.includes('yamaha') || p.includes('avid') || p.includes('foh') || p.includes('mezcla')) {
     const isDigico = p.includes('digico') || p.includes('sd12') || p.includes('quantum');
     const consoleName = isDigico ? 'DiGiCo SD12 / Quantum Series' : 'Consola Digital de Alta Gama (DiGiCo / Yamaha CL5 / Avid S6L)';
@@ -245,7 +331,7 @@ No se aceptan consolas analógicas bajo ninguna circunstancia, ni modelos no aut
     };
   }
 
-  // 4. Modificaciones técnicas de microfonía o canales
+  // 4. Modificaciones técnicas de microfonía o canales (ORDEN DE EDICIÓN)
   if (p.includes('micr') || p.includes('inalámbrico') || p.includes('canal') || p.includes('input') || p.includes('rf')) {
     const isChannelAdd = p.includes('agrega canal') || p.includes('añade canal') || p.includes('input list');
     if (isChannelAdd) {
@@ -291,7 +377,7 @@ El proveedor local debe entregar el espectro de radiofrecuencias libre y coordin
     };
   }
 
-  // 5. Hospitality (camerinos, catering, bebidas, hotel)
+  // 5. Hospitality (ORDEN DE EDICIÓN)
   if (p.includes('hospitality') || p.includes('catering') || p.includes('camerino') || p.includes('hotel') || p.includes('bebida') || p.includes('vocal') || p.includes('agua') || p.includes('jengibre') || p.includes('dieta')) {
     const isDrink = p.includes('agua') || p.includes('bebida') || p.includes('jengibre') || p.includes('vocal');
     const isHotel = p.includes('hotel') || p.includes('check-out') || p.includes('habitación');
@@ -335,7 +421,7 @@ Catering fresco con opciones veganas y sin gluten coordinadas 48 horas antes con
     };
   }
 
-  // 6. Seguridad (vallas, perímetro, acreditación, escolta)
+  // 6. Seguridad (ORDEN DE EDICIÓN)
   if (p.includes('seguridad') || p.includes('valla') || p.includes('mojo') || p.includes('foso') || p.includes('perímetro') || p.includes('escolta') || p.includes('aforo')) {
     const proposedText = `[[requisito:Vallas de Foso & Perímetro de Seguridad]]
 Instalación obligatoria de vallas de contención Mojo Barriers de aluminio certificadas (resistencia 4.5 kN/m) en la línea frontal del escenario, con pasillo de foso libre de mínimo 2.5 metros y escalón de rescate para paramédicos.
@@ -397,12 +483,13 @@ No se autoriza el inicio del espectáculo si no se cumple el perímetro estéril
       roleName: profile.name,
       roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
       message: `**Análisis técnico sobre "${targetQuote}":**\n\nEl requerimiento es técnicamente viable y cumple con los estándares profesionales del sector. Si deseas cambiar esta cláusula por otra especificación técnica, puedes pedírmelo directamente.`,
+      suggestions: [],
       gatewayProvider: 'production_expert_engine'
     };
   }
 
   // 6.7 Sugerencias técnicas de mejora para la sección actual (/sugerencias)
-  if (p.includes('sugerencia') || p.includes('sugiere') || p.includes('mejorar') || p.includes('faltaría agregar') || p.includes('cosas por agregar')) {
+  if (p.includes('genera sugerencias') || p.includes('aplica sugerencias') || p.includes('agrega sugerencias') || p.includes('faltaría agregar')) {
     const isAudio = targetSectionId.includes('audio') || /audio|sonido|foh|monitores|microfonía/i.test(sectionTitle);
     const isHosp = targetSectionId.includes('hospitality') || /hospitality|camerino|catering|hotel/i.test(sectionTitle);
     const isSec = targetSectionId.includes('seguridad') || /seguridad|acceso|valla|foso/i.test(sectionTitle);

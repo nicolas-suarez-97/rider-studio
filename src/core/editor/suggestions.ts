@@ -161,18 +161,6 @@ export function collectSuggestionDrafts(
   const fromActions = suggestionsFromActions(actions, context);
   if (fromActions.length > 0) return fromActions;
 
-  const prompt = message.trim();
-  const chatty = /entendido|sincroniz|analizado|puedes pedirme|error de conexión/i.test(prompt);
-  if (!chatty && context.selection && context.sectionText.includes(context.selection)) {
-    return [{
-      kind: 'replace',
-      sectionId: context.sectionId,
-      baseText: context.selection,
-      proposedText: prompt,
-      rationale: 'Propuesta para el texto seleccionado.',
-    }];
-  }
-
   return [];
 }
 
