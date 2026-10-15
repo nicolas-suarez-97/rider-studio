@@ -28,7 +28,7 @@ interface SectionsNavPanelProps {
   completedSectionIds: string[];
   onToggleComplete: (id: string, e?: React.MouseEvent) => void;
   onOpenAddSection: () => void;
-  onAddSectionTitle?: (title: string) => void;
+  onAddSectionTitle?: (title: string, suggestedId?: string) => void;
   isAddingSection?: boolean;
   onCancelAddSection?: () => void;
   onApplyTemplateOutline?: () => void;
@@ -93,7 +93,7 @@ function normalizeText(text: string): string {
 }
 
 interface AddSectionTitleFormProps {
-  onSubmit: (title: string) => void;
+  onSubmit: (title: string, suggestedId?: string) => void;
   onCancel: () => void;
   riderType?: RiderType;
 }
@@ -136,21 +136,23 @@ function AddSectionTitleForm({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelect = (selectedTitle: string) => {
+  const handleSelect = (selectedTitle: string, suggestedId?: string) => {
     const trimmed = selectedTitle.trim();
     if (!trimmed) return;
-    onSubmit(trimmed);
+    onSubmit(trimmed, suggestedId);
   };
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     if (isOpen && focusedIndex >= 0 && focusedIndex < filteredSections.length) {
-      handleSelect(filteredSections[focusedIndex].title);
+      const selected = filteredSections[focusedIndex];
+      handleSelect(selected.title, selected.id);
       return;
     }
     const next = title.trim();
     if (!next) return;
-    onSubmit(next);
+    const match = baseSections.find(s => s.title.trim().toLowerCase() === next.toLowerCase());
+    onSubmit(next, match?.id);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -229,7 +231,7 @@ function AddSectionTitleForm({
                   type="button"
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    handleSelect(sec.title);
+                    handleSelect(sec.title, sec.id);
                   }}
                   onMouseEnter={() => setFocusedIndex(idx)}
                   className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${

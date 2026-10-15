@@ -70,7 +70,7 @@ export interface EditorBridge {
   revert: (suggestion: DocumentSuggestion) => boolean;
   focus: (suggestion: DocumentSuggestion) => void;
   find: (query: string, direction?: SearchDirection) => SearchStats;
-  insertSectionTitle: (title: string) => string | null;
+  insertSectionTitle: (title: string, suggestedId?: string) => string | null;
   scrollToSection: (sectionId: string) => void;
 }
 
@@ -598,7 +598,7 @@ export function RiderDocumentSurface({
     return { current: index + 1, total: matches.length };
   }, [editor]);
 
-  const insertSectionTitle = useCallback((title: string) => {
+  const insertSectionTitle = useCallback((title: string, suggestedId?: string) => {
     if (!editor || editor.isDestroyed || readOnly) return null;
     const trimmed = title.trim();
     if (!trimmed) return null;
@@ -620,7 +620,19 @@ export function RiderDocumentSurface({
 
     const { $from } = editor.state.selection;
     const pos = $from.depth > 0 ? $from.after(1) : editor.state.doc.content.size;
-    const id = newSectionId();
+    let id = newSectionId();
+    if (suggestedId) {
+      let alreadyExists = false;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'heading' && node.attrs.id === suggestedId) {
+          alreadyExists = true;
+          return false;
+        }
+      });
+      if (!alreadyExists) {
+        id = suggestedId;
+      }
+    }
 
     const isInputList = trimmed.toLowerCase().includes('input list');
     let hasExistingInputList = false;

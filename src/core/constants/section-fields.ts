@@ -647,3 +647,72 @@ export const SECTION_FIELD_CONFIGS: Record<string, SectionConfig> = {
     ]
   }
 };
+
+const KEYWORD_MAP: Array<{ id: string; keywords: string[] }> = [
+  // Técnico
+  { id: 'tech-contactos', keywords: ['contacto', 'produccion general', 'produccion ejecutiva', 'staff', 'personal clave', 'directorio'] },
+  { id: 'tech-pa', keywords: ['pa', 'line array', 'consola de sala', 'consola foh', 'sonido de sala', 'spl', 'cobertura'] },
+  { id: 'tech-monitores', keywords: ['monitoreo', 'iem', 'in-ear', 'in ear', 'cuna', 'cuña', 'radiofrecuencia', 'rf', 'mezclas'] },
+  { id: 'tech-backline', keywords: ['backline', 'bateria', 'bajo', 'guitarra', 'teclado', 'amplificador', 'voltaje'] },
+  { id: 'tech-inputlist', keywords: ['input list', 'patch', 'canales', 'microfonia', 'directas', 'phantom'] },
+  { id: 'tech-stageplot', keywords: ['stage plot', 'tarima', 'escenario', 'risers', 'tierra aislada', 'acometida'] },
+  { id: 'tech-iluminacion', keywords: ['iluminacion', 'pantallas led', 'led', 'visuales', 'luces', 'luminarias', 'dmx', 'niebla'] },
+  { id: 'tech-rigging', keywords: ['rigging', 'motores', 'truss', 'cuelgue', 'cargas estaticas', 'puntos de cuelgue'] },
+  { id: 'tech-terminos', keywords: ['terminos', 'aprobaciones', 'hospitalidad tecnica', 'condiciones generales'] },
+
+  // Hospitality
+  { id: 'hosp-camerinos', keywords: ['camerino', 'camerinos', 'dressing room', 'confort', 'cuidado vocal'] },
+  { id: 'hosp-catering', keywords: ['catering', 'comida', 'alimento', 'almuerzo', 'cena', 'desayuno', 'dietas'] },
+  { id: 'hosp-bebidas', keywords: ['bebida', 'barra', 'hidratacion', 'licor', 'cafe', 'te', 'aguas'] },
+  { id: 'hosp-lavanderia', keywords: ['lavanderia', 'toallas', 'planchado', 'tintoreria'] },
+  { id: 'hosp-hotel', keywords: ['hotel', 'alojamiento', 'habitacion', 'hospedaje'] },
+  { id: 'hosp-transporte', keywords: ['transporte', 'vans', 'traslado', 'chofer', 'vehiculo', 'logistica terrestre'] },
+
+  // Seguridad
+  { id: 'seg-perimetro', keywords: ['perimetro', 'accesos', 'acreditaciones', 'control de acceso', 'vallas'] },
+  { id: 'seg-foso', keywords: ['foso', 'barreras', 'mojo', 'barrera de contencion'] },
+  { id: 'seg-custodia', keywords: ['custodia', 'escolta', 'guardaespaldas', 'seguridad personal'] },
+  { id: 'seg-emergencias', keywords: ['emergencia', 'medica', 'evacuacion', 'primeros auxilios', 'ambulancia'] },
+  { id: 'seg-sfx', keywords: ['pirotecnia', 'sfx', 'efectos especiales', 'fuegos artificiales', 'co2', 'llamas'] },
+  { id: 'seg-clima', keywords: ['clima', 'viento', 'lluvia', 'tormenta', 'condiciones meteorologicas'] },
+];
+
+function cleanString(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+export function findSectionConfig(
+  sectionId?: string,
+  sectionTitle?: string
+): SectionConfig | undefined {
+  // 1. Direct ID lookup
+  if (sectionId && SECTION_FIELD_CONFIGS[sectionId]) {
+    return SECTION_FIELD_CONFIGS[sectionId];
+  }
+
+  if (!sectionTitle) return undefined;
+  const cleanTitle = cleanString(sectionTitle);
+  if (!cleanTitle) return undefined;
+
+  // 2. Exact or substring match on sectionTitleHint
+  for (const [, config] of Object.entries(SECTION_FIELD_CONFIGS)) {
+    const cleanHint = cleanString(config.sectionTitleHint);
+    if (cleanTitle === cleanHint || cleanTitle.includes(cleanHint) || cleanHint.includes(cleanTitle)) {
+      return config;
+    }
+  }
+
+  // 3. Keyword matching
+  for (const item of KEYWORD_MAP) {
+    if (item.keywords.some((kw) => cleanTitle.includes(kw))) {
+      return SECTION_FIELD_CONFIGS[item.id];
+    }
+  }
+
+  return undefined;
+}
+

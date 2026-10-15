@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Icon } from '../common/Icon';
 import { SectionItem } from '@/core/types/rider.types';
-import { SECTION_FIELD_CONFIGS, SectionConfig } from '@/core/constants/section-fields';
+import { SECTION_FIELD_CONFIGS, SectionConfig, findSectionConfig } from '@/core/constants/section-fields';
 
 interface EditSectionModalProps {
   section: SectionItem | null;
@@ -33,21 +33,21 @@ function EditSectionModalContent({
   onDelete
 }: EditSectionModalContentProps) {
   const sectionConfig: SectionConfig | undefined = useMemo(() => {
-    return SECTION_FIELD_CONFIGS[section.id];
-  }, [section.id]);
+    return findSectionConfig(section.id, section.title);
+  }, [section.id, section.title]);
 
   const rawTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [formData, setFormData] = useState<SectionItem>(() => ({ ...section }));
   const [editMode, setEditMode] = useState<'structured' | 'raw'>(() => {
-    return SECTION_FIELD_CONFIGS[section.id] ? 'structured' : 'raw';
+    return findSectionConfig(section.id, section.title) ? 'structured' : 'raw';
   });
   const [showPreview, setShowPreview] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   // Inicialización de campos estructurados predefinidos
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() => {
-    const config = SECTION_FIELD_CONFIGS[section.id];
+    const config = findSectionConfig(section.id, section.title);
     if (!config) return {};
 
     const contentLines = (section.content || '').split('\n');
@@ -73,7 +73,7 @@ function EditSectionModalContent({
 
   // Inicialización de campos personalizados (líneas no contempladas en la plantilla predefinida)
   const [customFields, setCustomFields] = useState<CustomFieldItem[]>(() => {
-    const config = SECTION_FIELD_CONFIGS[section.id];
+    const config = findSectionConfig(section.id, section.title);
     const contentLines = (section.content || '').split('\n').filter(l => l.trim() !== '');
     if (!config) return [];
 

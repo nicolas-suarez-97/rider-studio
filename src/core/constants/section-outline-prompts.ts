@@ -1,4 +1,4 @@
-import { SECTION_FIELD_CONFIGS } from '@/core/constants/section-fields';
+import { findSectionConfig } from '@/core/constants/section-fields';
 import { RiderType } from '@/core/types/rider.types';
 
 export interface SectionOutlinePrompt {
@@ -32,7 +32,7 @@ export function outlinePromptsForSection(
     prompt: `Ayúdame a redactar la sección «${title}» de este rider ${kind}. Está vacía. Propón el contenido profesional típico, con placeholders claros donde falte un dato, listo para pegar en el documento.`,
   };
 
-  const config = SECTION_FIELD_CONFIGS[section.id];
+  const config = findSectionConfig(section.id, section.title);
   const fields = config?.fields.slice(0, 4) || [];
   const topics: SectionOutlinePrompt[] = fields.map((field) => ({
     id: field.key,

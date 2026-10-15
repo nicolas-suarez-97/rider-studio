@@ -1,5 +1,5 @@
 import { formatInputListPlainText, type InputListColumn, type InputListRow } from '@/core/constants/input-list';
-import { SECTION_FIELD_CONFIGS } from '@/core/constants/section-fields';
+import { SECTION_FIELD_CONFIGS, findSectionConfig } from '@/core/constants/section-fields';
 import { formatRiderDate, riderKicker } from '@/core/constants/document-themes';
 import { RiderContentDoc, RiderContentNode, RiderType, SectionItem } from '@/core/types/rider.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
@@ -418,7 +418,7 @@ export function buildGapSuggestions(
   active: boolean
 ): DocumentSuggestion[] {
   const text = section.content || '';
-  const config = SECTION_FIELD_CONFIGS[section.id];
+  const config = findSectionConfig(section.id, section.title);
   const suggestions: DocumentSuggestion[] = [];
 
   if (isDocumentIntro(section.id) || isDocumentCover(section.id)) return suggestions;

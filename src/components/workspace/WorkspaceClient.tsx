@@ -409,10 +409,10 @@ export function WorkspaceClient({
     }
   };
 
-  const handleAddSectionTitle = async (title: string) => {
+  const handleAddSectionTitle = async (title: string, suggestedId?: string) => {
     const trimmed = title.trim();
     if (!trimmed) return;
-    const insertedId = bridgeRef.current?.insertSectionTitle(trimmed) ?? null;
+    const insertedId = bridgeRef.current?.insertSectionTitle(trimmed, suggestedId) ?? null;
     if (insertedId) {
       setActiveSectionId(insertedId);
       setIsAddingSection(false);
