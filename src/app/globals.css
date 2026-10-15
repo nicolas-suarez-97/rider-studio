@@ -586,3 +586,36 @@ html:active-view-transition-type(backward)::view-transition-new(root) {
     animation: none;
   }
 }
+
+/* Prevenir auto-zoom en dispositivos móviles al editar o hacer foco */
+@media screen and (max-width: 1024px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .docs-editor {
+    font-size: 16px;
+  }
+
+  .docs-editor p,
+  .docs-editor li,
+  .docs-editor td,
+  .docs-editor th {
+    font-size: 16px;
+  }
+}
+
+html,
+body,
+input,
+textarea,
+select,
+button,
+[contenteditable="true"],
+.docs-editor {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}

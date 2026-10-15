@@ -779,7 +779,10 @@ export function RiderDocumentSurface({
   return (
     <div className={`docs-theme docs-theme-${theme} relative flex-1 h-full min-h-0 min-w-0 flex flex-col`}>
       <style>{`
-        .docs-editor { box-sizing: border-box; background: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        .docs-editor { box-sizing: border-box; background: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
+        @media screen and (max-width: 1024px) {
+          .docs-editor, .docs-editor p, .docs-editor li, .docs-editor td, .docs-editor th, .docs-input-list td input, .docs-combo input { font-size: 16px; }
+        }
         .docs-page-break { pointer-events: none; user-select: none; display: block; width: 100%; margin: 0; padding: 0; border: 0; overflow: hidden; box-sizing: content-box; }
         .docs-editor h1 { font-size: 26pt; font-weight: 700; line-height: 1.15; margin: 0 0 0.35em; scroll-margin-top: 96px; }
         .docs-editor h2 { font-size: 16pt; font-weight: 700; line-height: 1.2; margin: 1em 0 0.3em; scroll-margin-top: 96px; }
