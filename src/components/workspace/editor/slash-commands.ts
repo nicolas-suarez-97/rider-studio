@@ -1,13 +1,14 @@
 import type { Editor } from '@tiptap/core';
 import { insertCoverAtStart } from '@/components/workspace/editor/rider-blocks';
 import { cloneInputListRows } from '@/core/constants/input-list';
-import { newSectionId } from '@/core/editor/content-doc';
+import { newSectionId, DOCUMENT_COVER_ID } from '@/core/editor/content-doc';
 
 export type SlashRange = { from: number; to: number };
 
 export type SlashHelpers = {
   pickImages: (onFiles: (files: File[]) => void) => void;
   insertImages: (files: File[]) => void;
+  askAssistant?: (prompt: string, sectionId?: string) => void;
 };
 
 export type SlashCommand = {
@@ -40,6 +41,39 @@ function deleteThen(editor: Editor, range: SlashRange) {
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    id: 'ai-suggestions',
+    title: 'Sugerencias con IA',
+    description: 'Mejoras y requisitos recomendados para esta sección',
+    icon: 'sparkles',
+    group: 'Copilot IA',
+    keywords: ['sugerencias', 'sugerencia', 'ia', 'copilot', 'mejorar', 'analizar', 'completar', 'seccion', 'recomendar', 'ideas'],
+    run: (editor, range, helpers) => {
+      // 1. Eliminar el comando / del documento
+      deleteThen(editor, range).run();
+
+      // 2. Determinar la sección en la que se encuentra el cursor
+      let sectionId = '';
+      let sectionTitle = '';
+      let covers = 0;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'riderCover' && pos <= range.from) {
+          covers += 1;
+          sectionId = covers === 1 ? DOCUMENT_COVER_ID : `${DOCUMENT_COVER_ID}-${covers}`;
+          sectionTitle = 'Portada';
+        }
+        if (node.type.name === 'heading' && node.attrs.id && pos <= range.from) {
+          sectionId = node.attrs.id as string;
+          sectionTitle = node.textContent || 'Sección actual';
+        }
+      });
+
+      const titleForPrompt = sectionTitle || 'esta sección';
+      const prompt = `Revisa la sección "${titleForPrompt}" y genera sugerencias técnicas de cómo mejorarla o qué requisitos adicionales faltaría agregar.`;
+
+      helpers.askAssistant?.(prompt, sectionId || undefined);
+    },
+  },
   {
     id: 'paragraph',
     title: 'Texto',

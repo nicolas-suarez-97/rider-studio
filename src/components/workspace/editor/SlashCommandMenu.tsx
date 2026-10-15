@@ -14,9 +14,10 @@ interface SlashCommandMenuProps {
   enabled: boolean;
   keysRef: MutableRefObject<(event: KeyboardEvent) => boolean>;
   onInsertImages: (files: File[]) => void;
+  onAskAssistant?: (text: string, sectionId?: string) => void;
 }
 
-export function SlashCommandMenu({ editor, enabled, keysRef, onInsertImages }: SlashCommandMenuProps) {
+export function SlashCommandMenu({ editor, enabled, keysRef, onInsertImages, onAskAssistant }: SlashCommandMenuProps) {
   const [range, setRange] = useState<(SlashRange & { query: string }) | null>(null);
   const [index, setIndex] = useState(0);
   const [coords, setCoords] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
@@ -113,12 +114,13 @@ export function SlashCommandMenu({ editor, enabled, keysRef, onInsertImages }: S
         pickCallbackRef.current = onFiles;
         fileRef.current?.click();
       },
+      askAssistant: onAskAssistant,
     };
     command.run(editor, { from: range.from, to: range.to }, helpers);
     dismissedRef.current = false;
     setRange(null);
     return true;
-  }, [commands, editor, onInsertImages, range]);
+  }, [commands, editor, onAskAssistant, onInsertImages, range]);
 
   useEffect(() => {
     if (!range) return;
@@ -214,12 +216,16 @@ export function SlashCommandMenu({ editor, enabled, keysRef, onInsertImages }: S
                     }`}
                   >
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
-                      selected ? 'border-violet-200 bg-white text-violet-700' : 'border-slate-200 bg-slate-50 text-slate-600'
+                      command.id === 'ai-suggestions'
+                        ? 'border-violet-300 bg-violet-600 text-white shadow-xs'
+                        : selected ? 'border-violet-200 bg-white text-violet-700' : 'border-slate-200 bg-slate-50 text-slate-600'
                     }`}>
                       <Icon name={command.icon} className="h-4 w-4" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-semibold text-slate-800">{command.title}</span>
+                      <span className={`block truncate text-[13px] font-semibold ${command.id === 'ai-suggestions' ? 'text-violet-900 font-bold' : 'text-slate-800'}`}>
+                        {command.title}
+                      </span>
                       <span className="block truncate text-[11px] text-slate-400">{command.description}</span>
                     </span>
                   </button>

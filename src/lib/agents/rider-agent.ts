@@ -401,6 +401,69 @@ No se autoriza el inicio del espectáculo si no se cumple el perímetro estéril
     };
   }
 
+  // 6.7 Sugerencias técnicas de mejora para la sección actual (/sugerencias)
+  if (p.includes('sugerencia') || p.includes('sugiere') || p.includes('mejorar') || p.includes('faltaría agregar') || p.includes('cosas por agregar')) {
+    const isAudio = targetSectionId.includes('audio') || /audio|sonido|foh|monitores|microfonía/i.test(sectionTitle);
+    const isHosp = targetSectionId.includes('hospitality') || /hospitality|camerino|catering|hotel/i.test(sectionTitle);
+    const isSec = targetSectionId.includes('seguridad') || /seguridad|acceso|valla|foso/i.test(sectionTitle);
+
+    let proposedText = '';
+    let rationale = '';
+
+    if (isAudio) {
+      proposedText = `### Requisitos Técnicos Sugeridos
+- **Sistema de PA:** Cobertura uniforme en todo el recinto con SPL continuo de 105 dBA en FOH sin distorsión.
+- **Monitoreo:** Sistema de IEM estéreo Shure PSM1000 / Sennheiser 2000 con antenas helicoidales y combinador activo.
+[[requisito:Intercomunicación de Producción]]
+Sistema de intercom inalámbrico Clear-Com o Riedel Bolero (mínimo 4 petacas: FOH, Monitores, Stage Manager y Luces).
+[[aviso:obligatorio]]
+Todo el equipamiento debe contar con tierra técnica aislada y estabilizador de voltaje independiente.`;
+      rationale = `Sugerencias técnicas de monitoreo, PA e intercomunicación para ${sectionTitle}.`;
+    } else if (isHosp) {
+      proposedText = `### Especificaciones Sugeridas de Hospitality
+- **Climatización y Confort:** Camerino independiente con temperatura regulable entre 20°C y 22°C.
+- **Conectividad:** Red Wi-Fi de alta velocidad exclusiva y privada para la producción del artista (mínimo 100 Mbps simétricos).
+[[requisito:Servicio de Toallas & Planchado]]
+12 toallas de mano negras de algodón de alta densidad y vaporizador vertical en camerino.
+[[aviso:nota]]
+Catering fresco con opciones calientes y alternativas sin gluten/lácteos desde el montaje.`;
+      rationale = `Mejoras de confort, conectividad y catering para ${sectionTitle}.`;
+    } else if (isSec) {
+      proposedText = `### Protocolos de Seguridad Sugeridos
+- **Control de Acceso:** Pulseras o credenciales holográficas diferenciadas para escenario, backstage y FOH.
+- **Vías de Evacuación:** Pasillos de emergencia de mínimo 2.5 metros completamente despejados y señalizados.
+[[requisito:Seguridad en Escenario]]
+Personal de seguridad dedicado en los accesos de escaleras al escenario durante toda la actuación.
+[[aviso:veto]]
+Queda prohibido el ingreso de público o personal no acreditado al área de backstage 2 horas antes y 1 hora después del show.`;
+      rationale = `Protocolos de control perimetral y seguridad en escenario para ${sectionTitle}.`;
+    } else {
+      proposedText = `### Cláusulas y Requerimientos Sugeridos
+- **Validación Previa:** Las especificaciones de esta sección deben ser confirmadas con 7 días de antelación al montaje.
+- **Suministro Local:** El organizador garantizará la disponibilidad de todos los insumos detallados sin sustituciones no autorizadas.
+[[requisito:Personal de Enlace de Producción]]
+Un asistente de producción bilingüe asignado exclusivamente a coordinar los aspectos de esta sección.
+[[aviso:obligatorio]]
+Cualquier cambio sobre esta sección requiere autorización por escrito del director de gira.`;
+      rationale = `Sugerencias de validación, personal de enlace y cláusulas operativas para ${sectionTitle}.`;
+    }
+
+    return {
+      role: isHosp ? 'hospitality' : isSec ? 'security' : 'audio_foh',
+      roleName: isHosp ? AGENT_PROFILES.hospitality.name : isSec ? AGENT_PROFILES.security.name : AGENT_PROFILES.audio_foh.name,
+      roleAvatar: isHosp ? '☕' : isSec ? '🛡️' : '🎛️',
+      message: `He analizado la sección **"${sectionTitle}"** y he redactado sugerencias de mejora y requisitos técnicos clave aplicados directamente al documento. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
+      suggestions: [{
+        kind: 'insert',
+        sectionId: targetSectionId,
+        baseText: '',
+        proposedText,
+        rationale
+      }],
+      gatewayProvider: 'production_expert_engine'
+    };
+  }
+
   // 7. Requerimiento general dinámico para cualquier otra instrucción de edición
   const isEditIntent = /agrega|añade|pon|incluye|inserta|coloca|escribe|modifica|quita|cambia|requisito|aviso|nota/i.test(prompt);
 

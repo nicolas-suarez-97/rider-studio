@@ -877,6 +877,7 @@ export function RiderDocumentSurface({
           enabled={!readOnly}
           keysRef={slashKeysRef}
           onInsertImages={insertImages}
+          onAskAssistant={onAskAssistant}
         />
       )}
       {!readOnly && (
