@@ -129,10 +129,15 @@ body {
 .docs-page-break {
   pointer-events: none;
 }
-.rider-suggestion-delete {
-  background: #ffe4e6;
-  color: #9f1239;
+.rider-suggestion-delete,
+.rider-diff-old {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+  color: #991b1b !important;
   text-decoration: line-through;
+  text-decoration-color: #ef4444;
+  border-bottom: 2px dashed #ef4444;
+  border-radius: 3px;
+  padding: 1px 3px;
 }
 .rider-suggestion-insert {
   background: #d1fae5;
@@ -276,6 +281,9 @@ body {
   .rider-applied-highlight {
     background: transparent !important;
     border-bottom: none !important;
+  }
+  .rider-diff-old {
+    display: none !important;
   }
 }
 }

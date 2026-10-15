@@ -465,11 +465,12 @@ Cualquier cambio sobre esta sección requiere autorización por escrito del dire
   }
 
   // 7. Requerimiento general dinámico para cualquier otra instrucción de edición
-  const isEditIntent = /agrega|añade|pon|incluye|inserta|coloca|escribe|modifica|quita|cambia|requisito|aviso|nota/i.test(prompt);
+  const isEditIntent = /agrega|añade|pon|incluye|inserta|coloca|escribe|modifica|quita|cambia|actualiza|corrige|reemplaza|ajusta|requisito|aviso|nota/i.test(prompt);
 
   if (isEditIntent && editorContext) {
+    const isModifyOrChange = /modifica|cambia|actualiza|corrige|reemplaza|ajusta/i.test(prompt) || Boolean(editorContext.selection);
     const cleanRequirement = prompt
-      .replace(/^(?:por favor\s+)?(?:puedes\s+)?(?:agrega|añade|pon|incluye|inserta|coloca|escribe|modifica)\s+(?:un\s+)?(?:requerimiento|texto|aviso|bloque)?\s*(?:de\s+que|que|sobre|:)?\s*/i, '')
+      .replace(/^(?:por favor\s+)?(?:puedes\s+)?(?:agrega|añade|pon|incluye|inserta|coloca|escribe|modifica|cambia|actualiza|reemplaza|ajusta)\s+(?:un\s+)?(?:requerimiento|texto|aviso|bloque)?\s*(?:de\s+que|que|sobre|:)?\s*/i, '')
       .trim();
     const formattedBody = cleanRequirement.charAt(0).toUpperCase() + cleanRequirement.slice(1);
 
@@ -478,17 +479,21 @@ ${formattedBody}
 [[aviso:obligatorio]]
 Este parámetro debe ser coordinado y validado con la producción local antes del montaje.`;
 
+    const baseText = editorContext.selection || (isModifyOrChange ? (editorContext.sectionText || '') : '');
+
     return {
       role: activeAgent,
       roleName: profile.name,
       roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
-      message: `He añadido el requerimiento directamente en la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
+      message: isModifyOrChange
+        ? `He modificado directamente la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`
+        : `He añadido el requerimiento directamente en la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
       suggestions: [{
-        kind: 'insert',
+        kind: isModifyOrChange ? 'replace' : 'insert',
         sectionId: targetSectionId,
-        baseText: '',
+        baseText,
         proposedText,
-        rationale: `Requerimiento: ${formattedBody.slice(0, 60)}${formattedBody.length > 60 ? '...' : ''}`
+        rationale: `${isModifyOrChange ? 'Modificación' : 'Requerimiento'}: ${formattedBody.slice(0, 60)}${formattedBody.length > 60 ? '...' : ''}`
       }],
       gatewayProvider: 'production_expert_engine'
     };

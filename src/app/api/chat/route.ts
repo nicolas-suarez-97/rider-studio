@@ -71,7 +71,14 @@ Responde SIEMPRE con un objeto JSON válido con la siguiente estructura:
 }
 
 Reglas importantes:
-1. Si el usuario pide añadir o redactar requerimientos, agrega las sugerencias correspondientes indicando el sectionId adecuado.
+1. MODIFICACIÓN VS INSERCIÓN (CRUCIAL):
+   - Si el usuario pide modificar, cambiar, actualizar, reescribir, corregir, traducir o ajustar un texto, requerimiento o sección ya existente (o si tiene texto en "Texto seleccionado por el usuario"):
+     * Usa OBLIGATORIAMENTE kind: "replace".
+     * En "baseText" incluye el fragmento exacto o el texto actual que se sustituirá. NUNCA lo dejes vacío en una modificación.
+     * En "proposedText" pon la nueva versión completa que reemplazará al texto anterior.
+     * De esta forma, el documento mostrará la versión previa sombreada en rojo con tachado y la nueva en verde con los botones para Aprobar o Rechazar.
+   - Si el usuario pide agregar o redactar requerimientos nuevos sin reemplazar lo existente, usa kind: "insert" con baseText: "".
+   - Si el usuario pide borrar o quitar algo, usa kind: "delete" indicando el fragmento en baseText y proposedText: "".
 2. Si el usuario hace una pregunta puramente conversacional o informativa sin pedir cambios, deja "suggestions": [] y responde en "message".
 3. Dentro de "proposedText", puedes estructurar contenido profesional con formato enriquecido y bloques de rider:
    - Para subtítulos dentro de la sección, usa "### Subtítulo".

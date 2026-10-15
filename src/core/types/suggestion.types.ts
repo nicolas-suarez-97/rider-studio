@@ -23,6 +23,7 @@ export interface DocumentSuggestion {
   source: SuggestionSource;
   applied?: boolean;
   appliedRange?: { from: number; to: number };
+  oldRange?: { from: number; to: number };
   newSectionTitle?: string;
   theme?: RiderDocumentTheme;
   channel?: { name: string; mic?: string; stand?: string };

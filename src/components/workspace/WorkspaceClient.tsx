@@ -482,7 +482,9 @@ export function WorkspaceClient({
     const suggestion = documentSuggestions.find((item) => item.id === id);
     if (!suggestion || suggestion.status === 'stale') return;
 
-    if (suggestion.status === 'pending') {
+    if (suggestion.status === 'applied') {
+      bridgeRef.current?.accept(suggestion);
+    } else if (suggestion.status === 'pending') {
       if (suggestion.kind === 'add_channel' && suggestion.channel) {
         const channel = suggestion.channel;
         setRider((prev) => {
@@ -504,6 +506,9 @@ export function WorkspaceClient({
           )));
           showToast('La sugerencia ya no coincide con el texto');
           return;
+        }
+        if (applied.oldRange) {
+          bridgeRef.current?.accept({ ...suggestion, oldRange: applied.oldRange });
         }
       }
     }
@@ -753,6 +758,7 @@ export function WorkspaceClient({
               draft.applied = true;
               draft.status = 'applied';
               draft.appliedRange = res.appliedRange;
+              draft.oldRange = res.oldRange;
             } else {
               draft.status = 'stale';
             }

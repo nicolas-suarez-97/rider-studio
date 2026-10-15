@@ -41,9 +41,129 @@ export function locateText(doc: PMNode, needle: string, ignoreCase = false, boun
   return found;
 }
 
+export function locateRangeInDoc(
+  doc: PMNode,
+  needle: string,
+  bounds?: { from: number; to: number } | null
+): { from: number; to: number } | null {
+  if (!needle || !needle.trim()) return null;
+  const start = bounds?.from ?? 0;
+  const end = bounds?.to ?? doc.content.size;
+
+  // 1. Coincidencia rápida en un solo nodo de texto
+  const single = locateText(doc, needle, true, bounds);
+  if (single) return single;
+
+  // 2. Mapeo de caracteres a través de nodos de texto y bloques (multilínea, listas, párrafos)
+  const cleanNeedle = needle.trim().replace(/\r\n/g, '\n');
+  const textPieces: string[] = [];
+  const posMap: number[] = [];
+
+  doc.nodesBetween(start, end, (node, pos) => {
+    if (node.isText && node.text) {
+      for (let i = 0; i < node.text.length; i++) {
+        posMap.push(pos + i);
+        textPieces.push(node.text[i]);
+      }
+    } else if (node.isBlock && textPieces.length > 0 && textPieces[textPieces.length - 1] !== '\n') {
+      posMap.push(pos);
+      textPieces.push('\n');
+    }
+  });
+
+  const fullText = textPieces.join('');
+  let idx = fullText.toLowerCase().indexOf(cleanNeedle.toLowerCase());
+
+  if (idx >= 0 && idx < posMap.length) {
+    const fromPos = posMap[idx];
+    const endIdx = Math.min(idx + cleanNeedle.length - 1, posMap.length - 1);
+    const toPos = posMap[endIdx] + 1;
+    return { from: fromPos, to: toPos };
+  }
+
+  // 3. Coincidencia por líneas ancla (primer y último ítem o línea)
+  const lines = cleanNeedle
+    .split('\n')
+    .map((l) => l.trim().replace(/^[•\-\*]\s*/, ''))
+    .filter((l) => l.length > 3);
+
+  if (lines.length > 1) {
+    const firstLine = lines[0];
+    const lastLine = lines[lines.length - 1];
+    const firstRange = locateText(doc, firstLine, true, bounds);
+    const lastRange = locateText(doc, lastLine, true, bounds);
+    if (firstRange && lastRange && firstRange.from < lastRange.to) {
+      return { from: firstRange.from, to: lastRange.to };
+    }
+  }
+
+  return null;
+}
+
+export function getSectionContentRange(doc: PMNode, sectionId: string): { from: number; to: number } | null {
+  const bounds = findSectionBounds(doc, sectionId);
+  if (!bounds) return null;
+
+  let contentFrom = bounds.from;
+  const headingNode = doc.nodeAt(bounds.from);
+  if (headingNode && headingNode.type.name === 'heading') {
+    contentFrom = bounds.from + headingNode.nodeSize;
+  }
+
+  if (contentFrom >= bounds.to) {
+    return null;
+  }
+
+  return { from: contentFrom, to: bounds.to };
+}
+
+export function shouldReplaceSectionContent(
+  doc: PMNode,
+  suggestion: DocumentSuggestion,
+  sectionContentRange: { from: number; to: number } | null
+): boolean {
+  if (!sectionContentRange || sectionContentRange.from >= sectionContentRange.to) {
+    return false;
+  }
+  if (suggestion.kind === 'replace') return true;
+  if (suggestion.baseText && suggestion.baseText.trim().length > 0) return true;
+
+  const bounds = findSectionBounds(doc, suggestion.sectionId);
+  if (!bounds) return false;
+  const headingNode = doc.nodeAt(bounds.from);
+  const headingTitle = headingNode?.textContent?.trim().toLowerCase() || '';
+  const proposedLower = (suggestion.proposedText || '').toLowerCase();
+  const rationaleLower = (suggestion.rationale || '').toLowerCase();
+
+  // Si el título del encabezado aparece en proposedText o rationale
+  if (headingTitle && (proposedLower.includes(headingTitle) || rationaleLower.includes(headingTitle))) {
+    return true;
+  }
+
+  // Palabras significativas del título del encabezado (ej. "artista", "banda", "hospitality")
+  const headingWords = headingTitle.split(/\s+/).filter((w) => w.length > 3);
+  if (headingWords.some((w) => rationaleLower.includes(w) || proposedLower.includes(w))) {
+    return true;
+  }
+
+  // Palabras clave de modificación o reemplazo en rationale
+  if (/modific|actualiz|cambi|reemplaz|correg|sustitu|ajust/i.test(rationaleLower)) {
+    return true;
+  }
+
+  // Secciones introductorias o de valor único
+  const secId = (suggestion.sectionId || '').toLowerCase();
+  if (secId.startsWith('intro') || secId.includes('artist') || secId.includes('banda') || secId.includes('genero')) {
+    return true;
+  }
+
+  return false;
+}
+
 export interface ApplySuggestionResult {
   success: boolean;
   appliedRange?: { from: number; to: number };
+  oldRange?: { from: number; to: number };
 }
 
 export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSuggestion): ApplySuggestionResult {
@@ -57,36 +177,75 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
   }
 
   const bounds = findSectionBounds(editor.state.doc, suggestion.sectionId);
-  const range = suggestion.baseText
-    ? locateText(editor.state.doc, suggestion.baseText, false, bounds)
-    : null;
+  const sectionContent = getSectionContentRange(editor.state.doc, suggestion.sectionId);
 
-  if (suggestion.baseText && !range) return { success: false };
+  // ¿Es una modificación o reemplazo?
+  const isReplaceIntent =
+    suggestion.kind === 'replace' ||
+    (Boolean(suggestion.baseText) && suggestion.baseText.trim().length > 0) ||
+    shouldReplaceSectionContent(editor.state.doc, suggestion, sectionContent);
 
-  const beforeSize = editor.state.doc.content.size;
-
-  if (suggestion.kind === 'delete' && range) {
-    editor.chain().focus().deleteRange(range).run();
+  // 1. Caso DELETE puro:
+  if (suggestion.kind === 'delete') {
+    const deleteRange = locateRangeInDoc(editor.state.doc, suggestion.baseText, bounds);
+    if (!deleteRange) return { success: false };
     return {
       success: true,
-      appliedRange: { from: range.from, to: range.from },
+      oldRange: deleteRange,
+      appliedRange: { from: deleteRange.to, to: deleteRange.to },
     };
   }
 
-  if (range) {
-    const blocks = riderMarkupToContent(suggestion.proposedText);
-    const content = blocks || suggestion.proposedText;
-    editor.chain().focus().insertContentAt(range, content).run();
-    const afterSize = editor.state.doc.content.size;
-    const diff = afterSize - (beforeSize - (range.to - range.from));
-    const to = range.from + Math.max(0, diff);
-    return {
-      success: true,
-      appliedRange: { from: range.from, to },
-    };
+  // 2. Caso REPLACE / MODIFICACIÓN:
+  // La versión vieja se deja en el documento y se sombrea en rojo (oldRange).
+  // La versión nueva se inserta a continuación y se sombrea en verde (appliedRange).
+  // Al dar en Aprobar, acceptSuggestionInEditor borrará oldRange.
+  // Al dar en Rechazar, revertSuggestionFromEditor borrará appliedRange.
+  if (isReplaceIntent) {
+    let oldRange: { from: number; to: number } | null = null;
+    if (suggestion.baseText && suggestion.baseText.trim()) {
+      oldRange = locateRangeInDoc(editor.state.doc, suggestion.baseText, bounds);
+    }
+    // Si no encontró por baseText específico, pero la sección tiene contenido previo:
+    if (!oldRange && sectionContent && sectionContent.from < sectionContent.to) {
+      oldRange = sectionContent;
+    }
+
+    if (oldRange && oldRange.from < oldRange.to) {
+      const $from = editor.state.doc.resolve(oldRange.from);
+      const $to = editor.state.doc.resolve(oldRange.to);
+      const blocks = riderMarkupToContent(suggestion.proposedText);
+
+      let finalOldRange = oldRange;
+      if ($from.sameParent($to) && $from.parent.isTextblock && blocks) {
+        if ($from.parentOffset === 0 && $to.parentOffset === $from.parent.content.size) {
+          finalOldRange = {
+            from: $from.before($from.depth),
+            to: $from.after($from.depth),
+          };
+        }
+      }
+
+      const insertAt = finalOldRange.to;
+      const beforeSize = editor.state.doc.content.size;
+      const content = blocks || suggestion.proposedText;
+
+      editor.chain().focus().insertContentAt(insertAt, content).run();
+      const afterSize = editor.state.doc.content.size;
+      const diff = Math.max(0, afterSize - beforeSize);
+      const appliedRange = { from: insertAt, to: insertAt + diff };
+
+      return {
+        success: true,
+        oldRange: finalOldRange,
+        appliedRange,
+      };
+    }
   }
 
+  // 3. Caso INSERT puro (adición al final de la sección):
   const insertAt = bounds?.to ?? editor.state.doc.content.size;
+  const beforeSize = editor.state.doc.content.size;
   const blocks = riderMarkupToContent(suggestion.proposedText);
   if (blocks) {
     editor.chain().focus().insertContentAt(insertAt, blocks).run();
@@ -109,6 +268,32 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
   };
 }
 
+export function acceptSuggestionInEditor(editor: Editor, suggestion: DocumentSuggestion): boolean {
+  if (
+    suggestion.kind === 'add_channel' ||
+    suggestion.kind === 'switch_type' ||
+    suggestion.kind === 'switch_theme' ||
+    suggestion.kind === 'add_section'
+  ) {
+    return true;
+  }
+
+  const docSize = editor.state.doc.content.size;
+
+  // Si había una versión anterior sombreada en rojo (oldRange):
+  // ¡Se elimina del documento para dejar únicamente lo nuevo!
+  if (suggestion.oldRange && suggestion.oldRange.from < suggestion.oldRange.to) {
+    const from = Math.max(0, Math.min(suggestion.oldRange.from, docSize));
+    const to = Math.max(from, Math.min(suggestion.oldRange.to, docSize));
+    if (from < to) {
+      editor.chain().focus().deleteRange({ from, to }).run();
+      return true;
+    }
+  }
+
+  return true;
+}
+
 export function revertSuggestionFromEditor(editor: Editor, suggestion: DocumentSuggestion): boolean {
   if (
     suggestion.kind === 'add_channel' ||
@@ -121,35 +306,13 @@ export function revertSuggestionFromEditor(editor: Editor, suggestion: DocumentS
 
   const docSize = editor.state.doc.content.size;
 
-  if (suggestion.appliedRange) {
+  // Si había una versión nueva agregada/propuesta (appliedRange):
+  // Se elimina la versión nueva, restaurando la versión anterior
+  if (suggestion.appliedRange && suggestion.appliedRange.from < suggestion.appliedRange.to) {
     const from = Math.max(0, Math.min(suggestion.appliedRange.from, docSize));
     const to = Math.max(from, Math.min(suggestion.appliedRange.to, docSize));
-
-    if (suggestion.kind === 'delete' && suggestion.baseText) {
-      editor.chain().focus().insertContentAt(from, suggestion.baseText).run();
-      return true;
-    }
-
-    if (suggestion.kind === 'replace') {
-      editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, suggestion.baseText).run();
-      return true;
-    }
-
-    // Default insert revert: delete the inserted range
-    editor.chain().focus().deleteRange({ from, to }).run();
-    return true;
-  }
-
-  // Fallback if appliedRange wasn't tracked: locate proposedText
-  if (suggestion.proposedText) {
-    const bounds = findSectionBounds(editor.state.doc, suggestion.sectionId);
-    const range = locateText(editor.state.doc, suggestion.proposedText, false, bounds);
-    if (range) {
-      if (suggestion.baseText) {
-        editor.chain().focus().insertContentAt(range, suggestion.baseText).run();
-      } else {
-        editor.chain().focus().deleteRange(range).run();
-      }
+    if (from < to) {
+      editor.chain().focus().deleteRange({ from, to }).run();
       return true;
     }
   }
@@ -237,6 +400,35 @@ export function setEditorSuggestions(editor: object, suggestions: DocumentSugges
   suggestionsByEditor.set(editor, suggestions);
 }
 
+function addInlineDecorationsForRange(
+  decorations: Decoration[],
+  doc: PMNode,
+  from: number,
+  to: number,
+  className: string
+) {
+  if (from >= to) return;
+  let textFound = false;
+  doc.nodesBetween(from, to, (node, pos) => {
+    if (node.isText) {
+      const start = Math.max(from, pos);
+      const end = Math.min(to, pos + node.nodeSize);
+      if (start < end) {
+        decorations.push(Decoration.inline(start, end, { class: className }));
+        textFound = true;
+      }
+    }
+  });
+
+  if (!textFound) {
+    try {
+      decorations.push(Decoration.inline(from, to, { class: className }));
+    } catch {
+      // Ignorar si el rango no admite decoración inline
+    }
+  }
+}
+
 export const SuggestionHighlights = Extension.create({
   name: 'riderSuggestions',
   addProseMirrorPlugins() {
@@ -260,16 +452,34 @@ export const SuggestionHighlights = Extension.create({
                 continue;
               }
 
-              // Caso 1: Sugerencia directamente aplicada en el documento -> Widget con botones Aceptar/Rechazar al principio
+              // Caso 1: Sugerencia directamente aplicada en el documento
               if (suggestion.status === 'applied') {
+                // 1. Versión anterior que se está modificando: sombreada en rojito
+                if (suggestion.oldRange && suggestion.oldRange.from < suggestion.oldRange.to) {
+                  const oldFrom = Math.max(0, Math.min(suggestion.oldRange.from, docSize));
+                  const oldTo = Math.max(oldFrom, Math.min(suggestion.oldRange.to, docSize));
+                  if (oldFrom < oldTo) {
+                    addInlineDecorationsForRange(decorations, state.doc, oldFrom, oldTo, 'rider-diff-old');
+                  }
+                }
+
+                // 2. Versión nueva con propuesta: sombreada en verdecito + Banner de Aprobación
                 if (suggestion.appliedRange && suggestion.appliedRange.from < suggestion.appliedRange.to) {
                   const from = Math.max(0, Math.min(suggestion.appliedRange.from, docSize));
                   const to = Math.max(from, Math.min(suggestion.appliedRange.to, docSize));
                   if (from < to) {
-                    decorations.push(Decoration.inline(from, to, { class: 'rider-applied-highlight' }));
+                    addInlineDecorationsForRange(decorations, state.doc, from, to, 'rider-applied-highlight');
                   }
                   decorations.push(
                     Decoration.widget(from, () => createAppliedBanner(suggestion), {
+                      side: -1,
+                      key: `applied-banner-${suggestion.id}`,
+                    })
+                  );
+                } else if (suggestion.oldRange) {
+                  const pos = Math.min(suggestion.oldRange.from, docSize);
+                  decorations.push(
+                    Decoration.widget(pos, () => createAppliedBanner(suggestion), {
                       side: -1,
                       key: `applied-banner-${suggestion.id}`,
                     })

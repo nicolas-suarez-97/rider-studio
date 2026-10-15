@@ -47,6 +47,7 @@ import {
 import {
   applySuggestionToEditor,
   ApplySuggestionResult,
+  acceptSuggestionInEditor,
   findSectionBounds,
   locateText,
   revertSuggestionFromEditor,
@@ -68,6 +69,7 @@ import { DocumentSuggestion } from '@/core/types/suggestion.types';
 
 export interface EditorBridge {
   apply: (suggestion: DocumentSuggestion) => ApplySuggestionResult;
+  accept: (suggestion: DocumentSuggestion) => boolean;
   revert: (suggestion: DocumentSuggestion) => boolean;
   focus: (suggestion: DocumentSuggestion) => void;
   find: (query: string, direction?: SearchDirection) => SearchStats;
@@ -675,6 +677,7 @@ export function RiderDocumentSurface({
     if (!editor) return;
     onRegisterBridge?.({
       apply: (suggestion) => applySuggestionToEditor(editor, suggestion),
+      accept: (suggestion) => acceptSuggestionInEditor(editor, suggestion),
       revert: (suggestion) => revertSuggestionFromEditor(editor, suggestion),
       focus: (suggestion) => {
         const bounds = findSectionBounds(editor.state.doc, suggestion.sectionId);
