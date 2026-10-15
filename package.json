@@ -23,6 +23,7 @@
     "@tiptap/pm": "^3.32.0",
     "@tiptap/react": "^3.32.0",
     "@tiptap/starter-kit": "^3.32.0",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.1",
     "ai": "^7.0.133",
     "mammoth": "^1.13.0",
