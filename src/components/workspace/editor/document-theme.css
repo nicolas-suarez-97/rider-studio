@@ -239,8 +239,9 @@
 }
 
 .docs-cover.is-selected .docs-cover-inner {
-  outline: 2px solid var(--rider-accent);
+  outline: 2px solid #7c3aed;
   outline-offset: 4px;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14);
 }
 
 .docs-cover-tools,
@@ -615,9 +616,14 @@
 .docs-notice.is-selected,
 .docs-tiers.is-selected .docs-tiers-grid,
 .docs-contacts.is-selected .docs-contacts-card,
-.docs-columns.is-selected .docs-columns-grid {
-  outline: 2px solid var(--rider-accent);
+.docs-columns.is-selected .docs-columns-grid,
+.docs-input-list.is-selected .docs-input-list-card,
+.docs-editor .tableWrapper:has(.ProseMirror-selectednode),
+.docs-editor table.ProseMirror-selectednode,
+.docs-editor .ProseMirror-selectednode {
+  outline: 2px solid #7c3aed !important;
   outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14);
 }
 
 @media (max-width: 720px) {

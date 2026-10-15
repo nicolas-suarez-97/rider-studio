@@ -726,7 +726,10 @@ export function RiderDocumentSurface({
         .docs-editor table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .docs-editor th { background: #f8f9fa; font-weight: 700; text-align: left; }
         .docs-editor th, .docs-editor td { position: relative; border: 1px solid #dadce0; padding: 6px 8px; vertical-align: top; font-size: 10pt; }
-        .docs-editor .selectedCell:after { position: absolute; inset: 0; background: rgba(124, 58, 237, 0.08); content: ''; pointer-events: none; }
+        .docs-editor .selectedCell:after { position: absolute; inset: 0; background: rgba(124, 58, 237, 0.12); content: ''; pointer-events: none; }
+        .docs-editor th.selectedCell, .docs-editor td.selectedCell { border-color: #7c3aed; }
+        .docs-editor .tableWrapper:has(.ProseMirror-selectednode), .docs-editor table.ProseMirror-selectednode { outline: 2px solid #7c3aed; outline-offset: 3px; box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14); border-radius: 4px; }
+        .docs-editor h2.ProseMirror-selectednode { outline: 2px solid #7c3aed; outline-offset: 4px; border-radius: 4px; }
         .docs-editor ul[data-type="taskList"] { list-style: none; padding-left: 0; }
         .docs-editor ul[data-type="taskList"] p { margin: 0; }
         .docs-editor li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 8px; }
@@ -761,8 +764,7 @@ export function RiderDocumentSurface({
         .docs-input-list-delete { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin: 0 auto; color: #94a3b8; background: none; border: 0; cursor: pointer; padding: 0; }
         .docs-input-list-delete:hover { color: #e11d48; }
         .docs-input-list-delete-block { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 8px; border: 1px solid #fee2e2; background: #fff5f5; font-size: 10px; font-weight: 700; color: #e11d48; cursor: pointer; transition: all 0.15s ease; }
-        .docs-input-list-delete-block:hover { background: #fee2e2; border-color: #fca5a5; color: #be123c; }
-        .docs-input-list.is-selected .docs-input-list-card { box-shadow: 0 0 0 2px #c4b5fd; }
+        .docs-input-list.is-selected .docs-input-list-card { outline: 2px solid #7c3aed; outline-offset: 3px; box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14); }
         .docs-combo { position: relative; min-width: 0; }
         .docs-editor img, .docs-editor .docs-image { max-width: 100%; height: auto; max-height: 28rem; display: block; margin: 0.4em 0 0.7em; object-fit: contain; }
         .docs-editor .docs-search-hit { background: #fde68a; border-radius: 2px; }
