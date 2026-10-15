@@ -189,7 +189,7 @@ export function generateExpertAgentResponse(
       role: activeAgent,
       roleName: profile.name,
       roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
-      message: `He creado y añadido la nueva sección **"${title}"** directamente al documento. Al final de la sección encontrarás los botones para aprobar o revertir la acción.`,
+      message: `He creado y añadido la nueva sección **"${title}"** directamente al documento. Al inicio de la modificación encontrarás los botones para aprobar o revertir la acción.`,
       suggestions: [{
         kind: 'add_section',
         newSectionTitle: title,
@@ -233,7 +233,7 @@ No se aceptan consolas analógicas bajo ninguna circunstancia, ni modelos no aut
       role: 'audio_foh',
       roleName: AGENT_PROFILES.audio_foh.name,
       roleAvatar: '🎛️',
-      message: `He modificado directamente la sección **"${sectionTitle}"** agregando la especificación obligatoria de consola FOH (${isDigico ? 'DiGiCo SD12' : 'Consola Digital'}). En la parte inferior del bloque añadido encontrarás los botones para aprobar o revertir el cambio.`,
+      message: `He modificado directamente la sección **"${sectionTitle}"** agregando la especificación obligatoria de consola FOH (${isDigico ? 'DiGiCo SD12' : 'Consola Digital'}). Al inicio de la modificación encontrarás los botones para aprobar o revertir el cambio.`,
       suggestions: [{
         kind: 'insert',
         sectionId: targetSectionId,
@@ -279,7 +279,7 @@ El proveedor local debe entregar el espectro de radiofrecuencias libre y coordin
       role: 'audio_foh',
       roleName: AGENT_PROFILES.audio_foh.name,
       roleAvatar: '🎛️',
-      message: `He agregado el requerimiento de microfonía y sistemas RF directamente a la sección **"${sectionTitle}"**. Al final del bloque modificado encontrarás los botones para aprobar o revertir.`,
+      message: `He agregado el requerimiento de microfonía y sistemas RF directamente a la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
       suggestions: [{
         kind: 'insert',
         sectionId: targetSectionId,
@@ -323,7 +323,7 @@ Catering fresco con opciones veganas y sin gluten coordinadas 48 horas antes con
       role: 'hospitality',
       roleName: AGENT_PROFILES.hospitality.name,
       roleAvatar: '☕',
-      message: `He modificado directamente la sección **"${sectionTitle}"** agregando los requerimientos de hospitality y catering. En la parte inferior del bloque modificado encontrarás los botones para aprobar o revertir.`,
+      message: `He modificado directamente la sección **"${sectionTitle}"** agregando los requerimientos de hospitality y catering. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
       suggestions: [{
         kind: 'insert',
         sectionId: targetSectionId,
@@ -346,7 +346,7 @@ No se autoriza el inicio del espectáculo si no se cumple el perímetro estéril
       role: 'security',
       roleName: AGENT_PROFILES.security.name,
       roleAvatar: '🛡️',
-      message: `He insertado los requerimientos de seguridad y vallas Mojo directamente en la sección **"${sectionTitle}"**. Al final del bloque añadido verás los botones para aprobar o revertir.`,
+      message: `He insertado los requerimientos de seguridad y vallas Mojo directamente en la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
       suggestions: [{
         kind: 'insert',
         sectionId: targetSectionId,
@@ -376,7 +376,7 @@ Este parámetro debe ser coordinado y validado con la producción local antes de
       role: activeAgent,
       roleName: profile.name,
       roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
-      message: `He añadido el requerimiento directamente en la sección **"${sectionTitle}"**. En la parte inferior del bloque modificado en el documento verás los botones de aprobación.`,
+      message: `He añadido el requerimiento directamente en la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
       suggestions: [{
         kind: 'insert',
         sectionId: targetSectionId,

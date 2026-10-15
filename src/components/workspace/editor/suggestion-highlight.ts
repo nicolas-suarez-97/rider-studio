@@ -260,7 +260,7 @@ export const SuggestionHighlights = Extension.create({
                 continue;
               }
 
-              // Caso 1: Sugerencia directamente aplicada en el documento -> Widget con botones Aceptar/Rechazar
+              // Caso 1: Sugerencia directamente aplicada en el documento -> Widget con botones Aceptar/Rechazar al principio
               if (suggestion.status === 'applied') {
                 if (suggestion.appliedRange && suggestion.appliedRange.from < suggestion.appliedRange.to) {
                   const from = Math.max(0, Math.min(suggestion.appliedRange.from, docSize));
@@ -269,17 +269,17 @@ export const SuggestionHighlights = Extension.create({
                     decorations.push(Decoration.inline(from, to, { class: 'rider-applied-highlight' }));
                   }
                   decorations.push(
-                    Decoration.widget(to, () => createAppliedBanner(suggestion), {
-                      side: 1,
+                    Decoration.widget(from, () => createAppliedBanner(suggestion), {
+                      side: -1,
                       key: `applied-banner-${suggestion.id}`,
                     })
                   );
                 } else {
                   const bounds = suggestion.sectionId ? findSectionBounds(state.doc, suggestion.sectionId) : null;
-                  const pos = Math.min(bounds?.to ?? docSize, docSize);
+                  const pos = Math.min(bounds?.from ?? 0, docSize);
                   decorations.push(
                     Decoration.widget(pos, () => createAppliedBanner(suggestion), {
-                      side: 1,
+                      side: -1,
                       key: `applied-banner-${suggestion.id}`,
                     })
                   );
