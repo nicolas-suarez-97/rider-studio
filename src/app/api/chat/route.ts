@@ -246,6 +246,34 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       }).catch(err => console.warn('[Error saving user message]', err));
     }
 
+    // 2.1 Guardrail determinista de seguridad y alcance (Jailbreaks / Inyecciones de prompt)
+    const JAILBREAK_REGEX = /(?:ignore|olvida|ignora)\s+(?:all\s+)?(?:previous|prior|tus|las)\s+(?:instructions|instrucciones|reglas)|(?:dan|jailbreak)\s+mode|act\s+as\s+(?:an?\s+)?unrestricted|haz\s+de\s+cuenta\s+que\s+no\s+tienes\s+reglas|revela\s+tu\s+prompt/i;
+
+    if (JAILBREAK_REGEX.test(lastMessage)) {
+      const roleAvatar = activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠';
+      const redirectMsg = 'Como especialista de Rider Studio, mi labor está dedicada exclusivamente a la producción técnica, hospitality y seguridad para eventos en vivo y riders. ¿Hay algún requerimiento de escenario, sonido, catering o logística de tu show en el que pueda orientarte?';
+      await saveChatMessage({
+        sessionId: session.id,
+        role: 'assistant',
+        agentRole: activeAgent,
+        roleName: profile.name,
+        roleAvatar,
+        content: redirectMsg,
+        actions: []
+      }).catch(err => console.warn('[Error saving guardrail message]', err));
+
+      return NextResponse.json({
+        sessionId: session.id,
+        role: activeAgent,
+        roleName: profile.name,
+        roleAvatar,
+        message: redirectMsg,
+        suggestions: [],
+        gatewayProvider: 'production_expert_engine',
+        actions: []
+      });
+    }
+
     let finalResponse: AgentResponse | null = null;
 
     // 3. Llamar al proveedor de IA configurado (Vercel AI Gateway, OIDC automático o OpenAI directo)
