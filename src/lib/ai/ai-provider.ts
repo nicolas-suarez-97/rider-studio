@@ -42,7 +42,8 @@ export function getAiConfigs(): AiProviderConfig[] {
     process.env.AI_GATEWAY_API_KEY ||
     process.env.VERCEL_AI_GATEWAY_API_KEY ||
     process.env.AI_GATEWAY_TOKEN ||
-    process.env.VERCEL_AI_GATEWAY_TOKEN;
+    process.env.VERCEL_AI_GATEWAY_TOKEN ||
+    process.env.NEXT_PUBLIC_AI_GATEWAY_API_KEY;
 
   if (explicitGatewayKey) {
     if (explicitGatewayKey.startsWith('sk-')) {
@@ -78,7 +79,10 @@ export function getAiConfigs(): AiProviderConfig[] {
   }
 
   // 3. Clave directa de OpenAI
-  const openaiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_TOKEN;
+  const openaiKey =
+    process.env.OPENAI_API_KEY ||
+    process.env.OPENAI_API_TOKEN ||
+    process.env.NEXT_PUBLIC_OPENAI_API_KEY;
   if (openaiKey && openaiKey !== explicitGatewayKey) {
     configs.push({
       name: 'openai_direct',
