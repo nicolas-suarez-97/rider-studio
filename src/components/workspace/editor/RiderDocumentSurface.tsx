@@ -254,6 +254,49 @@ export function RiderDocumentSurface({
   const [pages, setPages] = useState(1);
   const [scale, setScale] = useState(1);
   const [zoom, setZoom] = useState('100');
+  const hasUserChangedZoom = useRef(false);
+
+  // En la vista mobile (< 1280px / breakpoint xl del workspace), el zoom por defecto debe ser 'fit' (Ajustar)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(max-width: 1279px)');
+    const updateDefaultZoom = () => {
+      if (!hasUserChangedZoom.current) {
+        setZoom(mediaQuery.matches ? 'fit' : '100');
+      }
+    };
+    updateDefaultZoom();
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', updateDefaultZoom);
+    } else {
+      mediaQuery.addListener(updateDefaultZoom);
+    }
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', updateDefaultZoom);
+      } else {
+        mediaQuery.removeListener(updateDefaultZoom);
+      }
+    };
+  }, []);
+
+  const currentRiderKey = `${artistName}::${riderTitle}`;
+  const prevRiderKey = useRef(currentRiderKey);
+  useEffect(() => {
+    if (prevRiderKey.current !== currentRiderKey) {
+      prevRiderKey.current = currentRiderKey;
+      hasUserChangedZoom.current = false;
+      if (typeof window !== 'undefined') {
+        const isMobile = window.matchMedia('(max-width: 1279px)').matches;
+        setZoom(isMobile ? 'fit' : '100');
+      }
+    }
+  }, [currentRiderKey]);
+
+  const handleZoomChange = useCallback((newZoom: string) => {
+    hasUserChangedZoom.current = true;
+    setZoom(newZoom);
+  }, []);
   const [linkDialog, setLinkDialog] = useState<{
     isOpen: boolean;
     initialUrl: string;
@@ -715,14 +758,22 @@ export function RiderDocumentSurface({
       return;
     }
     const update = () => {
+      if (!root || root.clientWidth <= 0) return;
       const gutter = root.clientWidth < 768 ? 24 : 48;
       const next = Math.min(1, (root.clientWidth - gutter) / PAGE_WIDTH);
-      setScale(Number.isFinite(next) && next > 0.2 ? next : 1);
+      const valid = Number.isFinite(next) && next > 0.2 ? next : 1;
+      setScale((prev) => (Math.abs(prev - valid) < 0.005 ? prev : valid));
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(root);
-    return () => observer.disconnect();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
   }, [zoom]);
 
   return (
@@ -810,7 +861,7 @@ export function RiderDocumentSurface({
           theme={theme}
           onThemeChange={onThemeChange}
           zoom={zoom}
-          onZoomChange={setZoom}
+          onZoomChange={handleZoomChange}
           onInsertSection={() => onInsertSection?.()}
           onOpenLinkDialog={openLinkDialog}
           onFind={findInDocument}
