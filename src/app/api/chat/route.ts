@@ -4,7 +4,7 @@ import {
   AGENT_PROFILES,
   generateExpertAgentResponse
 } from '@/lib/agents/rider-agent';
-import { AgentResponse } from '@/core/types/agent.types';
+import { AgentResponse, AgentSuggestionDraft } from '@/core/types/agent.types';
 import {
   getOrCreateChatSession,
   saveChatMessage
@@ -121,35 +121,57 @@ Reglas importantes:
     // 3. Intentar llamar a Vercel AI Gateway si hay API key configurada
     if (apiKey) {
       try {
+        const bodyPayload: Record<string, unknown> = {
+          model: 'openai/gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: editorContext
+                ? `${systemPrompt}\n\nContexto actual: El usuario está editando un Rider de tipo: "${riderType}". Recuerda responder SIEMPRE en formato JSON válido.`
+                : `${systemPrompt}\n\nContexto actual: El usuario está consultando sobre un Rider de tipo: "${riderType}". Responde en español de forma profesional, cordial, experta y enriquecida con markdown.`
+            },
+            ...messages.map((m) => ({
+              role: m.role === 'ai' ? 'assistant' : 'user',
+              content: m.content || m.text || ''
+            }))
+          ],
+          temperature: editorContext ? 0.3 : 0.7,
+          max_tokens: editorContext ? 1200 : 700,
+        };
+
+        if (editorContext) {
+          bodyPayload.response_format = { type: 'json_object' };
+        }
+
         const response = await fetch(`${baseUrl}/chat/completions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`,
           },
-          body: JSON.stringify({
-            model: 'openai/gpt-4o-mini',
-            response_format: { type: 'json_object' },
-            messages: [
-              { role: 'system', content: `${systemPrompt}\n\nContexto actual: El usuario está editando un Rider de tipo: "${riderType}". Recuerda responder SIEMPRE en formato JSON válido.` },
-              ...messages.map((m) => ({
-                role: m.role === 'ai' ? 'assistant' : 'user',
-                content: m.content || m.text || ''
-              }))
-            ],
-            temperature: 0.3,
-            max_tokens: editorContext ? 1200 : 600,
-          }),
+          body: JSON.stringify(bodyPayload),
         });
 
         if (response.ok) {
           const data = (await response.json()) as {
             choices?: Array<{ message?: { content?: string } }>;
           };
-          const replyRaw = data.choices?.[0]?.message?.content || '{}';
-          const parsed = parseSuggestionJson(replyRaw);
-          const replyText = parsed?.message || 'He procesado tu solicitud en el documento.';
-          const suggestions = parsed?.suggestions || [];
+          const replyRaw = data.choices?.[0]?.message?.content || '';
+
+          let replyText = replyRaw;
+          let suggestions: AgentSuggestionDraft[] = [];
+
+          if (editorContext) {
+            const parsed = parseSuggestionJson(replyRaw);
+            if (parsed) {
+              if (parsed.message) replyText = parsed.message;
+              suggestions = parsed.suggestions;
+            }
+          }
+
+          if (!replyText.trim()) {
+            replyText = 'Entendido. ¿En qué más puedo orientarte sobre la producción de tu show o rider?';
+          }
 
           finalResponse = {
             sessionId: session.id,

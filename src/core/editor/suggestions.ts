@@ -19,7 +19,17 @@ export function parseSuggestionJson(raw: string): { message: string; suggestions
   try {
     const data = JSON.parse(text.slice(start, end + 1)) as unknown;
     if (!isRecord(data)) return null;
-    const message = typeof data.message === 'string' ? data.message : '';
+    const message = typeof data.message === 'string'
+      ? data.message
+      : typeof data.response === 'string'
+        ? data.response
+        : typeof data.reply === 'string'
+          ? data.reply
+          : typeof data.text === 'string'
+            ? data.text
+            : typeof data.content === 'string'
+              ? data.content
+              : '';
     const list = Array.isArray(data.suggestions) ? data.suggestions : [];
     const suggestions: AgentSuggestionDraft[] = [];
     const validKinds = new Set([
