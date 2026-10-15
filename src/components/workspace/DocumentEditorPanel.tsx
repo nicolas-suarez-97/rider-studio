@@ -35,6 +35,7 @@ interface DocumentEditorPanelProps {
   isAssistantThinking?: boolean;
   onAskAssistant?: (text: string, sectionId?: string) => void;
   onDraftWithSelection?: (selectedText: string, sectionId?: string, mode?: 'quote' | 'adjust' | 'analyze') => void;
+  onOpenImportModal?: () => void;
   onUpdateChannel?: (chId: string, field: keyof ChannelData, val: string | boolean) => void;
   onAddChannel?: () => void;
   onDeleteChannel?: (chId: string) => void;
@@ -83,6 +84,7 @@ export function DocumentEditorPanel({
   isAssistantThinking = false,
   onAskAssistant,
   onDraftWithSelection,
+  onOpenImportModal,
   readOnly = false,
 }: DocumentEditorPanelProps) {
   return (
@@ -109,6 +111,7 @@ export function DocumentEditorPanel({
         isAssistantThinking={isAssistantThinking}
         onAskAssistant={onAskAssistant}
         onDraftWithSelection={onDraftWithSelection}
+        onOpenImportModal={onOpenImportModal}
       />
     </main>
   );

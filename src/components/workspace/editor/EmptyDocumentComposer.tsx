@@ -15,6 +15,7 @@ interface EmptyDocumentComposerProps {
   isThinking?: boolean;
   onAsk: (text: string) => void;
   onInsertSection?: () => void;
+  onOpenImportModal?: () => void;
 }
 
 export function EmptyDocumentComposer({
@@ -23,6 +24,7 @@ export function EmptyDocumentComposer({
   isThinking = false,
   onAsk,
   onInsertSection,
+  onOpenImportModal,
 }: EmptyDocumentComposerProps) {
   const [text, setText] = useState('');
   const [showMore, setShowMore] = useState(false);
@@ -74,6 +76,17 @@ export function EmptyDocumentComposer({
         {showPrompts && (
           <div className="mb-2.5 flex items-center gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+              {onOpenImportModal && (
+                <button
+                  type="button"
+                  disabled={isThinking}
+                  onClick={onOpenImportModal}
+                  className="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-violet-200 bg-violet-50/90 px-3 py-1.5 text-[12px] font-bold text-violet-700 shadow-xs hover:bg-violet-100 hover:border-violet-300 disabled:opacity-50 cursor-pointer transition-all active:scale-95"
+                >
+                  <Icon name="upload" className="w-3.5 h-3.5 text-violet-600" />
+                  Importar rider (PDF/Word)
+                </button>
+              )}
               {primary.map((prompt) => (
                 <button
                   key={prompt.id}

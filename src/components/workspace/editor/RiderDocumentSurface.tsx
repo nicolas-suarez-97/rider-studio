@@ -209,6 +209,7 @@ interface RiderDocumentSurfaceProps {
   isAssistantThinking?: boolean;
   onAskAssistant?: (text: string, sectionId?: string) => void;
   onDraftWithSelection?: (selectedText: string, sectionId?: string, mode?: 'quote' | 'adjust' | 'analyze') => void;
+  onOpenImportModal?: () => void;
 }
 
 export function RiderDocumentSurface({
@@ -232,6 +233,7 @@ export function RiderDocumentSurface({
   isAssistantThinking = false,
   onAskAssistant,
   onDraftWithSelection,
+  onOpenImportModal,
 }: RiderDocumentSurfaceProps) {
   const theme = documentTheme || defaultDocumentTheme();
   const coverArtist = useMemo(() => {
@@ -952,6 +954,7 @@ export function RiderDocumentSurface({
             isThinking={isAssistantThinking}
             onAsk={onAskAssistant}
             onInsertSection={onInsertSection}
+            onOpenImportModal={onOpenImportModal}
           />
         )}
       </AnimatePresence>

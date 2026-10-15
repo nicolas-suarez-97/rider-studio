@@ -11,6 +11,7 @@ import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { MasterExportModal } from '@/components/modals/MasterExportModal';
 import { StagePlotModal } from '@/components/modals/StagePlotModal';
 import { ShareLinkModal } from '@/components/modals/ShareLinkModal';
+import { ImportRiderModal } from '@/components/modals/ImportRiderModal';
 import { Rider } from '@/core/models/Rider';
 import { riderService } from '@/core/services/rider.service';
 import { chatService } from '@/core/services/chat.service';
@@ -100,6 +101,7 @@ export function WorkspaceClient({
 
   // Modales
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [exportScope, setExportScope] = useState<ExportScope>('master');
   const [showStagePlotModal, setShowStagePlotModal] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -847,6 +849,53 @@ export function WorkspaceClient({
     setShowStagePlotModal(true);
   };
 
+  const handleImportSuccess = ({
+    riderData,
+    welcomeMessage,
+    suggestions = [],
+  }: {
+    riderData: ConstructorParameters<typeof Rider>[0];
+    welcomeMessage: string;
+    suggestions: DocumentSuggestion[];
+  }) => {
+    const incomingRider = new Rider({
+      ...riderData,
+      id: rider.id || undefined,
+    });
+    setRider(incomingRider);
+    riderRef.current = incomingRider;
+
+    const firstSectionId =
+      incomingRider.sections.find((s) => s.id !== 'doc-cover')?.id ||
+      incomingRider.sections[0]?.id ||
+      'tech-contactos';
+    setActiveSectionId(firstSectionId);
+
+    if (incomingRider.type === 'tecnico') setActiveAgent('audio_foh');
+    else if (incomingRider.type === 'hospitality') setActiveAgent('hospitality');
+    else if (incomingRider.type === 'seguridad') setActiveAgent('security');
+
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const aiMsg: ChatMessageItem = {
+      sender: 'ai',
+      text: welcomeMessage,
+      time: now,
+      role: 'master',
+      roleName: 'Master Production Copilot',
+      roleAvatar: '🧠',
+    };
+    setMessages((prev) => [...prev, aiMsg]);
+
+    if (suggestions.length > 0) {
+      setAgentSuggestions(suggestions);
+    }
+
+    setIsChatCollapsed(false);
+    setMobileTab('document');
+
+    showToast(`🎉 ¡Rider de "${incomingRider.artistName || 'Artista'}" importado y analizado con éxito!`);
+  };
+
   return (
     <div className="h-dvh max-h-dvh overflow-hidden bg-[#f8f9fa] text-zinc-900 flex flex-col font-sans antialiased relative">
       <Toast message={toastMessage} />
@@ -861,6 +910,7 @@ export function WorkspaceClient({
         dbSyncStatus={dbSyncStatus}
         onExport={() => handleOpenExportModal('master')}
         onOpenExportModal={handleOpenExportModal}
+        onOpenImportModal={() => setShowImportModal(true)}
         onOpenStagePlot={handleOpenStagePlot}
         onShare={handleShare}
         isSharing={isSharing || isSaving}
@@ -933,6 +983,7 @@ export function WorkspaceClient({
             isAssistantThinking={isAgentThinking}
             onAskAssistant={handleAskFromDocument}
             onDraftWithSelection={handleDraftWithSelection}
+            onOpenImportModal={() => setShowImportModal(true)}
             onDocumentChange={handleDocumentChange}
             onSelectionChange={(sectionId, text) => {
               selectionRef.current = { sectionId, text };
@@ -1086,6 +1137,12 @@ export function WorkspaceClient({
         url={shareUrl}
         onClose={() => setShareUrl(null)}
         onNotify={showToast}
+      />
+
+      <ImportRiderModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportSuccess={handleImportSuccess}
       />
     </div>
   );

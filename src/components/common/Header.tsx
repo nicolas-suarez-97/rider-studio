@@ -28,6 +28,7 @@ interface HeaderProps {
   riderId?: string | null;
   documentTitle?: string;
   onDocumentTitleChange?: (title: string) => void;
+  onOpenImportModal?: () => void;
 }
 
 function DocumentName({
@@ -84,6 +85,7 @@ export function Header({
   contraRiderHref,
   documentTitle,
   onDocumentTitleChange,
+  onOpenImportModal,
 }: HeaderProps) {
   const openExport = () => {
     if (onOpenExportModal) {
@@ -285,6 +287,18 @@ export function Header({
 
           {/* Acciones: solo escritorio. En móvil, Compartir es el botón flotante principal. */}
           <div className="hidden md:flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {pageType === 'workspace' && onOpenImportModal && (
+              <button
+                type="button"
+                onClick={onOpenImportModal}
+                className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0 shadow-2xs"
+                title="Importar un rider existente desde PDF, Word o texto"
+              >
+                <Icon name="upload" className="w-3.5 h-3.5 text-violet-600" />
+                <span>Importar</span>
+              </button>
+            )}
+
             {pageType === 'workspace' && (
             <button
               type="button"
@@ -319,6 +333,17 @@ export function Header({
         </div>
         {pageType === 'workspace' && (
         <div className="md:hidden fixed z-30 right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] flex flex-col gap-2">
+          {onOpenImportModal && (
+            <button
+              type="button"
+              onClick={onOpenImportModal}
+              className="w-11 h-11 rounded-full bg-white text-slate-700 border border-slate-200 shadow-lg flex items-center justify-center active:scale-95 cursor-pointer"
+              aria-label="Importar rider existente"
+              title="Importar rider existente"
+            >
+              <Icon name="upload" className="w-4 h-4 text-violet-600" />
+            </button>
+          )}
           <button
             type="button"
             onClick={openExport}
