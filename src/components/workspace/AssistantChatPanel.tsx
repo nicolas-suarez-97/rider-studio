@@ -50,15 +50,12 @@ export function AssistantChatPanel({
 }: AssistantChatPanelProps) {
   const [inputText, setInputText] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
-  const pendingAgentSuggestions = suggestions.filter(
-    (item) => item.source !== 'gap' && (item.status === 'pending' || item.status === 'applied' || item.status === 'stale')
-  );
 
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [messages, isThinking, pendingAgentSuggestions.length]);
+  }, [messages, isThinking]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +122,7 @@ export function AssistantChatPanel({
                 {profile.name}
               </h3>
               <p className="text-[10px] text-slate-400 font-medium">
-                {suggestionMode ? 'Nada entra al documento hasta que aceptes' : profile.title}
+                {profile.title}
               </p>
             </div>
           </div>
@@ -168,7 +165,7 @@ export function AssistantChatPanel({
 
       {/* Flujo de Mensajes */}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5 overscroll-contain">
-        {messages.length === 0 && pendingAgentSuggestions.length === 0 ? (
+        {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-4 sm:p-6 space-y-3 text-slate-400">
             <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-xl shadow-xs">
               {info.icon}
@@ -233,16 +230,6 @@ export function AssistantChatPanel({
           })
         )}
 
-        {pendingAgentSuggestions.length > 0 ? (
-          <SuggestionInbox
-            suggestions={pendingAgentSuggestions}
-            sectionTitles={sectionTitles}
-            onAccept={onAcceptSuggestion}
-            onReject={onRejectSuggestion}
-            onFocus={onFocusSuggestion}
-          />
-        ) : null}
-
         {isThinking && (
           <div className="flex items-center gap-2 text-slate-400 text-xs py-2">
             <span className="w-2 h-2 rounded-full bg-violet-600 animate-ping" />
@@ -303,99 +290,5 @@ export function AssistantChatPanel({
         </div>
       </form>
     </aside>
-  );
-}
-
-function SuggestionInbox({
-  suggestions,
-  sectionTitles,
-  onAccept,
-  onReject,
-  onFocus,
-}: {
-  suggestions: DocumentSuggestion[];
-  sectionTitles: Record<string, string>;
-  onAccept?: (id: string) => void;
-  onReject?: (id: string) => void;
-  onFocus?: (id: string) => void;
-}) {
-  const visible = suggestions.filter(
-    (item) => item.source !== 'gap' && (item.status === 'pending' || item.status === 'applied' || item.status === 'stale')
-  );
-
-  if (visible.length === 0) return null;
-
-  return (
-    <div className="space-y-2">
-      {visible.map((suggestion) => {
-        const isApplied = suggestion.status === 'applied';
-        const stale = suggestion.status === 'stale';
-
-        return (
-          <article
-            key={suggestion.id}
-            className={`border rounded-2xl p-3 space-y-2 transition-all ${
-              isApplied
-                ? 'bg-emerald-50/40 border-emerald-200/80 shadow-xs'
-                : 'bg-white border-slate-200/80'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 truncate">
-                {sectionTitles[suggestion.sectionId] || 'Sección'} · Asistente
-              </p>
-              {isApplied ? (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-300/60 flex items-center gap-1 shrink-0">
-                  <span>✨</span> Aplicada en documento
-                </span>
-              ) : stale ? (
-                <span className="text-[10px] font-bold text-amber-700 shrink-0">Obsoleta</span>
-              ) : null}
-            </div>
-            <p className="text-xs text-slate-700 leading-relaxed font-medium">{suggestion.rationale}</p>
-            {suggestion.baseText && !isApplied ? (
-              <p className="text-[11px] text-rose-700 line-through whitespace-pre-line bg-rose-50 rounded-xl px-2 py-1">
-                {suggestion.baseText}
-              </p>
-            ) : null}
-            {suggestion.proposedText && !isApplied ? (
-              <p className="text-[11px] text-emerald-800 bg-emerald-50 rounded-xl px-2 py-1.5 whitespace-pre-line font-mono">
-                {suggestion.proposedText}
-              </p>
-            ) : null}
-            <div className="flex items-center gap-1.5 pt-1">
-              <button
-                type="button"
-                disabled={stale}
-                onClick={() => onAccept?.(suggestion.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all disabled:opacity-40 flex items-center gap-1 ${
-                  isApplied
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                    : 'bg-violet-600 hover:bg-violet-700 text-white shadow-xs'
-                }`}
-              >
-                <span>✓</span>
-                <span>Aceptar</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onReject?.(suggestion.id)}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
-              >
-                <span>✕</span>
-                <span>Rechazar</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onFocus?.(suggestion.id)}
-                className="px-2.5 py-1.5 rounded-xl text-slate-600 hover:text-violet-700 hover:bg-violet-50 text-xs font-bold cursor-pointer transition-all"
-              >
-                Ver
-              </button>
-            </div>
-          </article>
-        );
-      })}
-    </div>
   );
 }

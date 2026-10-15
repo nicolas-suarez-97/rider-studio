@@ -172,7 +172,7 @@ Reglas importantes:
 
     // 4. Fallback de Agente Experto Inteligente si la llamada a la nube no fue completada
     if (!finalResponse) {
-      const fallbackResponse = generateExpertAgentResponse(lastMessage, riderType, activeAgent);
+      const fallbackResponse = generateExpertAgentResponse(lastMessage, riderType, activeAgent, editorContext);
       finalResponse = {
         sessionId: session.id,
         ...fallbackResponse,

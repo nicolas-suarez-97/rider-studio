@@ -161,6 +161,8 @@ export function createAppliedBanner(suggestion: DocumentSuggestion): HTMLElement
   const banner = document.createElement('div');
   banner.className = 'rider-applied-banner';
   banner.dataset.suggestionId = suggestion.id;
+  banner.setAttribute('contenteditable', 'false');
+  banner.onmousedown = (e) => e.stopPropagation();
 
   const info = document.createElement('div');
   info.className = 'rider-applied-banner-info';
@@ -191,9 +193,9 @@ export function createAppliedBanner(suggestion: DocumentSuggestion): HTMLElement
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="20 6 9 17 4 12"/>
     </svg>
-    <span>Aceptar</span>
+    <span>Aprobar</span>
   `;
-  acceptBtn.title = 'Aceptar permanentemente en el documento';
+  acceptBtn.title = 'Aprobar e incorporar al documento';
   acceptBtn.onmousedown = (e) => e.stopPropagation();
   acceptBtn.onclick = (e) => {
     e.preventDefault();

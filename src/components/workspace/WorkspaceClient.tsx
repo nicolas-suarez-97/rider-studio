@@ -508,7 +508,7 @@ export function WorkspaceClient({
     }
 
     dismissSuggestion(suggestion);
-    showToast('✅ Modificación confirmada');
+    showToast('✅ Modificación aprobada y guardada en el documento');
   };
 
   const handleRejectSuggestion = (id: string) => {
@@ -533,7 +533,7 @@ export function WorkspaceClient({
     }
 
     dismissSuggestion(suggestion);
-    showToast('↩️ Modificación revertida');
+    showToast('↩️ Modificación rechazada y revertida');
   };
 
   const acceptRef = useRef(handleAcceptSuggestion);
