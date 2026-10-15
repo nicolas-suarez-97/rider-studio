@@ -14,6 +14,7 @@ import {
   openConsultChatSession,
   saveChatMessage,
 } from '@/lib/services/rider-storage';
+import { callAiCompletion } from '@/lib/ai/ai-provider';
 
 const ConsultChatSchema = z.object({
   messages: z.array(z.object({
@@ -81,46 +82,24 @@ export async function POST(
     }).catch((err) => console.warn('[Consult] Error saving user message', err));
 
     let replyText = '';
-    let gatewayProvider: 'vercel_ai_gateway' | 'production_expert_engine' = 'production_expert_engine';
+    let gatewayProvider: 'vercel_ai_gateway' | 'production_expert_engine' | 'openai' = 'production_expert_engine';
 
-    const apiKey = process.env.AI_GATEWAY_API_KEY;
-    const baseUrl = process.env.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1';
+    const aiResult = await callAiCompletion({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages.slice(-20).map((message) => ({
+          role: message.role === 'ai' || message.role === 'assistant' ? 'assistant' : 'user',
+          content: message.content || message.text || '',
+        })),
+      ],
+      temperature: 0.3,
+      max_tokens: 700,
+      jsonMode: false,
+    });
 
-    if (apiKey) {
-      try {
-        const response = await fetch(`${baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'openai/gpt-4o-mini',
-            temperature: 0.3,
-            max_tokens: 700,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages.slice(-20).map((message) => ({
-                role: message.role === 'ai' || message.role === 'assistant' ? 'assistant' : 'user',
-                content: message.content || message.text || '',
-              })),
-            ],
-          }),
-        });
-
-        if (response.ok) {
-          const data = (await response.json()) as {
-            choices?: Array<{ message?: { content?: string } }>;
-          };
-          replyText = data.choices?.[0]?.message?.content?.trim() || '';
-          if (replyText) gatewayProvider = 'vercel_ai_gateway';
-        } else {
-          const errData = await response.json().catch(() => ({}));
-          console.warn('[Consult AI Gateway Warning]', errData);
-        }
-      } catch (gatewayErr) {
-        console.warn('[Consult AI Gateway Connection Error]', gatewayErr);
-      }
+    if (aiResult?.content) {
+      replyText = aiResult.content.trim();
+      gatewayProvider = aiResult.provider;
     }
 
     if (!replyText) {

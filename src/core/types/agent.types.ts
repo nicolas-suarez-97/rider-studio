@@ -60,6 +60,6 @@ export interface AgentResponse {
   message: string;
   actions?: AgentAction[];
   suggestions?: AgentSuggestionDraft[];
-  gatewayProvider: 'vercel_ai_gateway' | 'production_expert_engine';
+  gatewayProvider: 'vercel_ai_gateway' | 'production_expert_engine' | 'openai';
   notice?: string;
 }

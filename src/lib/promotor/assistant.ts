@@ -32,6 +32,7 @@ import {
   saveChatMessage,
   saveContraRider,
 } from '@/lib/services/rider-storage';
+import { callAiCompletion } from '@/lib/ai/ai-provider';
 
 const AGENTS = new Set<AgentRole>(['master', 'audio_foh', 'hospitality', 'security']);
 
@@ -67,36 +68,15 @@ async function loadOpenShow(showId: string) {
 }
 
 async function completeModel(systemPrompt: string, messages: Array<{ role: string; content: string }>, maxTokens: number) {
-  const apiKey = process.env.AI_GATEWAY_API_KEY;
-  if (!apiKey) return '';
-  const baseUrl = process.env.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1';
-  try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
-        temperature: 0.2,
-        max_tokens: maxTokens,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages.slice(-20),
-        ],
-      }),
-    });
-    if (!response.ok) {
-      console.warn('[Promotor assistant] gateway', response.status);
-      return '';
-    }
-    const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    return data.choices?.[0]?.message?.content?.trim() || '';
-  } catch (error) {
-    console.warn('[Promotor assistant] gateway', error instanceof Error ? error.message : 'error');
-    return '';
-  }
+  const result = await callAiCompletion({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages.slice(-20),
+    ],
+    temperature: 0.2,
+    max_tokens: maxTokens,
+  });
+  return result?.content?.trim() || '';
 }
 
 async function rememberTurn(params: {

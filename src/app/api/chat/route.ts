@@ -11,6 +11,15 @@ import {
 } from '@/lib/services/rider-storage';
 import { SendChatMessageSchema } from '@/lib/validations/chat.schema';
 import { parseSuggestionJson, collectSuggestionDrafts } from '@/core/editor/suggestions';
+import { callAiCompletion, getAiDiagnostics } from '@/lib/ai/ai-provider';
+
+export async function GET() {
+  const diagnostics = getAiDiagnostics();
+  return NextResponse.json({
+    status: 'ok',
+    aiDiagnostics: diagnostics,
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -184,127 +193,99 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       }).catch(err => console.warn('[Error saving user message]', err));
     }
 
-    const apiKey = process.env.AI_GATEWAY_API_KEY;
-    const baseUrl = process.env.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh/v1';
-
     let finalResponse: AgentResponse | null = null;
 
-    // 3. Intentar llamar a Vercel AI Gateway si hay API key configurada
-    if (apiKey) {
-      try {
-        const bodyPayload: Record<string, unknown> = {
-          model: 'openai/gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: editorContext
-                ? `${systemPrompt}\n\nContexto actual: El usuario está editando un Rider de tipo: "${riderType}". Recuerda responder SIEMPRE en formato JSON válido.`
-                : `${systemPrompt}\n\nContexto actual: El usuario está consultando sobre un Rider de tipo: "${riderType}". Responde en español de forma profesional, cordial, experta y enriquecida con markdown.`
-            },
-            ...messages.map((m) => ({
-              role: m.role === 'ai' ? 'assistant' : 'user',
-              content: m.content || m.text || ''
-            }))
-          ],
-          temperature: editorContext ? 0.3 : 0.7,
-          max_tokens: editorContext ? 1200 : 700,
-        };
+    // 3. Llamar al proveedor de IA configurado (Vercel AI Gateway, OIDC automático o OpenAI directo)
+    const aiResult = await callAiCompletion({
+      messages: [
+        {
+          role: 'system',
+          content: editorContext
+            ? `${systemPrompt}\n\nContexto actual: El usuario está editando un Rider de tipo: "${riderType}". Recuerda responder SIEMPRE en formato JSON válido.`
+            : `${systemPrompt}\n\nContexto actual: El usuario está consultando sobre un Rider de tipo: "${riderType}". Responde en español de forma profesional, cordial, experta y enriquecida con markdown.`
+        },
+        ...messages.map((m) => ({
+          role: m.role === 'ai' ? 'assistant' : 'user',
+          content: m.content || m.text || ''
+        }))
+      ],
+      temperature: editorContext ? 0.3 : 0.7,
+      max_tokens: editorContext ? 1200 : 700,
+      jsonMode: Boolean(editorContext),
+    });
 
-        if (editorContext) {
-          bodyPayload.response_format = { type: 'json_object' };
+    if (aiResult) {
+      const replyRaw = aiResult.content;
+      let replyText = replyRaw;
+      let suggestions: AgentSuggestionDraft[] = [];
+
+      if (editorContext) {
+        const parsed = parseSuggestionJson(replyRaw);
+        if (parsed) {
+          if (parsed.message) replyText = parsed.message;
+          suggestions = parsed.suggestions;
         }
 
-        const response = await fetch(`${baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify(bodyPayload),
-        });
-
-        if (response.ok) {
-          const data = (await response.json()) as {
-            choices?: Array<{ message?: { content?: string } }>;
-          };
-          const replyRaw = data.choices?.[0]?.message?.content || '';
-
-          let replyText = replyRaw;
-          let suggestions: AgentSuggestionDraft[] = [];
-
-          if (editorContext) {
-            const parsed = parseSuggestionJson(replyRaw);
-            if (parsed) {
-              if (parsed.message) replyText = parsed.message;
-              suggestions = parsed.suggestions;
-            }
-
-            // Red de seguridad: si el LLM devolvió suggestions: [] pero el usuario envió una orden directa sobre selección
-            if (suggestions.length === 0) {
-              const selectedQuote = lastMessage.match(/^(?:sobre|modificar|modifica|ajustar|ajusta|cambiar|cambia|editar|edita|eliminar|elimina|borrar|borra|quitar|quita)\s+"([^"]+)":?\s*(.*)$/i);
-              if (selectedQuote) {
-                const targetQuote = selectedQuote[1].trim();
-                const rawInstruction = selectedQuote[2].trim();
-                const isQuestion = rawInstruction.endsWith('?') || /^(?:es|cumple|qué|por qué|cómo|revisa)/i.test(rawInstruction);
-                if (!isQuestion) {
-                  const isDelete = /^(?:elimina|eliminar|elimínalo|eliminalo|borra|borrar|bórralo|borralo|quita|quitar|quítalo|quitalo|suprime|suprimir|delete|remove)\b/i.test(rawInstruction);
-                  if (isDelete) {
-                    suggestions.push({
-                      kind: 'delete',
-                      sectionId: editorContext.sectionId,
-                      baseText: targetQuote,
-                      proposedText: '',
-                      rationale: 'Eliminar fragmento seleccionado a solicitud del usuario.',
-                    });
-                  } else {
-                    const cleanInstruction = rawInstruction
-                      .replace(/^(?:cámbialo\s+por|cambialo\s+por|cambiar\s+por|reemplaza\s+por|pon|modifica\s+a)\s*/i, '')
-                      .trim();
-                    suggestions.push({
-                      kind: 'replace',
-                      sectionId: editorContext.sectionId,
-                      baseText: targetQuote,
-                      proposedText: cleanInstruction,
-                      rationale: 'Modificación técnica sobre el fragmento seleccionado.',
-                    });
-                  }
-                }
+        // Red de seguridad: si el LLM devolvió suggestions: [] pero el usuario envió una orden directa sobre selección
+        if (suggestions.length === 0) {
+          const selectedQuote = lastMessage.match(/^(?:sobre|modificar|modifica|ajustar|ajusta|cambiar|cambia|editar|edita|eliminar|elimina|borrar|borra|quitar|quita)\s+"([^"]+)":?\s*(.*)$/i);
+          if (selectedQuote) {
+            const targetQuote = selectedQuote[1].trim();
+            const rawInstruction = selectedQuote[2].trim();
+            const isQuestion = rawInstruction.endsWith('?') || /^(?:es|cumple|qué|por qué|cómo|revisa)/i.test(rawInstruction);
+            if (!isQuestion) {
+              const isDelete = /^(?:elimina|eliminar|elimínalo|eliminalo|borra|borrar|bórralo|borralo|quita|quitar|quítalo|quitalo|suprime|suprimir|delete|remove)\b/i.test(rawInstruction);
+              if (isDelete) {
+                suggestions.push({
+                  kind: 'delete',
+                  sectionId: editorContext.sectionId,
+                  baseText: targetQuote,
+                  proposedText: '',
+                  rationale: 'Eliminar fragmento seleccionado a solicitud del usuario.',
+                });
+              } else {
+                const cleanInstruction = rawInstruction
+                  .replace(/^(?:cámbialo\s+por|cambialo\s+por|cambiar\s+por|reemplaza\s+por|pon|modifica\s+a)\s*/i, '')
+                  .trim();
+                suggestions.push({
+                  kind: 'replace',
+                  sectionId: editorContext.sectionId,
+                  baseText: targetQuote,
+                  proposedText: cleanInstruction,
+                  rationale: 'Modificación técnica sobre el fragmento seleccionado.',
+                });
               }
             }
           }
-
-          if (!replyText.trim()) {
-            replyText = 'Entendido. ¿En qué más puedo orientarte sobre la producción de tu show o rider?';
-          }
-
-          finalResponse = {
-            sessionId: session.id,
-            role: activeAgent,
-            roleName: profile.name,
-            roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
-            message: replyText,
-            suggestions,
-            gatewayProvider: 'vercel_ai_gateway',
-            actions: []
-          };
-        } else {
-          const errData = await response.json().catch(() => ({}));
-          console.warn('[AI Gateway Warning]', errData);
         }
-      } catch (gatewayErr) {
-        console.warn('[AI Gateway Connection Error]', gatewayErr);
       }
+
+      if (!replyText.trim()) {
+        replyText = 'Entendido. ¿En qué más puedo orientarte sobre la producción de tu show o rider?';
+      }
+
+      finalResponse = {
+        sessionId: session.id,
+        role: activeAgent,
+        roleName: profile.name,
+        roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+        message: replyText,
+        suggestions,
+        gatewayProvider: aiResult.provider,
+        actions: []
+      };
     }
 
     // 4. Fallback de Agente Experto Inteligente si la llamada a la nube no fue completada
     if (!finalResponse) {
       const fallbackResponse = generateExpertAgentResponse(lastMessage, riderType, activeAgent, editorContext);
+      const diagnostics = getAiDiagnostics();
       finalResponse = {
         sessionId: session.id,
         ...fallbackResponse,
-        notice: apiKey
-          ? 'Vercel AI Gateway activo. (Recuerda verificar tarjeta en vercel.com para desbloquear créditos ilimitados en la nube).'
-          : undefined
+        notice: diagnostics.configured
+          ? `Proveedores IA detectados: ${diagnostics.activeProviders.join(', ')}, pero la llamada a la nube falló. Ejecutando contingencia experta local.`
+          : 'Token de IA no detectado en producción. Configura AI_GATEWAY_API_KEY o OPENAI_API_KEY en las variables de entorno de Vercel.'
       };
     }
 
