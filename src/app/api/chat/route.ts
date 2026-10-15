@@ -73,20 +73,30 @@ Responde SIEMPRE con un objeto JSON válido con la siguiente estructura:
 Reglas importantes:
 1. Si el usuario pide añadir o redactar requerimientos, agrega las sugerencias correspondientes indicando el sectionId adecuado.
 2. Si el usuario hace una pregunta puramente conversacional o informativa sin pedir cambios, deja "suggestions": [] y responde en "message".
-3. Dentro de "proposedText", puedes estructurar contenido profesional de rider usando estas marcas:
-   [[requisito:Etiqueta]]
-   texto del requisito
-   [[aviso:nota]] o [[aviso:obligatorio]] o [[aviso:veto]]
-   texto del aviso
-   [[tiers]]
-   preferido | alternativa | no aceptado
-   [[contactos]]
-   Rol | Nombre | Teléfono | Correo
-   [[columnas]]
-   columna izquierda
-   ---
-   columna derecha
-   Los párrafos normales van sin marcas especiales.
+3. Dentro de "proposedText", puedes estructurar contenido profesional con formato enriquecido y bloques de rider:
+   - Para subtítulos dentro de la sección, usa "### Subtítulo".
+   - Para listas de especificaciones, usa viñetas en negrita: "- **Parámetro:** Valor requerido".
+   - Bloque Requisito:
+     [[requisito:Nombre del Requisito]]
+     Descripción técnica o especificaciones.
+   - Bloque Aviso/Alerta técnica:
+     [[aviso:obligatorio]] (o [[aviso:nota]] o [[aviso:veto]])
+     Texto de la directriz o prohibición técnica.
+   - Bloque Tiers de Equipamiento (3 columnas):
+     [[tiers]]
+     - **Preferido:** Modelos de primera opción (ej. Meyer Sound, DiGiCo Quantum)
+     - **Alternativa:** Modelos secundarios aceptables (ej. d&b, Yamaha CL5)
+     - **No Aceptado:** Marcas o modelos no admitidos
+   - Bloque Contactos de Producción:
+     [[contactos]]
+     (Solo las líneas de datos con formato Rol | Nombre | Teléfono | Correo, sin encabezados ni separadores "---"):
+     Técnico de Monitores | Carlos Gómez | +34 600 111 222 | audio@rider.com
+   - Bloque Columnas paralelas:
+     [[columnas]]
+     Contenido columna izquierda
+     ---
+     Contenido columna derecha
+   Los párrafos normales van sin etiquetas especiales.
 4. Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       : '';
     const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
