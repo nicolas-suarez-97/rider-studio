@@ -8,16 +8,28 @@ import type { Editor } from '@tiptap/core';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 import { previewRiderMarkup, riderMarkupToContent } from '@/core/editor/rider-markup';
 
-export function findSectionBounds(doc: PMNode, sectionId: string): { from: number; to: number } | null {
+export function findSectionBounds(doc: PMNode, sectionId?: string | null): { from: number; to: number } | null {
+  if (!sectionId) return null;
   let from: number | null = null;
   let to: number | null = null;
+  const target = sectionId.trim().toLowerCase();
+
   doc.forEach((node, pos) => {
-    if (node.type.name === 'heading' && node.attrs.id === sectionId) {
-      from = pos;
-      return;
-    }
-    if (from !== null && to === null && node.type.name === 'heading' && node.attrs.id) {
-      to = pos;
+    if (node.type.name === 'heading') {
+      const nodeId = (node.attrs.id || '').toLowerCase();
+      const nodeText = (node.textContent || '').trim().toLowerCase();
+      const matches =
+        nodeId === target ||
+        nodeText === target ||
+        (target.length > 3 && (nodeId.includes(target) || nodeText.includes(target) || target.includes(nodeText)));
+
+      if (matches && from === null) {
+        from = pos;
+        return;
+      }
+      if (from !== null && to === null) {
+        to = pos;
+      }
     }
   });
   if (from === null) return null;
@@ -41,7 +53,7 @@ export function locateText(doc: PMNode, needle: string, ignoreCase = false, boun
   return found;
 }
 
-export function locateRangeInDoc(
+function locateRangeInternal(
   doc: PMNode,
   needle: string,
   bounds?: { from: number; to: number } | null
@@ -95,6 +107,24 @@ export function locateRangeInDoc(
     if (firstRange && lastRange && firstRange.from < lastRange.to) {
       return { from: firstRange.from, to: lastRange.to };
     }
+  }
+
+  return null;
+}
+
+export function locateRangeInDoc(
+  doc: PMNode,
+  needle: string,
+  bounds?: { from: number; to: number } | null
+): { from: number; to: number } | null {
+  if (!needle || !needle.trim()) return null;
+
+  const found = locateRangeInternal(doc, needle, bounds);
+  if (found) return found;
+
+  // Fallback: si no se encontró dentro de la sección, buscar en todo el documento
+  if (bounds) {
+    return locateRangeInternal(doc, needle, null);
   }
 
   return null;
@@ -189,10 +219,35 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
   if (suggestion.kind === 'delete') {
     const deleteRange = locateRangeInDoc(editor.state.doc, suggestion.baseText, bounds);
     if (!deleteRange) return { success: false };
+
+    const $from = editor.state.doc.resolve(deleteRange.from);
+    const $to = editor.state.doc.resolve(deleteRange.to);
+    let finalDeleteRange = deleteRange;
+
+    // Si abarca todo el contenido del bloque o del ítem de lista, expandir para eliminar el nodo completo (sin dejar viñetas vacías)
+    if ($from.sameParent($to) && $from.parent.isTextblock) {
+      const parentText = $from.parent.textContent.trim().replace(/^[•\-\*]\s*/, '');
+      const deleteText = editor.state.doc.textBetween(deleteRange.from, deleteRange.to).trim();
+
+      if ($from.parentOffset === 0 || parentText === deleteText) {
+        if ($from.depth > 1 && $from.node($from.depth - 1).type.name === 'listItem') {
+          finalDeleteRange = {
+            from: $from.before($from.depth - 1),
+            to: $from.after($from.depth - 1),
+          };
+        } else {
+          finalDeleteRange = {
+            from: $from.before($from.depth),
+            to: $from.after($from.depth),
+          };
+        }
+      }
+    }
+
     return {
       success: true,
-      oldRange: deleteRange,
-      appliedRange: { from: deleteRange.to, to: deleteRange.to },
+      oldRange: finalDeleteRange,
+      appliedRange: { from: finalDeleteRange.to, to: finalDeleteRange.to },
     };
   }
 
@@ -218,11 +273,20 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
 
       let finalOldRange = oldRange;
       if ($from.sameParent($to) && $from.parent.isTextblock && blocks) {
-        if ($from.parentOffset === 0 && $to.parentOffset === $from.parent.content.size) {
-          finalOldRange = {
-            from: $from.before($from.depth),
-            to: $from.after($from.depth),
-          };
+        const parentText = $from.parent.textContent.trim().replace(/^[•\-\*]\s*/, '');
+        const oldText = editor.state.doc.textBetween(oldRange.from, oldRange.to).trim();
+        if ($from.parentOffset === 0 || parentText === oldText) {
+          if ($from.depth > 1 && $from.node($from.depth - 1).type.name === 'listItem') {
+            finalOldRange = {
+              from: $from.before($from.depth - 1),
+              to: $from.after($from.depth - 1),
+            };
+          } else {
+            finalOldRange = {
+              from: $from.before($from.depth),
+              to: $from.after($from.depth),
+            };
+          }
         }
       }
 

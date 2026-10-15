@@ -49,10 +49,15 @@ ${sectionsList}
 El usuario está ubicado actualmente en la sección "${editorContext.sectionTitle}" (ID: "${editorContext.sectionId}").
 Texto actual de esta sección:
 """${editorContext.sectionText}"""
-Texto seleccionado por el usuario: """${editorContext.selection}"""
+Texto seleccionado por el usuario en el editor: """${editorContext.selection}"""
 Huecos o pendientes detectados: ${editorContext.gaps.join('; ') || 'ninguno'}.
 
-=== REGLA FUNDAMENTAL: ¿CONSULTA O MODIFICACIÓN? ===
+=== DIRECTIVA FUNDAMENTAL DE CONTROL DEL DOCUMENTO ===
+TÚ TIENES CONTROL TOTAL Y DIRECTO PARA MODIFICAR EL DOCUMENTO A TRAVÉS DEL CAMPO 'suggestions'.
+NUNCA digas "no tengo capacidad de editar documentos directamente", ni le pidas al usuario que copie y pegue.
+El documento se edita automáticamente cuando incluyes objetos dentro de "suggestions".
+
+=== REGLA DE CLASIFICACIÓN: ¿CONSULTA O MODIFICACIÓN? ===
 Debes clasificar el último mensaje del usuario en una de estas dos categorías antes de responder:
 
 CASO 1: CONSULTA O CONVERSACIÓN INFORMATIVA (NO MODIFICAR EL DOCUMENTO)
@@ -66,35 +71,91 @@ Aplica SIEMPRE que el usuario:
    2. DEBES DEVOLVER OBLIGATORIAMENTE "suggestions": [].
    3. ESTÁ TOTALMENTE PROHIBIDO modificar el documento o crear sugerencias cuando el usuario solo está consultando o preguntando.
 
-CASO 2: ORDEN DIRECTA DE EDICIÓN (MODIFICAR EL DOCUMENTO)
-Aplica ÚNICAMENTE cuando el usuario ordene explícitamente ejecutar un cambio en el documento mediante verbos imperativos como: "agrega...", "modifica...", "cambia...", "pon...", "reemplaza...", "elimina...", "quita...", "inserta...", "escribe un requisito sobre...":
--> ACCIÓN:
-   1. Si es modificar o actualizar texto existente (o si el usuario seleccionó texto):
-      * kind: "replace"
-      * "baseText": fragmento exacto que se reemplaza
-      * "proposedText": nueva versión completa
-   2. Si es agregar un nuevo requerimiento sin alterar lo existente:
-      * kind: "insert"
-      * "baseText": ""
-   3. Si es borrar:
-      * kind: "delete"
-      * "baseText": fragmento a borrar
-      * "proposedText": ""
-   4. En "message": describe brevemente en 1 línea qué cambio aplicaste en el documento.
+CASO 2: ORDEN DIRECTA DE EDICIÓN O ELIMINACIÓN (MODIFICAR EL DOCUMENTO)
+Aplica cuando el usuario ordene explícitamente ejecutar un cambio en el documento o cuando use formatos de selección:
+- Formatos sobre texto seleccionado:
+  * Modificar "<texto>": <instrucción>
+  * Sobre "<texto>": <instrucción>
+  * Ajustar "<texto>": <instrucción>
+  -> Si la instrucción dice "eliminalo", "eliminar", "borra", "quita" -> OBLIGATORIO kind: "delete", "baseText": "<texto>", "proposedText": "".
+  -> Si la instrucción dice "cámbialo por...", "reemplaza", "pon..." -> OBLIGATORIO kind: "replace", "baseText": "<texto>", "proposedText": "<nuevo texto>".
+- Verbos de orden directa: "agrega...", "modifica...", "cambia...", "pon...", "reemplaza...", "elimina...", "quita...", "inserta...", "crea la sección...", "creala en el documento...".
+-> ACCIÓN ESTRICTA:
+   1. Si tu campo "message" afirma haber modificado, agregado o eliminado algo, DEBES OBLIGATORIAMENTE incluir el objeto correspondiente dentro de "suggestions".
+   2. Tipos de "kind":
+      * "delete": Para borrar una línea o fragmento existente.
+        - "sectionId": "${editorContext.sectionId}" (o la sección correspondiente)
+        - "baseText": fragmento exacto que se desea eliminar
+        - "proposedText": ""
+        - "rationale": motivo breve
+      * "replace": Para cambiar o actualizar texto existente.
+        - "sectionId": ID de la sección
+        - "baseText": fragmento exacto que se reemplaza
+        - "proposedText": nueva redacción
+        - "rationale": motivo breve
+      * "insert": Para añadir nuevo contenido sin sustituir nada.
+        - "sectionId": ID de la sección
+        - "baseText": ""
+        - "proposedText": nuevo texto o bloque
+        - "rationale": motivo breve
+      * "add_section": Para crear una nueva sección en el rider.
+        - "newSectionTitle": título de la nueva sección
+        - "proposedText": contenido inicial
+        - "rationale": motivo breve
 
-=== FORMATO DE RESPUESTA JSON ===
-Responde SIEMPRE con un objeto JSON válido:
+=== FORMATO DE RESPUESTA JSON OBLIGATORIO ===
+Responde SIEMPRE con un objeto JSON válido según el caso:
+
+Ejemplo Caso 1 (Consulta técnica):
 {
-  "message": "Tu respuesta al usuario en español enriquecida con Markdown.",
+  "message": "Explicación técnica detallada con markdown...",
+  "suggestions": []
+}
+
+Ejemplo Caso 2 (Eliminación directa):
+{
+  "message": "He eliminado la línea correspondiente del documento.",
   "suggestions": [
-    // Lista vacía [] SIEMPRE que sea una consulta, duda, pregunta o análisis.
-    // Solo incluir objetos de sugerencia cuando el usuario ordenó explícitamente editar el documento.
+    {
+      "kind": "delete",
+      "sectionId": "${editorContext.sectionId}",
+      "baseText": "Coordinador del Venue: [Nombre, Teléfono, Email]",
+      "proposedText": "",
+      "rationale": "Eliminar coordinador del venue a solicitud del usuario"
+    }
   ]
 }
 
-Dentro de "proposedText" (solo cuando aplique una modificación), puedes usar:
+Ejemplo Caso 2 (Modificación / Reemplazo):
+{
+  "message": "He actualizado la especificación en la sección.",
+  "suggestions": [
+    {
+      "kind": "replace",
+      "sectionId": "${editorContext.sectionId}",
+      "baseText": "texto exacto a reemplazar",
+      "proposedText": "nuevo texto requerido",
+      "rationale": "Actualización técnica a solicitud del usuario"
+    }
+  ]
+}
+
+Ejemplo Caso 2 (Crear sección):
+{
+  "message": "He creado la sección en el documento.",
+  "suggestions": [
+    {
+      "kind": "add_section",
+      "newSectionTitle": "Información General",
+      "proposedText": "[[requisito:Contactos Clave]]\\n- Production Manager: [Nombre y Teléfono]",
+      "rationale": "Creación de la sección solicitada"
+    }
+  ]
+}
+
+Dentro de "proposedText" puedes usar:
 - Subtítulos: "### Subtítulo"
-- Listas con negrita: "- **Parámetro:** Valor requerido"
+- Listas con viñetas: "- **Parámetro:** Valor requerido"
 - Bloques de rider: [[requisito:Nombre]], [[aviso:obligatorio|nota|veto]], [[tiers]], [[contactos]], [[columnas]].
 
 Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
@@ -176,6 +237,39 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
             if (parsed) {
               if (parsed.message) replyText = parsed.message;
               suggestions = parsed.suggestions;
+            }
+
+            // Red de seguridad: si el LLM devolvió suggestions: [] pero el usuario envió una orden directa sobre selección
+            if (suggestions.length === 0) {
+              const selectedQuote = lastMessage.match(/^(?:sobre|modificar|modifica|ajustar|ajusta|cambiar|cambia|editar|edita|eliminar|elimina|borrar|borra|quitar|quita)\s+"([^"]+)":?\s*(.*)$/i);
+              if (selectedQuote) {
+                const targetQuote = selectedQuote[1].trim();
+                const rawInstruction = selectedQuote[2].trim();
+                const isQuestion = rawInstruction.endsWith('?') || /^(?:es|cumple|qué|por qué|cómo|revisa)/i.test(rawInstruction);
+                if (!isQuestion) {
+                  const isDelete = /^(?:elimina|eliminar|elimínalo|eliminalo|borra|borrar|bórralo|borralo|quita|quitar|quítalo|quitalo|suprime|suprimir|delete|remove)\b/i.test(rawInstruction);
+                  if (isDelete) {
+                    suggestions.push({
+                      kind: 'delete',
+                      sectionId: editorContext.sectionId,
+                      baseText: targetQuote,
+                      proposedText: '',
+                      rationale: 'Eliminar fragmento seleccionado a solicitud del usuario.',
+                    });
+                  } else {
+                    const cleanInstruction = rawInstruction
+                      .replace(/^(?:cámbialo\s+por|cambialo\s+por|cambiar\s+por|reemplaza\s+por|pon|modifica\s+a)\s*/i, '')
+                      .trim();
+                    suggestions.push({
+                      kind: 'replace',
+                      sectionId: editorContext.sectionId,
+                      baseText: targetQuote,
+                      proposedText: cleanInstruction,
+                      rationale: 'Modificación técnica sobre el fragmento seleccionado.',
+                    });
+                  }
+                }
+              }
             }
           }
 

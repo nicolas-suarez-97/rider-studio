@@ -172,14 +172,8 @@ export function materializeSuggestions(
     const sectionId = draft.sectionId || context.sectionId;
     let baseText = draft.baseText || '';
     let kind = draft.kind;
-    if (baseText && !context.sectionText.includes(baseText) && sectionId === context.sectionId) {
-      if (context.selection && context.sectionText.includes(context.selection)) {
-        kind = 'replace';
-        baseText = context.selection;
-      } else {
-        kind = kind === 'delete' ? 'delete' : 'insert';
-        baseText = '';
-      }
+    if (!baseText && context.selection && (kind === 'replace' || kind === 'delete')) {
+      baseText = context.selection;
     }
     const riderType = draft.riderType && RIDER_TYPES.has(draft.riderType as RiderType)
       ? (draft.riderType as RiderType)

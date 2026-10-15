@@ -20,15 +20,19 @@ export {
 export const SYSTEM_PROMPTS: Record<AgentRole, string> = {
   master: `Eres el Master Production Copilot de Rider Studio, una plataforma profesional para eventos en vivo y giras.
 Tu labor es coordinar riders técnicos, hospitality y seguridad para bandas, festivales y artistas de primer nivel.
+Tienes control directo y total para modificar, agregar o eliminar requerimientos en el documento del rider a través de sugerencias estructuradas. NUNCA digas que no puedes editar el documento directamente ni le digas al usuario que copie y pegue.
 Habla en español con tono profesional, conciso y técnico. Si el usuario solicita cambios o sugerencias, responde claramente y sugiere mejoras reglamentarias.`,
   audio_foh: `Eres el Ingeniero de Audio & Escenario (FOH & RF) en Rider Studio.
 Te especializas en requerimientos acústicos (SPL 110 dB continuos), consolas digitales (DiGiCo Quantum/SD12, Yamaha CL5, Avid S6L), sistemas IEM (Shure PSM1000), distribución de escenario, parches de pachera y Input Lists con microfonía Shure, Sennheiser, AKG, DPA y cajas DI Radial.
+Tienes control directo y total para modificar, agregar o eliminar requerimientos en el documento del rider a través de sugerencias estructuradas. NUNCA digas que no puedes editar el documento directamente.
 Habla en español con alta precisión técnica de audio en vivo.`,
   hospitality: `Eres el Coordinador de Hospitality & Tour Care en Rider Studio.
 Te especializas en el cuidado integral del artista: temperatura de camerinos (21-22°C), cuidado vocal (miel pura, jengibre, limones orgánicos, agua a temperatura ambiente sin gas), dietas especiales (vegano, celíaco, kosher, keto), hotelería 5 estrellas con late check-out garantizado y traslados privados en vans tipo Mercedes Sprinter ejecutivas.
+Tienes control directo y total para modificar, agregar o eliminar requerimientos en el documento del rider a través de sugerencias estructuradas. NUNCA digas que no puedes editar el documento directamente.
 Habla en español con tono cordial, cálido y enfocado en la excelencia de servicio de gira.`,
   security: `Eres el Director de Seguridad y Control de Masas en Rider Studio.
 Te especializas en normativas de seguridad para recintos de conciertos: perímetros estériles, credenciales y pulseras holográficas, foso con vallas anti-avalancha Mojo Barriers de aluminio certificadas, custodios personales para el artista, control de pirotecnia/efectos especiales y planes de evacuación médica y rutas de escape hacia ambulancias.
+Tienes control directo y total para modificar, agregar o eliminar requerimientos en el documento del rider a través de sugerencias estructuradas. NUNCA digas que no puedes editar el documento directamente.
 Habla en español con autoridad, claridad y enfoque preventivo.`
 };
 
@@ -181,17 +185,111 @@ export function generateExpertAgentResponse(
   const targetSectionId = editorContext?.sectionId || 'tech-audio';
   const sectionTitle = editorContext?.sectionTitle || 'Documento';
 
-  // 0. Clasificación de intención: ¿Es una consulta/pregunta o una orden directa de edición?
+  // 0.1 Ajuste directo sobre texto seleccionado (Modificar "...", Sobre "...", etc.)
+  const selectedQuoteMatch = prompt.match(/^(?:sobre|modificar|modifica|ajustar|ajusta|cambiar|cambia|editar|edita|eliminar|elimina|borrar|borra|quitar|quita)\s+"([^"]+)":?\s*(.*)$/i);
+  if (selectedQuoteMatch && editorContext) {
+    const targetQuote = selectedQuoteMatch[1].trim();
+    const rawInstruction = selectedQuoteMatch[2].trim() || 'Modificación técnica';
+    const isQuestion = rawInstruction.endsWith('?') || /^(?:es|cumple|qué|por qué|cómo|revisa)/i.test(rawInstruction);
+
+    if (!isQuestion) {
+      const isDelete = /^(?:elimina|eliminar|elimínalo|eliminalo|borra|borrar|bórralo|borralo|quita|quitar|quítalo|quitalo|suprime|suprimir|delete|remove)\b/i.test(rawInstruction);
+
+      if (isDelete) {
+        return {
+          role: activeAgent,
+          roleName: profile.name,
+          roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+          message: `He eliminado la línea correspondiente a **"${targetQuote}"** de la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
+          suggestions: [{
+            kind: 'delete',
+            sectionId: targetSectionId,
+            baseText: targetQuote,
+            proposedText: '',
+            rationale: `Eliminación solicitada sobre "${targetQuote.slice(0, 40)}${targetQuote.length > 40 ? '...' : ''}"`
+          }],
+          gatewayProvider: 'production_expert_engine'
+        };
+      }
+
+      const cleanInstruction = rawInstruction
+        .replace(/^(?:cámbialo\s+por|cambialo\s+por|cambiar\s+por|reemplaza\s+por|pon|modifica\s+a)\s*/i, '')
+        .trim();
+      const formatted = cleanInstruction.charAt(0).toUpperCase() + cleanInstruction.slice(1);
+
+      return {
+        role: activeAgent,
+        roleName: profile.name,
+        roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+        message: `He actualizado el fragmento seleccionado en la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
+        suggestions: [{
+          kind: 'replace',
+          sectionId: targetSectionId,
+          baseText: targetQuote,
+          proposedText: formatted,
+          rationale: `Ajuste sobre selección: ${formatted.slice(0, 50)}${formatted.length > 50 ? '...' : ''}`
+        }],
+        gatewayProvider: 'production_expert_engine'
+      };
+    }
+  }
+
+  // 0.2 Análisis o consulta técnica sobre texto seleccionado
+  const analyzeQuoteMatch = prompt.match(/^(?:analizar|analiza)\s+"([^"]+)":?\s*(.*)$/i);
+  if (analyzeQuoteMatch) {
+    const targetQuote = analyzeQuoteMatch[1].trim();
+    return {
+      role: activeAgent,
+      roleName: profile.name,
+      roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+      message: `**Análisis técnico sobre "${targetQuote}":**\n\nEl requerimiento es técnicamente viable y cumple con los estándares profesionales del sector. Si deseas cambiar esta cláusula por otra especificación técnica, puedes pedírmelo directamente.`,
+      suggestions: [],
+      gatewayProvider: 'production_expert_engine'
+    };
+  }
+
+  // 0.3 Detección de creación de nueva sección
+  if (
+    p.includes('nueva sección') ||
+    p.includes('agrega una sección') ||
+    p.includes('crea una sección') ||
+    p.includes('añade una sección') ||
+    /(?:crea|agrega|añade|nueva|crear|agregar)\s+(?:la|una|el)?\s*sección/i.test(p) ||
+    /(?:creala|créala)\s+en\s+el\s+documento/i.test(p)
+  ) {
+    const rawTitle = prompt
+      .replace(/(?:creala|créala)\s+en\s+el\s+documento/i, '')
+      .replace(/(?:crea|agrega|añade|nueva|crear|agregar)\s+(?:la|una|el)?\s*sección\s*(?:de|titulada|llamada|:)?\s*/i, '')
+      .trim();
+    const title = rawTitle ? rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1) : 'Información General';
+    return {
+      role: activeAgent,
+      roleName: profile.name,
+      roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+      message: `He creado y añadido la nueva sección **"${title}"** directamente al documento. Al inicio de la modificación encontrarás los botones para aprobar o revertir la acción.`,
+      suggestions: [{
+        kind: 'add_section',
+        newSectionTitle: title,
+        proposedText: `[[requisito:${title}]]\nEspecificaciones y directrices operativas para esta sección.\n[[aviso:nota]]\nCoordinar detalles con el director de producción.`,
+        rationale: `Creación de la sección "${title}".`
+      }],
+      gatewayProvider: 'production_expert_engine'
+    };
+  }
+
+  // 0.4 Clasificación de intención: ¿Es una consulta/pregunta o una orden directa de edición?
   const isQuestionOrInquiry =
     prompt.includes('?') ||
     /^(?:qué|que|cuál|cual|cuáles|cuales|cómo|como|por qué|porque|cuándo|cuando|dónde|donde|quién|quien|es|son|puedes explicar|explica|explícame|recomienda|recomiendas|recomiéndame|qué opinas|que opinas|cuéntame|dime|tienes|hay|crees|opinas|revisa|analiza|valida|consulta|aconseja|aconséjame)\b/i.test(prompt.trim()) ||
     /(?:qué opinas|que opinas|qué recomiendas|que recomiendas|qué sugieres|que sugieres|qué diferencia|cuál es|cual es|cómo ves|como ves|me recomiendas|te parece|está bien|esta bien|es correcto|es necesario|me aconsejas)/i.test(prompt);
 
   const isExplicitEditCommand =
-    /^(?:agrega|añade|pon|incluye|inserta|coloca|escribe|modifica|cambia|actualiza|corrige|reemplaza|elimina|quita|borra|sustituye)\b/i.test(prompt.trim()) ||
-    /\b(?:agrega|añade|pon|incluye|inserta|modifica|cambia|actualiza|reemplaza|elimina|quita|borra)\s+(?:un\s+|una\s+|el\s+|la\s+|este\s+|esta\s+|al\s+|en\s+|sección|canal|requerimiento|texto|cláusula|consola|micrófono|hotel|valla|parámetro)/i.test(prompt) ||
+    /^(?:agrega|añade|pon|incluye|inserta|coloca|escribe|modifica|cambia|actualiza|corrige|reemplaza|elimina|quita|borra|sustituye|crea|ajusta|modificar|cambiar|eliminar|quitar|borrar|ajustar|crear|agregar|añadir)\b/i.test(prompt.trim()) ||
+    /\b(?:agrega|añade|pon|incluye|inserta|modifica|cambia|actualiza|reemplaza|elimina|quita|borra|crea|ajusta|modificar|cambiar|eliminar|quitar|borrar)\s+(?:un\s+|una\s+|el\s+|la\s+|este\s+|esta\s+|al\s+|en\s+|sección|canal|requerimiento|texto|cláusula|consola|micrófono|hotel|valla|parámetro|documento)/i.test(prompt) ||
+    /(?:creala|créala|crealo|créalo|añadela|añádela|agregala|agrégala|eliminala|elimínala|borrala|bórrala)\s*(?:en\s+el\s+documento)?/i.test(prompt) ||
     p.includes('agrega canal') || p.includes('añade canal') ||
-    p.includes('genera sugerencias') || p.includes('aplica sugerencias');
+    p.includes('genera sugerencias') || p.includes('aplica sugerencias') ||
+    p.includes('creala en el documento') || p.includes('créala en el documento');
 
   // MODO CONSULTA: Si es una pregunta o duda y no es una orden explícita de edición,
   // responder EXCLUSIVAMENTE en el chat sin modificar el documento (suggestions: []).
@@ -263,25 +361,6 @@ export function generateExpertAgentResponse(
       roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
       message: `**Consulta sobre "${sectionTitle}":**\n\nHe analizado tu consulta. Para este tipo de producción es importante contar con especificaciones claras, marcas preferidas y cláusulas de veto bien definidas para evitar ambigüedades con promotores o salas.\n\nPuedes hacerme cualquier consulta técnica con total tranquilidad. Y si en algún momento deseas aplicar o modificar algo en el documento, solo debes darme la instrucción (por ejemplo: *"agrega..."*, *"cambia..."* o *"elimina..."*).`,
       suggestions: [],
-      gatewayProvider: 'production_expert_engine'
-    };
-  }
-
-  // 1. Detección de creación de nueva sección
-  if (p.includes('nueva sección') || p.includes('agrega una sección') || p.includes('crea una sección') || p.includes('añade una sección')) {
-    const rawTitle = prompt.replace(/(?:crea|agrega|añade|nueva)\s+(?:una\s+)?sección\s*(?:de|titulada|llamada|:)?\s*/i, '').trim();
-    const title = rawTitle ? rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1) : 'Nueva Sección Especial';
-    return {
-      role: activeAgent,
-      roleName: profile.name,
-      roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
-      message: `He creado y añadido la nueva sección **"${title}"** directamente al documento. Al inicio de la modificación encontrarás los botones para aprobar o revertir la acción.`,
-      suggestions: [{
-        kind: 'add_section',
-        newSectionTitle: title,
-        proposedText: `[[requisito:${title}]]\nEspecificaciones y directrices operativas para esta sección.\n[[aviso:nota]]\nCoordinar detalles con el director de producción.`,
-        rationale: `Creación de la sección "${title}".`
-      }],
       gatewayProvider: 'production_expert_engine'
     };
   }
@@ -444,49 +523,7 @@ No se autoriza el inicio del espectáculo si no se cumple el perímetro estéril
     };
   }
 
-  // 6.5 Ajuste directo sobre texto seleccionado
-  const selectedQuoteMatch = prompt.match(/^(?:sobre|modificar|ajustar)\s+"([^"]+)":?\s*(.*)$/i);
-  if (selectedQuoteMatch && editorContext) {
-    const targetQuote = selectedQuoteMatch[1].trim();
-    const rawInstruction = selectedQuoteMatch[2].trim() || 'Modificación técnica';
-    const isQuestion = rawInstruction.endsWith('?') || /^(?:es|cumple|qué|por qué|cómo|revisa)/i.test(rawInstruction);
 
-    if (!isQuestion) {
-      const cleanInstruction = rawInstruction
-        .replace(/^(?:cámbialo\s+por|cambialo\s+por|cambiar\s+por|reemplaza\s+por|pon|modifica\s+a)\s*/i, '')
-        .trim();
-      const formatted = cleanInstruction.charAt(0).toUpperCase() + cleanInstruction.slice(1);
-
-      return {
-        role: activeAgent,
-        roleName: profile.name,
-        roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
-        message: `He actualizado el fragmento seleccionado en la sección **"${sectionTitle}"**. Al inicio de la modificación encontrarás los botones para aprobar o revertir.`,
-        suggestions: [{
-          kind: 'replace',
-          sectionId: targetSectionId,
-          baseText: targetQuote,
-          proposedText: formatted,
-          rationale: `Ajuste sobre selección: ${formatted.slice(0, 50)}${formatted.length > 50 ? '...' : ''}`
-        }],
-        gatewayProvider: 'production_expert_engine'
-      };
-    }
-  }
-
-  // 6.6 Análisis o consulta técnica sobre texto seleccionado
-  const analyzeQuoteMatch = prompt.match(/^(?:analizar|analiza)\s+"([^"]+)":?\s*(.*)$/i);
-  if (analyzeQuoteMatch) {
-    const targetQuote = analyzeQuoteMatch[1].trim();
-    return {
-      role: activeAgent,
-      roleName: profile.name,
-      roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
-      message: `**Análisis técnico sobre "${targetQuote}":**\n\nEl requerimiento es técnicamente viable y cumple con los estándares profesionales del sector. Si deseas cambiar esta cláusula por otra especificación técnica, puedes pedírmelo directamente.`,
-      suggestions: [],
-      gatewayProvider: 'production_expert_engine'
-    };
-  }
 
   // 6.7 Sugerencias técnicas de mejora para la sección actual (/sugerencias)
   if (p.includes('genera sugerencias') || p.includes('aplica sugerencias') || p.includes('agrega sugerencias') || p.includes('faltaría agregar')) {
