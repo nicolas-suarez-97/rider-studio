@@ -56,14 +56,41 @@ export function parseSuggestionJson(raw: string): { message: string; suggestions
         };
       }
 
+      const rawProposed =
+        typeof item.proposedText === 'string' ? item.proposedText :
+        typeof item.content === 'string' ? item.content :
+        typeof item.text === 'string' ? item.text :
+        typeof item.proposedContent === 'string' ? item.proposedContent :
+        typeof item.proposal === 'string' ? item.proposal :
+        typeof item.value === 'string' ? item.value :
+        typeof item.markdown === 'string' ? item.markdown :
+        typeof item.body === 'string' ? item.body :
+        typeof item.draft === 'string' ? item.draft :
+        '';
+
+      const rawBase =
+        typeof item.baseText === 'string' ? item.baseText :
+        typeof item.base === 'string' ? item.base :
+        typeof item.targetText === 'string' ? item.targetText :
+        typeof item.originalText === 'string' ? item.originalText :
+        typeof item.target === 'string' ? item.target :
+        '';
+
+      const rawRationale =
+        typeof item.rationale === 'string' ? item.rationale :
+        typeof item.reason === 'string' ? item.reason :
+        typeof item.description === 'string' ? item.description :
+        typeof item.motivo === 'string' ? item.motivo :
+        '';
+
       suggestions.push({
         kind: kind as AgentSuggestionDraft['kind'],
         sectionId: typeof item.sectionId === 'string' && item.sectionId.trim() ? item.sectionId.trim() : undefined,
         newSectionTitle: typeof item.newSectionTitle === 'string' && item.newSectionTitle.trim() ? item.newSectionTitle.trim() : undefined,
         theme: typeof item.theme === 'string' && item.theme.trim() ? item.theme.trim() : undefined,
-        baseText: typeof item.baseText === 'string' ? item.baseText.slice(0, 2000) : '',
-        proposedText: typeof item.proposedText === 'string' ? item.proposedText.slice(0, 6000) : '',
-        rationale: typeof item.rationale === 'string' ? item.rationale.slice(0, 500) : '',
+        baseText: rawBase.slice(0, 2000),
+        proposedText: rawProposed.slice(0, 6000),
+        rationale: rawRationale.slice(0, 500),
         channel,
         riderType: typeof item.riderType === 'string' ? item.riderType : undefined,
       });

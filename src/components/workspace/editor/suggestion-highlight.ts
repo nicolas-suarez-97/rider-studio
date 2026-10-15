@@ -307,14 +307,29 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
     }
   }
 
-  // 3. Caso INSERT puro (adición al final de la sección):
-  const insertAt = bounds?.to ?? editor.state.doc.content.size;
+  // 3. Caso INSERT puro (adición en la sección):
+  if (!suggestion.proposedText || !suggestion.proposedText.trim()) {
+    return { success: false };
+  }
+
+  let insertAt = bounds?.to ?? editor.state.doc.content.size;
+
+  // Si la sección está vacía o solo contiene un párrafo en blanco, limpiar ese espacio e insertar al inicio del cuerpo
+  if (sectionContent && sectionContent.from < sectionContent.to) {
+    const existingText = editor.state.doc.textBetween(sectionContent.from, sectionContent.to).trim();
+    if (!existingText) {
+      insertAt = sectionContent.from;
+      editor.chain().focus().deleteRange({ from: sectionContent.from, to: sectionContent.to }).run();
+    }
+  }
+
   const beforeSize = editor.state.doc.content.size;
   const blocks = riderMarkupToContent(suggestion.proposedText);
-  if (blocks) {
+  if (blocks && blocks.length > 0) {
     editor.chain().focus().insertContentAt(insertAt, blocks).run();
     const afterSize = editor.state.doc.content.size;
     const diff = Math.max(0, afterSize - beforeSize);
+    if (diff <= 0) return { success: false };
     return {
       success: true,
       appliedRange: { from: insertAt, to: insertAt + diff },
@@ -326,6 +341,7 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
   editor.chain().focus().insertContentAt(insertAt, textToInsert).run();
   const afterSize = editor.state.doc.content.size;
   const diff = Math.max(0, afterSize - beforeSize);
+  if (diff <= 0) return { success: false };
   return {
     success: true,
     appliedRange: { from: insertAt, to: insertAt + diff },

@@ -761,15 +761,15 @@ export function WorkspaceClient({
               draft.status = 'applied';
               draft.appliedRange = res.appliedRange;
               draft.oldRange = res.oldRange;
-            } else {
-              draft.status = 'stale';
+              appliedItems.push(draft);
             }
-            appliedItems.push(draft);
           }
         }
 
-        setAgentSuggestions((current) => [...current, ...appliedItems]);
-        showToast('✨ Modificación aplicada en el documento');
+        if (appliedItems.length > 0) {
+          setAgentSuggestions((current) => [...current, ...appliedItems]);
+          showToast('✨ Modificación aplicada en el documento');
+        }
       }
     } catch (err) {
       console.error(err);

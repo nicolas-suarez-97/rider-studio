@@ -29,7 +29,7 @@ export function outlinePromptsForSection(
     id: 'chat',
     kind: 'chat',
     label: 'Redactar esta sección',
-    prompt: `Ayúdame a redactar la sección «${title}» de este rider ${kind}. Está vacía. Propón el contenido profesional típico, con placeholders claros donde falte un dato, listo para pegar en el documento.`,
+    prompt: `Ayúdame a redactar e incorporar en el documento la sección «${title}» de este rider ${kind}. Está vacía. Inserta el contenido profesional típico con placeholders claros donde falte un dato.`,
   };
 
   const config = findSectionConfig(section.id, section.title);
@@ -38,7 +38,7 @@ export function outlinePromptsForSection(
     id: field.key,
     kind: 'topic',
     label: topicLabel(field.prefix, field.label),
-    prompt: `Redacta el apartado «${field.label}» de la sección «${title}» para un rider ${kind}. Usa un estilo de rider profesional y deja placeholders si falta un dato concreto.`,
+    prompt: `Redacta e inserta en el documento el apartado «${field.label}» de la sección «${title}» para un rider ${kind}. Usa un estilo de rider profesional con viñetas y deja placeholders si falta un dato concreto.`,
   }));
 
   if (!topics.length) {
@@ -47,13 +47,13 @@ export function outlinePromptsForSection(
         id: 'reqs',
         kind: 'topic',
         label: 'Requisitos clave',
-        prompt: `Propón los requisitos clave de la sección «${title}» para un rider ${kind}, listos para pegar en el documento.`,
+        prompt: `Propón e inserta en el documento los requisitos clave de la sección «${title}» para un rider ${kind}.`,
       },
       {
         id: 'specs',
         kind: 'topic',
         label: 'Cantidades y specs',
-        prompt: `Completa cantidades, especificaciones y alternativas típicas de la sección «${title}» para un rider ${kind}.`,
+        prompt: `Completa e incorpora en el documento las cantidades, especificaciones y alternativas típicas de la sección «${title}» para un rider ${kind}.`,
       },
     );
   }

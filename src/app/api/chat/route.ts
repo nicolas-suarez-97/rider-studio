@@ -21,6 +21,39 @@ export async function GET() {
   });
 }
 
+function extractDraftFromReply(text: string): { extracted: string; intro: string } | null {
+  if (!text || !text.trim()) return null;
+  const trimmed = text.trim();
+
+  // 1. Delimitado por triple-guión (--- ... ---) o bloques de código (```...```)
+  const codeBlockMatch = trimmed.match(/```(?:markdown|md|text)?\s*([\s\S]*?)```/i);
+  if (codeBlockMatch && codeBlockMatch[1].trim().length > 10) {
+    const extracted = codeBlockMatch[1].trim();
+    const parts = trimmed.split(/```/);
+    const intro = (parts[0] || '').trim();
+    return { extracted, intro };
+  }
+
+  const fenceMatch = trimmed.match(/---\s*([\s\S]*?)\s*---/);
+  if (fenceMatch && fenceMatch[1].trim().length > 10) {
+    const extracted = fenceMatch[1].trim();
+    const parts = trimmed.split('---');
+    const intro = (parts[0] || '').trim();
+    return { extracted, intro };
+  }
+
+  // 2. Bloque estructurado que comienza con encabezado markdown o lista técnica o etiquetas [[
+  const blockMatch = trimmed.match(/(?:^|\n)(#{1,4}\s+[^\n]+[\s\S]*|[-*•]\s+\*\*[^\n]+[\s\S]*|\[\[[a-z]+:[^\]]*\]\][\s\S]*)/i);
+  if (blockMatch && blockMatch[1].trim().length > 10) {
+    const extracted = blockMatch[1].trim();
+    const idx = trimmed.indexOf(extracted);
+    const intro = idx > 0 ? trimmed.substring(0, idx).trim() : '';
+    return { extracted, intro };
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.json().catch(() => null);
@@ -80,37 +113,43 @@ Aplica SIEMPRE que el usuario:
    2. DEBES DEVOLVER OBLIGATORIAMENTE "suggestions": [].
    3. ESTÁ TOTALMENTE PROHIBIDO modificar el documento o crear sugerencias cuando el usuario solo está consultando o preguntando.
 
-CASO 2: ORDEN DIRECTA DE EDICIÓN O ELIMINACIÓN (MODIFICAR EL DOCUMENTO)
-Aplica cuando el usuario ordene explícitamente ejecutar un cambio en el documento o cuando use formatos de selección:
+CASO 2: ORDEN DIRECTA DE EDICIÓN, REDACCIÓN O ELIMINACIÓN (MODIFICAR EL DOCUMENTO)
+Aplica cuando el usuario solicite u ordene cambios, redacciones o creación de contenido en el documento:
+- Peticiones de redacción o completado de secciones o apartados:
+  * "redacta...", "ayúdame a redactar...", "escribe...", "completa...", "llena...", "propón...", "genera...", "arma...", "agrega...", "añade...", "inserta...", "crea...", "modifica...", "cambia...", "pon...", "reemplaza...", "elimina...".
+  * Sugerencias de apartados o secciones (ej. "Redacta e inserta el apartado «...»", "Ayúdame a redactar la sección «...»", "Propón los requisitos...", "Completa cantidades...").
 - Formatos sobre texto seleccionado:
   * Modificar "<texto>": <instrucción>
   * Sobre "<texto>": <instrucción>
   * Ajustar "<texto>": <instrucción>
   -> Si la instrucción dice "eliminalo", "eliminar", "borra", "quita" -> OBLIGATORIO kind: "delete", "baseText": "<texto>", "proposedText": "".
   -> Si la instrucción dice "cámbialo por...", "reemplaza", "pon..." -> OBLIGATORIO kind: "replace", "baseText": "<texto>", "proposedText": "<nuevo texto>".
-- Verbos de orden directa: "agrega...", "modifica...", "cambia...", "pon...", "reemplaza...", "elimina...", "quita...", "inserta...", "crea la sección...", "creala en el documento...".
--> ACCIÓN ESTRICTA:
-   1. Si tu campo "message" afirma haber modificado, agregado o eliminado algo, DEBES OBLIGATORIAMENTE incluir el objeto correspondiente dentro de "suggestions".
-   2. Tipos de "kind":
-      * "delete": Para borrar una línea o fragmento existente.
-        - "sectionId": "${editorContext.sectionId}" (o la sección correspondiente)
-        - "baseText": fragmento exacto que se desea eliminar
-        - "proposedText": ""
-        - "rationale": motivo breve
-      * "replace": Para cambiar o actualizar texto existente.
-        - "sectionId": ID de la sección
-        - "baseText": fragmento exacto que se reemplaza
-        - "proposedText": nueva redacción
-        - "rationale": motivo breve
-      * "insert": Para añadir nuevo contenido sin sustituir nada.
-        - "sectionId": ID de la sección
-        - "baseText": ""
-        - "proposedText": nuevo texto o bloque
-        - "rationale": motivo breve
-      * "add_section": Para crear una nueva sección en el rider.
-        - "newSectionTitle": título de la nueva sección
-        - "proposedText": contenido inicial
-        - "rationale": motivo breve
+
+-> REGLA CRÍTICA DE SEPARACIÓN ENTRE DOCUMENTO Y CHAT:
+   1. TODO EL CONTENIDO TÉCNICO DEL RIDER (títulos ###, viñetas - **, listas, tablas, placeholders, datos de contacto) DEBE IR EXCLUSIVAMENTE DENTRO DE "suggestions[].proposedText".
+   2. EL CAMPO "message" ES ÚNICAMENTE PARA TU RESPUESTA CONVERSACIONAL EN EL CHAT (ej: "He redactado e incorporado el apartado de Ingeniero de Monitores en la sección Info General & Contactos Clave para tu revisión.").
+   3. ESTÁ ESTRICTAMENTE PROHIBIDO volcar el texto del documento dentro de "message" dejando "proposedText" vacío, porque el documento no se actualizaría.
+
+-> Tipos de "kind":
+   * "delete": Para borrar una línea o fragmento existente.
+     - "sectionId": "${editorContext.sectionId}" (o la sección correspondiente)
+     - "baseText": fragmento exacto que se desea eliminar
+     - "proposedText": ""
+     - "rationale": motivo breve
+   * "replace": Para cambiar o actualizar texto existente.
+     - "sectionId": ID de la sección
+     - "baseText": fragmento exacto que se reemplaza
+     - "proposedText": nueva redacción
+     - "rationale": motivo breve
+   * "insert": Para añadir nuevo contenido o redactar apartados.
+     - "sectionId": ID de la sección
+     - "baseText": ""
+     - "proposedText": nuevo texto o bloque
+     - "rationale": motivo breve
+   * "add_section": Para crear una nueva sección en el rider.
+     - "newSectionTitle": título de la nueva sección
+     - "proposedText": contenido inicial
+     - "rationale": motivo breve
 
 === FORMATO DE RESPUESTA JSON OBLIGATORIO ===
 Responde SIEMPRE con un objeto JSON válido según el caso:
@@ -119,6 +158,20 @@ Ejemplo Caso 1 (Consulta técnica):
 {
   "message": "Explicación técnica detallada con markdown...",
   "suggestions": []
+}
+
+Ejemplo Caso 2 (Redactar apartado o sección en el documento):
+{
+  "message": "He redactado e incorporado el apartado de Ingeniero de Monitores en esta sección.",
+  "suggestions": [
+    {
+      "kind": "insert",
+      "sectionId": "${editorContext.sectionId}",
+      "baseText": "",
+      "proposedText": "### Ingeniero de Monitores\\n- **Nombre**: [Nombre del Ingeniero de Monitores]\\n- **Teléfono**: [Número de Teléfono]\\n- **Email**: [Correo Electrónico]\\n- **Requerimientos Específicos**: [Detalles de monitoreo IEM/wedges]",
+      "rationale": "Redacción técnica del apartado en el documento"
+    }
+  ]
 }
 
 Ejemplo Caso 2 (Eliminación directa):
@@ -226,7 +279,20 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
           suggestions = parsed.suggestions;
         }
 
-        // Red de seguridad: si el LLM devolvió suggestions: [] pero el usuario envió una orden directa sobre selección
+        // Caso A: Si el LLM devolvió sugerencias pero dejó proposedText vacío y volcó el texto en replyText
+        for (const s of suggestions) {
+          if (s.kind !== 'delete' && (!s.proposedText || !s.proposedText.trim())) {
+            const draft = extractDraftFromReply(replyText);
+            if (draft && draft.extracted.length > 5) {
+              s.proposedText = draft.extracted;
+              if (draft.intro) {
+                replyText = `${draft.intro}\n\n✨ He incorporado la redacción directamente en el documento para tu revisión y aprobación.`;
+              }
+            }
+          }
+        }
+
+        // Caso B: Red de seguridad si el LLM devolvió suggestions: []
         if (suggestions.length === 0) {
           const selectedQuote = lastMessage.match(/^(?:sobre|modificar|modifica|ajustar|ajusta|cambiar|cambia|editar|edita|eliminar|elimina|borrar|borra|quitar|quita)\s+"([^"]+)":?\s*(.*)$/i);
           if (selectedQuote) {
@@ -254,6 +320,27 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
                   proposedText: cleanInstruction,
                   rationale: 'Modificación técnica sobre el fragmento seleccionado.',
                 });
+              }
+            }
+          } else {
+            // Si el usuario pidió redactar, completar, insertar o agregar contenido técnico a la sección
+            const isDraftRequest =
+              /^(?:redacta|escribe|completa|llena|propón|propon|genera|ayúdame|ayudame|agrega|añade|anade|inserta|arma|incluye|detalla|pon)/i.test(lastMessage.trim()) ||
+              /redacta|inserta|incorpora|completa|apartado/i.test(lastMessage);
+
+            if (isDraftRequest) {
+              const draft = extractDraftFromReply(replyText);
+              if (draft && draft.extracted.length > 5) {
+                suggestions.push({
+                  kind: 'insert',
+                  sectionId: editorContext.sectionId,
+                  baseText: '',
+                  proposedText: draft.extracted,
+                  rationale: `Redacción técnica propuesta para ${editorContext.sectionTitle || 'el documento'}.`,
+                });
+                if (draft.intro) {
+                  replyText = `${draft.intro}\n\n✨ He incorporado la redacción directamente en el documento para tu revisión y aprobación.`;
+                }
               }
             }
           }
