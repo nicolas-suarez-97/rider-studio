@@ -75,7 +75,8 @@ async function WorkspaceServer({ searchParams }: PageProps) {
           : '',
         role: (m.agent_role as 'master' | 'audio_foh' | 'hospitality' | 'security') || 'master',
         roleName: m.role_name || 'Agente de Producción',
-        roleAvatar: m.role_avatar || '🧠'
+        roleAvatar: m.role_avatar || '🧠',
+        actions: Array.isArray(m.actions) ? m.actions as Array<Record<string, unknown>> : undefined,
       }));
     }
   } catch (err) {

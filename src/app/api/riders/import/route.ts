@@ -8,6 +8,7 @@ import { buildCoverContentDoc, DOCUMENT_COVER_ID } from '@/core/editor/content-d
 import { cloneInputListColumns, DEFAULT_INPUT_LIST_COLUMNS, type InputListRow } from '@/core/constants/input-list';
 import { ChannelInput } from '@/core/models/ChannelInput';
 import { DEFAULT_STAGE_PLOT } from '@/core/constants/stage-plot';
+import { composeReviewMessage, localReviewPoints, mergeReviewPoints, type ReviewPoint } from '@/core/editor/review-message';
 
 interface AiRiderAuditResponse {
   artistName?: string;
@@ -264,19 +265,36 @@ export async function POST(req: NextRequest) {
       const defaultSectionId =
         parsedDoc.sections.find((s) => s.id !== DOCUMENT_COVER_ID)?.id || parsedDoc.sections[0].id;
 
-      const formattedSuggestions: DocumentSuggestion[] = (aiAudit.suggestions || [])
-        .filter((s) => s && s.proposedText)
-        .map((s, idx) => ({
-          id: `sug-import-${Date.now()}-${idx}`,
-          sectionId: s.sectionId && validSectionIds.has(s.sectionId) ? s.sectionId : defaultSectionId,
-          kind: s.kind || 'insert',
-          baseText: s.baseText || '',
-          proposedText: s.proposedText,
-          rationale: s.rationale || 'Sugerencia técnica de producción.',
-          status: 'pending',
-          source: 'agent',
-          newSectionTitle: s.newSectionTitle,
-        }));
+      const titleById = new Map(parsedDoc.sections.map((section) => [section.id, section.title]));
+      const aiPoints: ReviewPoint[] = (aiAudit.suggestions || [])
+        .filter((item) => item?.proposedText?.trim())
+        .map((item) => {
+          const sectionId = item.sectionId && validSectionIds.has(item.sectionId) ? item.sectionId : defaultSectionId;
+          return {
+            sectionId,
+            sectionTitle: titleById.get(sectionId) || 'Documento',
+            rationale: item.rationale || 'Conviene precisar esta cláusula para el promotor.',
+            proposedText: item.proposedText.trim(),
+          };
+        });
+      const reviewPoints = mergeReviewPoints(
+        aiPoints,
+        localReviewPoints(parsedDoc.sections.map((section) => ({
+          id: section.id,
+          title: section.title,
+          content: section.content,
+        })))
+      );
+      const formattedSuggestions: DocumentSuggestion[] = reviewPoints.map((point, idx) => ({
+        id: `sug-import-${Date.now()}-${idx}`,
+        sectionId: point.sectionId,
+        kind: 'insert',
+        baseText: '',
+        proposedText: point.proposedText,
+        rationale: point.rationale,
+        status: 'pending',
+        source: 'agent',
+      }));
 
       const totalContentSections = parsedDoc.sections.filter((s) => s.id !== DOCUMENT_COVER_ID).length;
       const totalImages =
@@ -286,20 +304,15 @@ export async function POST(req: NextRequest) {
           0
         );
 
-      const welcomeMessage =
-        aiAudit.welcomeMessage ||
-        `👋 ¡Hola! He importado íntegramente tu documento **${cleanFileTitle}** manteniendo su estructura, contenido, tablas, colores e imágenes originales en modo editable.\n\n` +
-          `📄 **Resumen de importación 1:1:**\n` +
-          `• **${totalContentSections} secciones** organizadas exactamente como en el documento original.\n` +
-          (parsedDoc.channels.length > 0
-            ? `• **${parsedDoc.channels.length} canales** extraídos en la tabla de Input List.\n`
-            : '') +
-          (totalImages > 0 ? `• **${totalImages} imágenes y planos técnicos** integrados en sus páginas correspondientes.\n` : '') +
-          `\n📌 **Diagnóstico Técnico (Puntaje: ${aiAudit.auditScore || 90}/100):**\n` +
-          `${aiAudit.auditSummary || 'El rider presenta un nivel técnico profesional completo.'}\n\n` +
-          (formattedSuggestions.length > 0
-            ? `He preparado **${formattedSuggestions.length} sugerencias puntuales** en caso de que desees reforzar cláusulas específicas.`
-            : 'Puedes editar cualquier texto, tabla, aviso o imagen directamente sobre el documento.');
+      const welcomeMessage = composeReviewMessage({
+        score: aiAudit.auditScore || 82,
+        summary: aiAudit.auditSummary
+          || `Importé ${totalContentSections} secciones`
+          + (parsedDoc.channels.length > 0 ? `, ${parsedDoc.channels.length} canales` : '')
+          + (totalImages > 0 ? ` y ${totalImages} imágenes` : '')
+          + '. El texto original se mantiene editable y estas son las cláusulas que conviene reforzar.',
+        points: reviewPoints,
+      });
 
       const completedSectionIds = parsedDoc.sections.map((s) => s.id);
       const stagePlot = {

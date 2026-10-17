@@ -30,6 +30,7 @@ export interface ChatMessageItem {
   attachments?: ChatAttachment[];
   isError?: boolean;
   retryPrompt?: string;
+  actions?: Array<Record<string, unknown>>;
 }
 
 export interface ChatSessionSummary {

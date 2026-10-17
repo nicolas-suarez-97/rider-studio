@@ -19,8 +19,9 @@ import { RiderType, RiderDocumentTheme, SectionItem, ChannelData, ExportScope, S
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
-import { buildGapSuggestions, isDocumentIntro, sectionsForOutline, type SectionDocumentPatch } from '@/core/editor/content-doc';
+import { buildGapSuggestions, docToPlainText, isDocumentIntro, sectionsForOutline, type SectionDocumentPatch } from '@/core/editor/content-doc';
 import { materializeSuggestions } from '@/core/editor/suggestions';
+import { REVIEW_HEADING, readReviewSuggestions } from '@/core/editor/review-message';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
 import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
@@ -128,6 +129,11 @@ export function WorkspaceClient({
   const [incomingDraftPrompt, setIncomingDraftPrompt] = useState<{ text: string; id: number } | null>(null);
 
   const isFirstMount = useRef(true);
+  const reviewStarted = useRef<string | null>(null);
+  const reviewPublished = useRef<string | null>(null);
+  const dismissedReviewIds = useRef(new Set<string>());
+  const sessionIdRef = useRef(currentSessionId);
+  sessionIdRef.current = currentSessionId;
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -193,6 +199,113 @@ export function WorkspaceClient({
       isMounted = false;
     };
   }, [currentSessionId]);
+
+  useEffect(() => {
+    const stored = messages.flatMap((message) => readReviewSuggestions(message.actions));
+    if (stored.length === 0) return;
+    setAgentSuggestions((current) => {
+      const ids = new Set(current.map((item) => item.id));
+      const extra = stored.filter((item) => (
+        item.status === 'pending' && !ids.has(item.id) && !dismissedReviewIds.current.has(item.id)
+      ));
+      return extra.length ? [...extra, ...current] : current;
+    });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!isPersistedRiderId(rider.id)) return;
+    if (messages.some((message) => message.text.includes(REVIEW_HEADING))) return;
+    const sectionText = (section: SectionItem) => (
+      (section.content || '').trim() || (section.contentDoc ? docToPlainText(section.contentDoc) : '')
+    );
+    const hasBody = rider.sections.some((section) => section.id !== 'doc-cover' && sectionText(section).trim());
+    if (!hasBody || reviewStarted.current === rider.id) return;
+    reviewStarted.current = rider.id;
+
+    setIsChatCollapsed(false);
+    setMobileTab('assistant');
+    setIsAgentThinking(true);
+    const sections = rider.sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      content: sectionText(section).slice(0, 1800),
+    }));
+    const sessionAtStart = sessionIdRef.current;
+
+    fetch('/api/riders/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        riderId: rider.id,
+        sessionId: sessionAtStart,
+        title: rider.title,
+        sections,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data?.ok || typeof data.message !== 'string') return;
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setMessages((prev) => (
+          prev.some((message) => message.text.includes(REVIEW_HEADING))
+            ? prev
+            : [...prev, {
+                sender: 'ai' as const,
+                text: data.message,
+                time: now,
+                role: 'master' as const,
+                roleName: 'Master Production Copilot',
+                roleAvatar: '🧠',
+                actions: [{ kind: 'rider-review', suggestions: Array.isArray(data.suggestions) ? data.suggestions : [] }],
+              }]
+        ));
+        if (Array.isArray(data.suggestions)) {
+          setAgentSuggestions((current) => {
+            const ids = new Set(current.map((item) => item.id));
+            const extra = (data.suggestions as DocumentSuggestion[]).filter((item) => item?.id && !ids.has(item.id));
+            return extra.length ? [...extra, ...current] : current;
+          });
+        }
+        if (typeof data.sessionId === 'string' && data.sessionId !== sessionIdRef.current) {
+          setCurrentSessionId(data.sessionId);
+        }
+        reviewPublished.current = rider.id;
+      })
+      .catch((error) => {
+        console.warn('[Workspace] No se pudo revisar el rider:', error);
+        reviewStarted.current = null;
+      })
+      .finally(() => {
+        setIsAgentThinking(false);
+      });
+  }, [rider.id, rider.sections, rider.title, messages]);
+
+  useEffect(() => {
+    if (!isPersistedRiderId(rider.id) || reviewPublished.current === rider.id) return;
+    const review = messages.find((message) => message.text.includes(REVIEW_HEADING));
+    if (!review) return;
+    reviewPublished.current = rider.id;
+    const suggestions = readReviewSuggestions(review.actions);
+    void fetch('/api/riders/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        riderId: rider.id,
+        sessionId: currentSessionId,
+        message: review.text,
+        suggestions,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (typeof data?.sessionId === 'string' && data.sessionId !== currentSessionId) {
+          setCurrentSessionId(data.sessionId);
+        }
+      })
+      .catch(() => {
+        reviewPublished.current = null;
+      });
+  }, [rider.id, messages, currentSessionId]);
 
   // Cambiar tipo de rider preservando artista, temporada, id y contenido de módulos
   const handleSelectRiderType = (type: RiderType) => {
@@ -497,6 +610,7 @@ export function WorkspaceClient({
       setDismissedGaps((current) => current.includes(suggestion.id) ? current : [...current, suggestion.id]);
       return;
     }
+    dismissedReviewIds.current.add(suggestion.id);
     setAgentSuggestions((current) => current.filter((item) => item.id !== suggestion.id));
   };
 
@@ -902,6 +1016,7 @@ export function WorkspaceClient({
       role: 'master',
       roleName: 'Master Production Copilot',
       roleAvatar: '🧠',
+      actions: [{ kind: 'rider-review', suggestions }],
     };
     setMessages((prev) => [...prev, aiMsg]);
 
@@ -910,7 +1025,7 @@ export function WorkspaceClient({
     }
 
     setIsChatCollapsed(false);
-    setMobileTab('document');
+    setMobileTab('assistant');
 
     showToast(`🎉 ¡Rider de "${incomingRider.artistName || 'Artista'}" importado y analizado con éxito!`);
   };

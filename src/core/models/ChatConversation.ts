@@ -9,7 +9,8 @@ export class ChatMessage implements ChatMessageItem {
     public role?: AgentRole,
     public roleName?: string,
     public roleAvatar?: string,
-    public id?: string
+    public id?: string,
+    public actions?: Array<Record<string, unknown>>
   ) {}
 
   public static fromApi(data: {
@@ -21,6 +22,7 @@ export class ChatMessage implements ChatMessageItem {
     role_name?: string;
     role_avatar?: string;
     id?: string;
+    actions?: Array<Record<string, unknown>> | unknown;
   }): ChatMessage {
     const formattedTime = data.created_at
       ? new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -33,7 +35,8 @@ export class ChatMessage implements ChatMessageItem {
       data.agent_role || 'master',
       data.role_name || 'Agente de Producción',
       data.role_avatar || '🧠',
-      data.id
+      data.id,
+      Array.isArray(data.actions) ? data.actions as Array<Record<string, unknown>> : undefined
     );
   }
 }

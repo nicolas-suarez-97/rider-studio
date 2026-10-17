@@ -188,7 +188,7 @@ export function AssistantChatPanel({
 
       {/* Flujo de Mensajes */}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5 overscroll-contain">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !isThinking ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-4 sm:p-6 space-y-3 text-slate-400">
             <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-xl shadow-xs">
               {info.icon}
@@ -274,11 +274,55 @@ export function AssistantChatPanel({
           })
         )}
 
+        {suggestions.filter((item) => item.status === 'pending').length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-wider text-violet-700">
+              Puntos de mejora
+            </p>
+            {suggestions.filter((item) => item.status === 'pending').map((item) => (
+              <div key={item.id} className="rounded-2xl border border-violet-200 bg-violet-50/70 p-3 text-xs text-slate-700">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-violet-600">
+                  {sectionTitles[item.sectionId] || 'Documento'}
+                </p>
+                <p className="mt-1 font-semibold text-slate-900 leading-relaxed">{item.rationale}</p>
+                {item.proposedText.trim() && (
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600 line-clamp-4">
+                    {item.proposedText}
+                  </p>
+                )}
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onAcceptSuggestion?.(item.id)}
+                    className="px-2.5 py-1 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-bold cursor-pointer"
+                  >
+                    Aplicar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onFocusSuggestion?.(item.id)}
+                    className="px-2.5 py-1 rounded-xl bg-white border border-violet-200 text-violet-700 text-[11px] font-bold cursor-pointer"
+                  >
+                    Ver en el documento
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRejectSuggestion?.(item.id)}
+                    className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-slate-500 text-[11px] font-bold cursor-pointer"
+                  >
+                    Descartar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {isThinking && (
           <div className="flex items-center gap-2 text-slate-400 text-xs py-2">
             <span className="w-2 h-2 rounded-full bg-violet-600 animate-ping" />
             <span className="text-[11px] font-semibold text-slate-500">
-              {profile.name} {consultMode ? 'está revisando el rider...' : 'está redactando respuesta técnica...'}
+              {profile.name} {messages.length === 0 ? 'está revisando el rider…' : consultMode ? 'está revisando el rider...' : 'está redactando respuesta técnica...'}
             </span>
           </div>
         )}
