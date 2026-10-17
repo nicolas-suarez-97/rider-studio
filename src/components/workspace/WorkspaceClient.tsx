@@ -886,9 +886,8 @@ export function WorkspaceClient({
     riderRef.current = incomingRider;
 
     const firstSectionId =
-      incomingRider.sections.find((s) => s.id !== 'doc-cover')?.id ||
       incomingRider.sections[0]?.id ||
-      'tech-contactos';
+      'doc-cover';
     setActiveSectionId(firstSectionId);
 
     if (incomingRider.type === 'tecnico') setActiveAgent('audio_foh');

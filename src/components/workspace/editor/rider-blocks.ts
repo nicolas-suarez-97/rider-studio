@@ -7,6 +7,7 @@ import {
   ContactsBlock,
   CoverBlock,
   NoticeBlock,
+  PageFrameBlock,
   RequirementBlock,
   TiersBlock,
 } from '@/components/workspace/editor/RiderBlockViews';
@@ -146,6 +147,11 @@ export const RiderCover = Node.create({
       version: stringField('version', 'data-version', 'v1.0'),
       date: stringField('date', 'data-date'),
       imageSrc: stringField('imageSrc', 'data-image'),
+      plate: {
+        default: false,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-plate') === 'true',
+        renderHTML: (attributes: { plate?: boolean }) => (attributes.plate ? { 'data-plate': 'true' } : {}),
+      },
     };
   },
   parseHTML() {
@@ -161,6 +167,28 @@ export const RiderCover = Node.create({
     return {
       insertRiderCover: () => ({ editor }) => insertCoverAtStart(editor),
     };
+  },
+});
+
+export const PageFrame = Node.create({
+  name: 'pageFrame',
+  group: 'block',
+  content: 'block+',
+  defining: true,
+  addAttributes() {
+    return {
+      backgroundSrc: stringField('backgroundSrc', 'data-background'),
+      backgroundColor: stringField('backgroundColor', 'data-background-color'),
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-type="page-frame"]' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['div', mergeAttributes({ 'data-type': 'page-frame' }, HTMLAttributes), 0];
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(PageFrameBlock);
   },
 });
 
@@ -211,6 +239,7 @@ export const Notice = Node.create({
         },
         renderHTML: (attributes) => ({ 'data-tone': attributes.tone || 'note' }),
       },
+      backgroundColor: stringField('backgroundColor', 'data-background-color'),
     };
   },
   parseHTML() {

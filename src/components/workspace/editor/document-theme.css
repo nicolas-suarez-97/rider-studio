@@ -226,11 +226,12 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 24px;
-  padding: 8px 4px 12px;
+  padding: 16px 20px 24px;
+  border-radius: 6px;
   background: var(--rider-cover);
   color: var(--rider-cover-ink);
   background-size: cover;
-  background-position: center;
+  background-position: center top;
 }
 
 .docs-theme-festival .docs-cover-inner,
@@ -445,6 +446,10 @@
   margin: 0;
 }
 
+.docs-notice-body p + p {
+  margin-top: 0.45em;
+}
+
 .docs-theme .docs-requirement .is-empty::before {
   color: var(--rider-muted);
   content: "Escribe el requisito…";
@@ -453,9 +458,35 @@
   pointer-events: none;
 }
 
+.docs-cover-plate {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.docs-page-frame {
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  border-radius: 8px;
+  margin: 0.35em 0 0.8em;
+  padding: 14px 16px;
+}
+
+.docs-page-frame-body > :first-child {
+  margin-top: 0;
+}
+
 .docs-notice {
   border-left: 3px solid var(--rider-accent);
-  padding: 8px 0 8px 12px;
+  background: var(--rider-soft, #f8f9fa);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+}
+
+.docs-notice.has-custom-bg .docs-notice-bar button,
+.docs-notice.has-custom-bg .docs-notice-bar button[aria-pressed="true"] {
+  color: inherit;
 }
 
 .docs-notice.is-required { border-left-color: #b45309; }

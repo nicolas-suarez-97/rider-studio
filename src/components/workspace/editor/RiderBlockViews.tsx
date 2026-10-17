@@ -21,11 +21,23 @@ function stop(event: { stopPropagation: () => void }) {
   event.stopPropagation();
 }
 
+function inkForBackground(color: string): string | undefined {
+  const hex = /^#([0-9a-f]{6})$/i.exec(color.trim());
+  const raw = hex?.[1];
+  if (!raw) return undefined;
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luminance < 0.62 ? '#f8fafc' : '#1f2937';
+}
+
 export function CoverBlock({ node, updateAttributes, deleteNode, editor, selected }: NodeViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
   const readOnly = !editor.isEditable;
   const imageSrc = fieldValue(node.attrs.imageSrc);
+  const plate = node.attrs.plate === true || node.attrs.plate === 'true';
   const set = (key: string, value: string) => updateAttributes({ [key]: value });
 
   const onFile = async (file: File | undefined) => {
@@ -62,13 +74,16 @@ export function CoverBlock({ node, updateAttributes, deleteNode, editor, selecte
         className="docs-cover-inner"
         contentEditable={false}
         style={{
-          minHeight: PAGE_INNER,
-          ...(imageSrc ? {
+          minHeight: plate ? undefined : PAGE_INNER,
+          ...(imageSrc && !plate ? {
             backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.72)), url("${imageSrc}")`,
             color: '#fafafa',
           } : undefined),
         }}
       >
+        {plate && imageSrc && (
+          <img src={imageSrc} alt="" className="docs-cover-plate" />
+        )}
         {!readOnly && (
           <div className="docs-cover-tools">
             <button type="button" onMouseDown={stop} onClick={() => fileRef.current?.click()}>
@@ -103,7 +118,7 @@ export function CoverBlock({ node, updateAttributes, deleteNode, editor, selecte
             {error && <span className="docs-cover-error">{error}</span>}
           </div>
         )}
-        <div className="docs-cover-copy">
+        {!plate && <div className="docs-cover-copy">
           <input
             className="docs-cover-kicker"
             aria-label="Tipo de rider"
@@ -152,8 +167,25 @@ export function CoverBlock({ node, updateAttributes, deleteNode, editor, selecte
               onKeyDown={handleKey}
             />
           </div>
-        </div>
+        </div>}
       </div>
+    </NodeViewWrapper>
+  );
+}
+
+export function PageFrameBlock({ node }: NodeViewProps) {
+  const backgroundSrc = fieldValue(node.attrs.backgroundSrc);
+  const backgroundColor = fieldValue(node.attrs.backgroundColor);
+  return (
+    <NodeViewWrapper
+      className={`docs-page-frame ${backgroundSrc ? 'has-image' : ''}`}
+      data-type="page-frame"
+      style={{
+        backgroundColor: backgroundColor || undefined,
+        backgroundImage: backgroundSrc ? `url("${backgroundSrc}")` : undefined,
+      }}
+    >
+      <NodeViewContent className="docs-page-frame-body" />
     </NodeViewWrapper>
   );
 }
@@ -202,8 +234,15 @@ export function NoticeBlock({ node, updateAttributes, deleteNode, editor, select
   const tone: NoticeTone = node.attrs.tone === 'required' || node.attrs.tone === 'rejected'
     ? node.attrs.tone
     : 'note';
+  const backgroundColor = fieldValue(node.attrs.backgroundColor);
+  const ink = backgroundColor ? inkForBackground(backgroundColor) : undefined;
   return (
-    <NodeViewWrapper className={`docs-notice is-${tone} ${selected ? 'is-selected' : ''}`} data-type="notice" data-tone={tone}>
+    <NodeViewWrapper
+      className={`docs-notice is-${tone} ${backgroundColor ? 'has-custom-bg' : ''} ${selected ? 'is-selected' : ''}`}
+      data-type="notice"
+      data-tone={tone}
+      style={backgroundColor ? { background: backgroundColor, color: ink } : undefined}
+    >
       <div className="docs-notice-bar" contentEditable={false}>
         <div className="docs-notice-tones">
           {(Object.keys(TONE_LABEL) as NoticeTone[]).map((item) => (

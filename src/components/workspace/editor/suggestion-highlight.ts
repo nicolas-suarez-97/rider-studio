@@ -577,8 +577,9 @@ export const SuggestionHighlights = Extension.create({
                 continue;
               }
 
-              // Caso 2: Sugerencia pendiente en modo preview
+              // Caso 2: Sugerencia pendiente en modo preview (omitir sugerencias de importación aún no aplicadas para no alterar la vista 1:1 del documento)
               if (suggestion.status === 'pending') {
+                if (suggestion.id?.startsWith('sug-import-')) continue;
                 const bounds = suggestion.sectionId ? findSectionBounds(state.doc, suggestion.sectionId) : null;
                 if (!suggestion.baseText) {
                   if (!suggestion.proposedText) continue;

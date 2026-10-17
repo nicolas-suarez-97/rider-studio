@@ -182,3 +182,61 @@ export const FontSizeExtension = Mark.create<FontSizeOptions>({
     };
   },
 });
+
+export interface TextColorOptions {
+  types: string[];
+}
+
+export const TextColorExtension = Mark.create<TextColorOptions>({
+  name: 'textColor',
+
+  addOptions() {
+    return {
+      types: ['text'],
+    };
+  },
+
+  addAttributes() {
+    return {
+      color: {
+        default: null,
+        parseHTML: (element) => (element as HTMLElement).style?.color || null,
+        renderHTML: (attributes) => {
+          if (!attributes.color) {
+            return {};
+          }
+          return {
+            style: `color: ${attributes.color}`,
+          };
+        },
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[style*="color"]',
+        getAttrs: (element) => {
+          const color = (element as HTMLElement).style?.color;
+          return color ? { color } : false;
+        },
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0];
+  },
+});
+
+export const HighlightMark = Mark.create({
+  name: 'highlight',
+  parseHTML() {
+    return [{ tag: 'mark' }];
+  },
+  renderHTML() {
+    return ['mark', 0];
+  },
+});
+

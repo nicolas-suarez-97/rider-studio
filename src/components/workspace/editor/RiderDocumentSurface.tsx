@@ -20,12 +20,13 @@ import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountF
 import { SectionChips } from '@/components/workspace/editor/section-chips';
 import { InputList } from '@/components/workspace/editor/input-list-node';
 import { cloneInputListRows } from '@/core/constants/input-list';
-import { TextAlignExtension, FontSizeExtension } from '@/components/workspace/editor/editor-formatting';
+import { TextAlignExtension, FontSizeExtension, TextColorExtension, HighlightMark } from '@/components/workspace/editor/editor-formatting';
 import {
   Columns,
   Contacts,
   insertCoverAtStart,
   Notice,
+  PageFrame,
   Requirement,
   RiderCover,
   RiderDocumentMetaExtension,
@@ -453,6 +454,8 @@ export function RiderDocumentSurface({
       }),
       TextAlignExtension,
       FontSizeExtension,
+      TextColorExtension,
+      HighlightMark,
       SectionHeading.configure({ levels: [1, 2, 3] }),
       TableKit.configure({
         table: { resizable: false, renderWrapper: true },
@@ -461,6 +464,7 @@ export function RiderDocumentSurface({
       RiderCover,
       Requirement,
       Notice,
+      PageFrame,
       Tiers,
       Contacts,
       Columns,
@@ -469,7 +473,7 @@ export function RiderDocumentSurface({
       TaskItem.configure({ nested: true }),
       Image.configure({
         inline: false,
-        allowBase64: false,
+        allowBase64: true,
         HTMLAttributes: {
           class: 'docs-image',
         },
@@ -533,6 +537,7 @@ export function RiderDocumentSurface({
     },
     onUpdate: ({ editor: current, transaction }) => {
       if (!transaction.docChanged || readOnly) return;
+      isInternalEditRef.current = true;
       const ids = sectionsRef.current.map((section) => section.id);
       callbacksRef.current.onDocumentChange?.(splitDocumentToSections(current.getJSON(), ids));
       setPages(pageCountFromEditor(current.view.dom));
@@ -555,6 +560,7 @@ export function RiderDocumentSurface({
     },
   }, [readOnly]);
 
+  const isInternalEditRef = useRef(false);
   editorRef.current = editor;
 
   useEffect(() => {
@@ -599,7 +605,10 @@ export function RiderDocumentSurface({
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     const nextDoc = riderDocumentFromSections(sections, { artistName, title: riderTitle });
-    if (documentStructureKey(editor.getJSON()) === documentStructureKey(nextDoc)) return;
+    if (isInternalEditRef.current) {
+      isInternalEditRef.current = false;
+      if (documentStructureKey(editor.getJSON()) === documentStructureKey(nextDoc)) return;
+    }
 
     let cancelled = false;
     queueMicrotask(() => {
@@ -797,9 +806,11 @@ export function RiderDocumentSurface({
         .docs-editor blockquote { border-left: 3px solid #c4b5fd; padding: 0.1em 0 0.1em 12px; margin: 0.45em 0 0.7em; color: #475569; }
         .docs-editor hr { border: 0; border-top: 1px solid #dadce0; margin: 1em 0; }
         .docs-editor .tableWrapper { margin: 0.45em 0 0.9em; overflow-x: auto; }
-        .docs-editor table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .docs-editor th { background: #f8f9fa; font-weight: 700; text-align: left; }
-        .docs-editor th, .docs-editor td { position: relative; border: 1px solid #dadce0; padding: 6px 8px; vertical-align: top; font-size: 10pt; }
+        .docs-editor table { width: 100%; border-collapse: collapse; table-layout: auto; }
+        .docs-editor th { background: #f1f5f9; font-weight: 700; text-align: left; font-size: 8.5pt; letter-spacing: 0.02em; }
+        .docs-editor th, .docs-editor td { position: relative; border: 1px solid #cbd5e1; padding: 4px 6px; vertical-align: middle; font-size: 8.5pt; line-height: 1.25; }
+        .docs-editor td p, .docs-editor th p { margin: 0; }
+        .docs-editor td p + p { margin-top: 2px; }
         .docs-editor .selectedCell:after { position: absolute; inset: 0; background: rgba(124, 58, 237, 0.12); content: ''; pointer-events: none; }
         .docs-editor th.selectedCell, .docs-editor td.selectedCell { border-color: #7c3aed; }
         .docs-editor .tableWrapper:has(.ProseMirror-selectednode), .docs-editor table.ProseMirror-selectednode { outline: 2px solid #7c3aed; outline-offset: 3px; box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14); border-radius: 4px; }
@@ -840,7 +851,10 @@ export function RiderDocumentSurface({
         .docs-input-list-delete-block { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 8px; border: 1px solid #fee2e2; background: #fff5f5; font-size: 10px; font-weight: 700; color: #e11d48; cursor: pointer; transition: all 0.15s ease; }
         .docs-input-list.is-selected .docs-input-list-card { outline: 2px solid #7c3aed; outline-offset: 3px; box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14); }
         .docs-combo { position: relative; min-width: 0; }
-        .docs-editor img, .docs-editor .docs-image { max-width: 100%; height: auto; max-height: 28rem; display: block; margin: 0.4em 0 0.7em; object-fit: contain; }
+        .docs-editor img, .docs-editor .docs-image { max-width: 100%; height: auto; display: block; margin: 0.6em auto 0.9em; object-fit: contain; border-radius: 4px; }
+        .docs-editor img:not([width]), .docs-editor .docs-image:not([width]) { width: 100%; max-height: 29rem; }
+        .docs-editor img[width], .docs-editor .docs-image[width] { max-height: none; height: auto; }
+        .docs-editor mark { background: #fde68a; color: inherit; }
         .docs-editor .docs-search-hit { background: #fde68a; border-radius: 2px; }
         .docs-editor .docs-search-hit.is-current { background: #fbbf24; box-shadow: inset 0 0 0 1px #d97706; }
         .docs-input-list.docs-search-hit .docs-input-list-card,

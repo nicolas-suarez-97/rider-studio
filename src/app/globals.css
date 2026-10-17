@@ -101,10 +101,14 @@ body {
 }
 .docs-canvas .ProseMirror ul,
 .docs-canvas .ProseMirror ol {
-  margin: 0.2em 0 0.6em;
-  padding-left: 1.5em;
+  margin: 0.25em 0 0.65em;
+  padding-left: 1.65em;
 }
 .docs-canvas .ProseMirror ul { list-style: disc; }
+.docs-canvas .ProseMirror ul ul { list-style: circle; margin: 0.2em 0 0.35em; }
+.docs-canvas .ProseMirror ul ul ul { list-style: square; }
+.docs-canvas .ProseMirror li { margin: 0.18em 0; }
+.docs-canvas .ProseMirror li > p { margin: 0 0 0.15em; }
 .docs-canvas .ProseMirror ol { list-style: decimal; }
 .docs-canvas .ProseMirror a {
   color: #1155cc;
