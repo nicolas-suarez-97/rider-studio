@@ -37,8 +37,14 @@ export async function POST(req: NextRequest) {
 
     const parsed = SaveRiderPayloadSchema.safeParse(rawBody);
     if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const where = issue?.path?.length ? issue.path.join('.') : '';
+      console.error('[API Riders POST] payload inválido', parsed.error.issues);
       return NextResponse.json(
-        { error: 'Datos de rider inválidos', details: parsed.error.format() },
+        {
+          error: where ? `Datos de rider inválidos: ${where}` : 'Datos de rider inválidos',
+          details: parsed.error.format(),
+        },
         { status: 400 }
       );
     }

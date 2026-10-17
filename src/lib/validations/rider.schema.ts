@@ -32,7 +32,7 @@ export const SaveRiderPayloadSchema = z.object({
   sections: z.array(z.record(z.string(), z.unknown())).optional().default([]),
   metadata: z.record(z.string(), z.unknown()).optional().default({}),
   media: z.array(z.object({
-    id: z.string().min(1).max(80),
+    id: z.string().min(1).max(500),
     url: z.string().min(8).max(2000),
     pathname: z.string().min(1).max(500),
     cover: z.boolean(),
