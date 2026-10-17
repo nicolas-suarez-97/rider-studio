@@ -63,15 +63,6 @@ function blockElementFromPos(view: EditorView, pos: number): HTMLElement | null 
   return null;
 }
 
-function collapsedSize(el: HTMLElement, previousBottomMargin: number, isFirst: boolean) {
-  const style = window.getComputedStyle(el);
-  const marginTop = parseFloat(style.marginTop) || 0;
-  const marginBottom = parseFloat(style.marginBottom) || 0;
-  const height = el.offsetHeight;
-  const topGap = isFirst ? marginTop : Math.max(previousBottomMargin, marginTop);
-  return { size: topGap + height, nextMargin: marginBottom };
-}
-
 function hasForcedPageBreak(el: HTMLElement) {
   const heading = el.tagName === 'H2' ? el : el.querySelector(':scope > h2');
   return heading?.getAttribute('data-page-break') === 'before';
@@ -108,28 +99,44 @@ function collectBlocks(view: EditorView): { pos: number; el: HTMLElement }[] {
 
 function measureBreaks(view: EditorView): PageBreak[] {
   const breaks: PageBreak[] = [];
-  let used = 0;
+  // Y from the top of the sheet. The first line starts below the page padding.
+  let borderEnd = PAGE_PADDING;
   let previousBottomMargin = 0;
-  let isFirst = true;
+  let page = 0;
+  let hasContent = false;
   let carryForce = false;
 
   for (const { pos, el } of collectBlocks(view)) {
-    const { size, nextMargin } = collapsedSize(el, previousBottomMargin, isFirst);
-    const forceNewPage = used > 0 && (used + size > PAGE_INNER || hasForcedPageBreak(el) || carryForce);
-    isFirst = false;
-    previousBottomMargin = nextMargin;
-    carryForce = breaksAfterPage(el);
-    if (size <= 0) continue;
-    if (forceNewPage) {
-      const filled = Math.min(used, PAGE_INNER);
-      breaks.push({
-        pos,
-        height: Math.max(0, PAGE_STRIDE - filled),
-      });
-      used = Math.min(size, PAGE_INNER);
+    const style = window.getComputedStyle(el);
+    const marginTop = parseFloat(style.marginTop) || 0;
+    const marginBottom = parseFloat(style.marginBottom) || 0;
+    const height = el.offsetHeight;
+    if (height <= 0 && marginTop <= 0 && marginBottom <= 0) continue;
+
+    const gap = hasContent ? Math.max(previousBottomMargin, marginTop) : marginTop;
+    const borderStart = borderEnd + gap;
+    const pageBottom = page * PAGE_STRIDE + PAGE_PADDING + PAGE_INNER;
+    const forced = hasContent && (hasForcedPageBreak(el) || carryForce);
+    const overflows = hasContent && borderStart + height > pageBottom + 0.5;
+
+    if (forced || overflows) {
+      page += 1;
+      let spacerStart = borderEnd + previousBottomMargin;
+      let targetBorder = page * PAGE_STRIDE + PAGE_PADDING + marginTop;
+      while (targetBorder < spacerStart) {
+        page += 1;
+        targetBorder = page * PAGE_STRIDE + PAGE_PADDING + marginTop;
+      }
+      const spacer = Math.round(targetBorder - marginTop - spacerStart);
+      if (spacer > 0) breaks.push({ pos, height: spacer });
+      borderEnd = targetBorder + height;
     } else {
-      used += size;
+      borderEnd = borderStart + height;
     }
+
+    previousBottomMargin = marginBottom;
+    hasContent = true;
+    carryForce = breaksAfterPage(el);
   }
 
   return breaks;
