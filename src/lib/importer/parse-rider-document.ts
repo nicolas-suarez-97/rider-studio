@@ -622,8 +622,7 @@ export async function parsePdfRiderDocument(
     keepEvenIfHeadingOnly?: boolean;
   }
 
-  let currentMajorRider: 'tecnico' | 'hospitality' =
-    /HOSPITALI/i.test(cleanFileTitle) ? 'hospitality' : 'tecnico';
+  let currentMajorRider: 'tecnico' | 'hospitality' = 'tecnico';
 
   const state: { currentSection: ActiveSectionDraft | null } = {
     currentSection: null,
@@ -686,10 +685,7 @@ export async function parsePdfRiderDocument(
   ): ActiveSectionDraft => {
     flushSection();
     const prefix = currentMajorRider === 'hospitality' ? 'hosp' : 'tech';
-    const displayTitle =
-      currentMajorRider === 'hospitality' && /^\d+\./.test(title) && !title.toUpperCase().includes('HOSPITALITY')
-        ? `HOSPITALITY — ${title}`
-        : title;
+    const displayTitle = title;
     const secId = makeUniqueId(title, prefix);
     const headingNode: RiderContentNode = {
       type: 'heading',
@@ -1132,7 +1128,7 @@ export async function parsePdfRiderDocument(
     const imageOnDiagram = (image: PageImageItem) => image.role !== 'diagram'
       && rasterizedDiagrams.some((diagram) => containsPoint(diagram, image.x + image.width / 2, image.yCenter));
 
-    if (p === 1 && backdrop && lines.length > 0 && lines.length <= 12 && !lineOnDiagram(lines[0]!)) {
+    if (p === 1 && backdrop && lines.length <= 12 && !(lines[0] && lineOnDiagram(lines[0]))) {
       const busy = lines.some((line) => line.height >= 13 && /^\d{1,2}\.\s+/.test(line.text.trim()));
       if (!busy) {
         coverPlateUrl = backdrop.url;
@@ -1544,21 +1540,27 @@ export async function parsePdfRiderDocument(
   flushSection();
 
   if (coverPlateUrl) {
+    const coverType: RiderType = /HOSPITALI/i.test(cleanFileTitle) && !/T[EÉ]CNIC/i.test(cleanFileTitle)
+      ? 'hospitality'
+      : 'tecnico';
     sections.unshift({
       id: DOCUMENT_COVER_ID,
-      num: '01',
+      num: '',
       title: 'Portada',
       subtitle: 'Página importada',
       tag: 'Portada',
       tagColor: 'bg-slate-100 text-slate-700',
       iconName: 'fileText',
       content: riderTitle,
-      contentDoc: buildCoverContentDoc('tecnico', artistName, riderTitle, version, coverPlateUrl),
+      contentDoc: buildCoverContentDoc(coverType, artistName, riderTitle, version, coverPlateUrl),
       pageBreakBefore: false,
     });
-    sections.forEach((section, index) => {
-      section.num = String(index + 1).padStart(2, '0');
-    });
+    let count = 0;
+    for (const section of sections) {
+      if (section.id === DOCUMENT_COVER_ID) continue;
+      count += 1;
+      section.num = String(count).padStart(2, '0');
+    }
   }
 
   // Build ChannelInput[] from allInputRows
