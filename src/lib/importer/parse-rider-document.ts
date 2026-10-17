@@ -239,7 +239,7 @@ function spansToInlineNodes(
     const cur = sorted[i];
     let text = cur.str;
     if (!strippedBullet && stripLeadingBullet) {
-      const cleaned = text.replace(/^[●•▪■▸·○◦*]\s*/, '');
+      const cleaned = text.replace(/^(?:[●•▪■▸·○◦*]|\s*[-–—])\s*/, '');
       if (cleaned !== text) {
         strippedBullet = true;
         text = cleaned;
@@ -443,12 +443,77 @@ function classifySectionMeta(title: string, currentMajorRider: 'tecnico' | 'hosp
   subtitle: string;
 } {
   const upper = title.toUpperCase();
+
+  // 1. Matriz de canales / Input List
+  if (upper.includes('INPUT LIST') || upper.includes('CANALES') || upper.includes('PATCH')) {
+    return {
+      moduleType: 'tecnico',
+      tag: 'Input List',
+      tagColor: 'bg-violet-100 text-violet-700',
+      iconName: 'list',
+      subtitle: 'Matriz de canales y microfonía',
+    };
+  }
+
+  // 2. Planos técnicos / Stage Plot
+  if (upper.includes('STAGE PLOT') || upper.includes('PLOTS') || upper.includes('PLANO')) {
+    return {
+      moduleType: 'tecnico',
+      tag: 'Stage Plot',
+      tagColor: 'bg-sky-100 text-sky-700',
+      iconName: 'layers',
+      subtitle: 'Planos técnicos y distribución escénica',
+    };
+  }
+
+  // 3. Especificaciones técnicas explícitas (audio, iluminación, video, corriente, tarima, etc.)
+  if (
+    upper.includes('AUDIO') ||
+    upper.includes('FOH') ||
+    upper.includes('MONITOR') ||
+    upper.includes('MICROFON') ||
+    upper.includes('ILUMINACI') ||
+    upper.includes('LIGHTING') ||
+    upper.includes('LUCES') ||
+    upper.includes('VIDEO') ||
+    upper.includes('PANTALLA') ||
+    upper.includes('CORRIENTE') ||
+    upper.includes('ELECTRIC') ||
+    upper.includes('ESCENARIO') ||
+    upper.includes('TARIMA') ||
+    upper.includes('RISER') ||
+    upper.includes('STAIR') ||
+    upper.includes('BACKLINE') ||
+    upper.includes('PRUEBA') ||
+    upper.includes('SOUNDCHECK') ||
+    upper.includes('RIGGING') ||
+    upper.includes('TRUSS') ||
+    upper.includes('EFECTO') ||
+    upper.includes('PYRO') ||
+    upper.includes('FX') ||
+    upper.includes('INTERCOM') ||
+    upper.includes('EQUIPO') ||
+    upper.includes('SISTEMA') ||
+    upper.includes('SPEAKER')
+  ) {
+    return {
+      moduleType: 'tecnico',
+      tag: 'Técnico',
+      tagColor: 'bg-slate-100 text-slate-700',
+      iconName: 'speaker',
+      subtitle: 'Especificaciones técnicas de producción',
+    };
+  }
+
+  // 4. Seguridad y accesos
   if (
     upper.includes('SECURITY') ||
     upper.includes('SEGURIDAD') ||
     upper.includes('BADGES') ||
     upper.includes('ACCREDITATION') ||
-    upper.includes('BARRICADE')
+    upper.includes('ACREDITACI') ||
+    upper.includes('BARRICADE') ||
+    upper.includes('BARRICADA')
   ) {
     return {
       moduleType: 'seguridad',
@@ -458,8 +523,26 @@ function classifySectionMeta(title: string, currentMajorRider: 'tecnico' | 'hosp
       subtitle: 'Seguridad, accesos y acreditaciones',
     };
   }
+
+  // 5. Directorio y firmas
   if (
-    currentMajorRider === 'hospitality' ||
+    upper.includes('CONTACT') ||
+    upper.includes('CONTENTS') ||
+    upper.includes('ACCEPTED') ||
+    upper.includes('DIRECTORIO') ||
+    upper.includes('INDICE')
+  ) {
+    return {
+      moduleType: 'tecnico',
+      tag: 'General',
+      tagColor: 'bg-zinc-100 text-zinc-700',
+      iconName: 'users',
+      subtitle: 'Información general y directorio',
+    };
+  }
+
+  // 6. Hospitalidad explícita
+  if (
     upper.includes('HOSPITALITY') ||
     upper.includes('HOSPITALIDAD') ||
     upper.includes('CATERING') ||
@@ -472,7 +555,10 @@ function classifySectionMeta(title: string, currentMajorRider: 'tecnico' | 'hosp
     upper.includes('VUELO') ||
     upper.includes('ADVANCE PARTY') ||
     upper.includes('PROMOTION') ||
-    upper.includes('CANCELLATION')
+    upper.includes('CANCELLATION') ||
+    upper.includes('COMIDA') ||
+    upper.includes('ALIMENTO') ||
+    currentMajorRider === 'hospitality'
   ) {
     return {
       moduleType: 'hospitality',
@@ -482,33 +568,7 @@ function classifySectionMeta(title: string, currentMajorRider: 'tecnico' | 'hosp
       subtitle: 'Hospitalidad, logística y camerinos',
     };
   }
-  if (upper.includes('INPUT LIST') || upper.includes('CANALES')) {
-    return {
-      moduleType: 'tecnico',
-      tag: 'Input List',
-      tagColor: 'bg-violet-100 text-violet-700',
-      iconName: 'list',
-      subtitle: 'Matriz de canales y microfonía',
-    };
-  }
-  if (upper.includes('STAGE PLOT') || upper.includes('PLOTS') || upper.includes('PLANO')) {
-    return {
-      moduleType: 'tecnico',
-      tag: 'Stage Plot',
-      tagColor: 'bg-sky-100 text-sky-700',
-      iconName: 'layers',
-      subtitle: 'Planos técnicos y distribución escénica',
-    };
-  }
-  if (upper.includes('CONTACT') || upper.includes('CONTENTS') || upper.includes('ACCEPTED')) {
-    return {
-      moduleType: 'tecnico',
-      tag: 'General',
-      tagColor: 'bg-zinc-100 text-zinc-700',
-      iconName: 'users',
-      subtitle: 'Información general y directorio',
-    };
-  }
+
   return {
     moduleType: 'tecnico',
     tag: 'Técnico',
@@ -1350,8 +1410,9 @@ export async function parsePdfRiderDocument(
         continue;
       }
 
-      // Level-1 Bullet item (starts with ●, •, ▪, ■, ▸, ·)
-      const isBulletLine = /^[●•▪■▸·]\s*/.test(text);
+      // Level-1 bullet, including the hyphen lists used by hospitality riders.
+      const isDashItem = /^[-–—]\s+\S/.test(text);
+      const isBulletLine = /^[●•▪■▸·]\s*/.test(text) || isDashItem;
       if (isBulletLine) {
         const inline = spansToInlineNodes(line.spans, true);
         if (!activeBulletItems) activeBulletItems = [];
@@ -1366,7 +1427,6 @@ export async function parsePdfRiderDocument(
 
       // Continuation of previous bullet or sub-bullet item (indented xMin >= 82 and close vertically dy <= 22)
       const dy = prevLine ? prevLine.y - line.y : 999;
-      const isDashItem = /^-\s+\S/.test(text);
       if (
         activeBulletItems &&
         activeBulletItems.length > 0 &&

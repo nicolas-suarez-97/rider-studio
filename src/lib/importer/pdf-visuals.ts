@@ -164,12 +164,27 @@ function bboxOf(raw: unknown): { x0: number; y0: number; x1: number; y1: number 
   };
 }
 
+function isHighlightFill(hex: string | undefined): string | undefined {
+  const color = usableFill(hex);
+  if (!color) return undefined;
+  const r = parseInt(color.slice(1, 3), 16);
+  const g = parseInt(color.slice(3, 5), 16);
+  const b = parseInt(color.slice(5, 7), 16);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const saturation = max === 0 ? 0 : (max - min) / max;
+  const lightness = (r + g + b) / (3 * 255);
+  // Un borde negro o un recuadro de papel no es una nota resaltada.
+  if (lightness < 0.22 || (lightness > 0.93 && saturation < 0.2)) return undefined;
+  return color;
+}
+
 function isCallout(box: { x0: number; y0: number; x1: number; y1: number }, pageWidth: number, pageHeight: number): boolean {
   const width = box.x1 - box.x0;
   const height = box.y1 - box.y0;
   return width >= Math.min(350, pageWidth * 0.55)
     && height >= 22
-    && height <= 520
+    && height <= 260
     && box.y0 >= 40
     && box.y1 <= pageHeight - 40;
 }
@@ -296,14 +311,17 @@ export function collectPageGraphics(
       continue;
     }
     if (isCallout(box, pageWidth, pageHeight)) {
-      callouts.push({
-        xMin: box.x0,
-        yMin: box.y0 - 2,
-        xMax: box.x1,
-        yMax: box.y1 + 2,
-        color: usableFill(fill),
-      });
-      continue;
+      const color = isHighlightFill(fill);
+      if (color) {
+        callouts.push({
+          xMin: box.x0,
+          yMin: box.y0 - 2,
+          xMax: box.x1,
+          yMax: box.y1 + 2,
+          color,
+        });
+        continue;
+      }
     }
     pathBoxes.push(box);
   }
