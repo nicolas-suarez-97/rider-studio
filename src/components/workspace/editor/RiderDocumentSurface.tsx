@@ -753,7 +753,10 @@ export function RiderDocumentSurface({
 
   useEffect(() => {
     if (!editor) return;
-    const syncPages = () => setPages(pageCountFromEditor(editor.view.dom));
+    const syncPages = () => {
+      const next = pageCountFromEditor(editor.view.dom);
+      setPages((current) => (current === next ? current : next));
+    };
     syncPages();
     const observer = new MutationObserver(syncPages);
     observer.observe(editor.view.dom, { attributes: true, attributeFilter: ['data-pages'] });

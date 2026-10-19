@@ -323,7 +323,7 @@ function mergeInlineNodes(a: RiderContentNode[], b: RiderContentNode[]): RiderCo
   return result;
 }
 
-function buildTipTapTable(headers: string[], rows: string[][], chunkSize = 26): RiderContentNode[] {
+function buildTipTapTable(headers: string[], rows: string[][], chunkSize = 16): RiderContentNode[] {
   if (rows.length === 0) return [];
   const tables: RiderContentNode[] = [];
 
@@ -977,7 +977,7 @@ export async function parsePdfRiderDocument(
         const validRows = rows.filter((r) => /^\d+$/.test(r[0]));
         allInputRows.push(...validRows);
         if (inputListSectionNodesRef && validRows.length > 0) {
-          inputListSectionNodesRef.push(...buildTipTapTable(INPUT_LIST_HEADERS, validRows, 40));
+          inputListSectionNodesRef.push(...buildTipTapTable(INPUT_LIST_HEADERS, validRows, 16));
         }
       }
 
@@ -1003,7 +1003,7 @@ export async function parsePdfRiderDocument(
         const validMixRows = mixRows.filter((r) => r[0].length > 0);
         allMixRows.push(...validMixRows);
         if (mixListSectionNodesRef && validMixRows.length > 0) {
-          mixListSectionNodesRef.push(...buildTipTapTable(MIX_LIST_HEADERS, validMixRows, 35));
+          mixListSectionNodesRef.push(...buildTipTapTable(MIX_LIST_HEADERS, validMixRows, 16));
         }
       }
       sealBackdrop();
