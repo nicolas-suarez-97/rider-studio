@@ -582,8 +582,8 @@ export const SuggestionHighlights = Extension.create({
                 if (suggestion.id?.startsWith('sug-import-')) continue;
                 const bounds = suggestion.sectionId ? findSectionBounds(state.doc, suggestion.sectionId) : null;
                 if (!suggestion.baseText) {
-                  if (!suggestion.proposedText) continue;
-                  const position = Math.min(bounds?.to ?? docSize, docSize);
+                  if (!suggestion.proposedText || !bounds) continue;
+                  const position = Math.min(bounds.to, docSize);
                   decorations.push(Decoration.widget(position, () => {
                     const widget = document.createElement('div');
                     widget.className = 'rider-suggestion-insert rider-suggestion-block';

@@ -604,8 +604,13 @@ export function WorkspaceClient({
     const gaps = rider.sections.flatMap((section) => (
       buildGapSuggestions(section, dismissed, section.id === activeSectionId)
     ));
+    const livingIds = new Set(rider.sections.map((section) => section.id));
     const pending = agentSuggestions
-      .filter((item) => item.status === 'pending' || item.status === 'applied' || item.status === 'stale')
+      .filter((item) => {
+        if (!(item.status === 'pending' || item.status === 'applied' || item.status === 'stale')) return false;
+        if (!item.sectionId || item.kind === 'add_section') return true;
+        return livingIds.has(item.sectionId);
+      })
       .map((suggestion) => {
         if (suggestion.status !== 'pending' || !suggestion.baseText) return suggestion;
         const section = rider.sections.find((item) => item.id === suggestion.sectionId);
@@ -783,6 +788,14 @@ export function WorkspaceClient({
     setRider(updated);
     setIsAddingSection(false);
     setActiveSectionId('');
+    for (const suggestion of agentSuggestions) dismissedReviewIds.current.add(suggestion.id);
+    for (const suggestion of messages.flatMap((message) => readReviewSuggestions(message.actions))) {
+      dismissedReviewIds.current.add(suggestion.id);
+    }
+    setAgentSuggestions([]);
+    setDismissedGaps([]);
+    reviewStarted.current = null;
+    reviewPublished.current = null;
 
     showToast('🔄 Rider reiniciado en blanco desde ceros');
     await handleSaveRider(updated);
