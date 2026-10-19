@@ -18,8 +18,9 @@ import {
   PromotorChatMessage,
   PromotorFileView,
 } from '@/core/types/contra-rider.types';
-import { RiderType } from '@/core/types/rider.types';
 import { answersFromLines, sendBlockReason } from '@/lib/promotor/contra-rider';
+import { countByContraLines, filterSections } from '@/core/utils/type-view';
+import { useTypeView } from '@/hooks/useTypeView';
 
 type MobileTab = 'contra' | 'document' | 'assistant';
 type SidePanel = 'none' | 'document' | 'chat';
@@ -62,13 +63,6 @@ function lineGap(line: Pick<ContraLine, 'response' | 'offer' | 'note'>): 'oferta
   return null;
 }
 
-const MODULE_FILTERS: { id: 'todos' | RiderType; label: string }[] = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'tecnico', label: 'Técnico' },
-  { id: 'hospitality', label: 'Hospitality' },
-  { id: 'seguridad', label: 'Seguridad' },
-];
-
 export function ContraRiderClient({
   showId,
   initialRiderData,
@@ -76,11 +70,11 @@ export function ContraRiderClient({
   initialAssistant,
   initialPrompt = null,
 }: ContraRiderClientProps) {
-  const [rider, setRider] = useState<Rider>(() => new Rider(initialRiderData));
+  const [rider] = useState<Rider>(() => new Rider(initialRiderData));
   const [lines, setLines] = useState<ContraLine[]>(initialContra.lines);
   const [contraStatus, setContraStatus] = useState(initialContra.status);
   const [version, setVersion] = useState(initialContra.version);
-  const [moduleFilter, setModuleFilter] = useState<'todos' | RiderType>('todos');
+  const { typeView, setTypeView } = useTypeView();
   const [mobileTab, setMobileTab] = useState<MobileTab>('contra');
   const [readSectionIds, setReadSectionIds] = useState<string[]>([]);
   const [activeAgent, setActiveAgent] = useState<AgentRole>('master');
@@ -104,8 +98,9 @@ export function ContraRiderClient({
   const prompted = useRef(false);
   linesRef.current = lines;
 
-  const readableTypes = rider.getReadableTypes();
-  const visibleLines = lines.filter((line) => moduleFilter === 'todos' || line.module === moduleFilter);
+  const typeViewCounts = countByContraLines(lines);
+  const visibleLines = lines.filter((line) => typeView === 'all' || line.module === typeView);
+  const visibleSections = filterSections(rider.sections, typeView, rider.type);
   const blockReason = sendBlockReason(lines);
   const answered = lines.filter((line) => line.response).length;
   const reviewedPercent = lines.length ? Math.round((answered / lines.length) * 100) : 0;
@@ -214,11 +209,7 @@ export function ContraRiderClient({
   };
 
   const focusSection = (line: ContraLine) => {
-    if (rider.type !== line.module) {
-      const updated = new Rider(rider);
-      updated.switchType(line.module);
-      setRider(updated);
-    }
+    if (typeView !== 'all' && typeView !== line.module) setTypeView('all');
     setSide('document');
     setMobileTab('document');
     window.setTimeout(() => {
@@ -229,7 +220,7 @@ export function ContraRiderClient({
   const focusBlocker = () => {
     const target = lines.find((line) => lineGap(line)) ?? lines.find((line) => !line.response);
     if (!target) return;
-    if (moduleFilter !== 'todos' && moduleFilter !== target.module) setModuleFilter('todos');
+    if (typeView !== 'all' && typeView !== target.module) setTypeView('all');
     setMobileTab('contra');
     window.setTimeout(() => {
       document.getElementById(`contra-${target.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -520,15 +511,10 @@ export function ContraRiderClient({
       <Toast message={toastMessage} />
       <Header
         pageType="promotor"
-        riderType={rider.type}
-        onSelectRiderType={readableTypes.length > 1 ? (type) => {
-          const updated = new Rider(rider);
-          updated.switchType(type);
-          setRider(updated);
-          setSide('document');
-          setMobileTab('document');
-        } : undefined}
-        visibleModuleTypes={readableTypes}
+        typeView={typeView}
+        typeViewCounts={typeViewCounts}
+        onSelectTypeView={setTypeView}
+        typeViewCountMode="organizer"
         documentTitle={rider.title}
       />
 
@@ -656,22 +642,9 @@ export function ContraRiderClient({
             )}
             {!inventoryOpen ? (
               <div className="mt-3 flex items-center gap-3">
-                <div className="flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-                  {MODULE_FILTERS.filter((filter) => filter.id === 'todos' || readableTypes.includes(filter.id)).map((filter) => (
-                    <button
-                      key={filter.id}
-                      type="button"
-                      onClick={() => setModuleFilter(filter.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border shrink-0 cursor-pointer active:scale-95 transition-all ${
-                        moduleFilter === filter.id
-                          ? 'bg-slate-900 text-white border-slate-900'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
-                </div>
+                <p className="text-[11px] font-semibold text-slate-500 min-w-0">
+                  Cada quien ve lo suyo: reenvía el enlace a tu equipo, cada persona puede filtrar por su tipo.
+                </p>
                 <div className="ml-auto flex items-center gap-2 min-w-0 w-36 sm:w-48" aria-label="Secciones revisadas">
                   <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
                     <div
@@ -819,7 +792,7 @@ export function ContraRiderClient({
             riderType={rider.type}
             documentTheme={rider.documentTheme}
             version={rider.version}
-            sections={rider.sections}
+            sections={visibleSections}
             channels={rider.channels}
             completedSectionIds={readSectionIds}
             onToggleComplete={(id) => {

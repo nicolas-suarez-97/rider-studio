@@ -2,19 +2,26 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'motion/react';
 import { Icon } from './Icon';
-import { RiderType, ExportScope } from '@/core/types/rider.types';
+import { ExportScope } from '@/core/types/rider.types';
+import {
+  emptyTypeViewCounts,
+  type TypeView,
+  type TypeViewCounts,
+} from '@/core/constants/rider-type-tokens';
+import { TypeViewSelector, type TypeViewCountMode } from './TypeViewSelector';
 
 interface HeaderProps {
   pageType: 'gate' | 'landing' | 'workspace' | 'chat' | 'view' | 'promotor' | 'promotor-home';
-  riderType?: RiderType;
-  onSelectRiderType?: (type: RiderType) => void;
+  typeView?: TypeView;
+  typeViewCounts?: TypeViewCounts;
+  onSelectTypeView?: (type: TypeView) => void;
+  onAddSectionOfType?: (type: TypeView) => void;
+  typeViewCountMode?: TypeViewCountMode;
+  typeViewLoading?: boolean;
   completedCount?: number;
   totalCount?: number;
   progressPercent?: number;
-  moduleStats?: Record<RiderType, { completed: number; total: number; percent: number }>;
-  visibleModuleTypes?: RiderType[];
   onSaveRider?: () => void;
   isSaving?: boolean;
   dbSyncStatus?: 'idle' | 'saving' | 'saved' | 'error';
@@ -72,13 +79,15 @@ function DocumentName({
 
 export function Header({
   pageType,
-  riderType = 'tecnico',
-  onSelectRiderType,
+  typeView = 'all',
+  typeViewCounts,
+  onSelectTypeView,
+  onAddSectionOfType,
+  typeViewCountMode = 'editor',
+  typeViewLoading = false,
   completedCount = 0,
   totalCount = 7,
   progressPercent = 0,
-  moduleStats,
-  visibleModuleTypes,
   onExport,
   onOpenExportModal,
   onShare,
@@ -239,48 +248,15 @@ export function Header({
         <>
         <div className="h-12 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm text-xs shrink-0">
         <div className="h-full w-full px-3 sm:px-6 flex items-center justify-center md:justify-between gap-2 overflow-x-auto no-scrollbar">
-          {/* Selector de Tipo de Rider */}
-          {onSelectRiderType && (
-              <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/70 shrink-0">
-                {(visibleModuleTypes ?? (['tecnico', 'hospitality', 'seguridad'] as RiderType[])).map((type) => {
-                  const active = riderType === type;
-                  const titles = { tecnico: 'Técnico', hospitality: 'Hospitality', seguridad: 'Seguridad' };
-                  const stat = moduleStats?.[type];
-                  const is100 = stat && stat.percent === 100;
-
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => onSelectRiderType(type)}
-                      className={`relative px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 cursor-pointer flex items-center gap-1.5 ${
-                        active ? 'text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      {active && (
-                        <motion.div
-                          layoutId="activeRiderTabSubheader"
-                          className="absolute inset-0 bg-white rounded-full shadow-2xs"
-                          transition={{ type: "spring", stiffness: 600, damping: 36 }}
-                        />
-                      )}
-                      <span className="relative z-10">{titles[type]}</span>
-                      {pageType !== 'view' && stat && (
-                        <span 
-                          className={`relative z-10 text-[9px] font-black px-1.5 py-0.2 rounded-full transition-colors ${
-                            is100
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : active
-                              ? 'bg-slate-100 text-slate-600'
-                              : 'bg-slate-200/80 text-slate-500'
-                          }`}
-                        >
-                          {stat.completed}/{stat.total}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+          {onSelectTypeView && (
+            <TypeViewSelector
+              value={typeView}
+              counts={typeViewCounts || emptyTypeViewCounts()}
+              onChange={onSelectTypeView}
+              onAddSection={pageType === 'workspace' ? onAddSectionOfType : undefined}
+              countMode={typeViewCountMode}
+              loading={typeViewLoading}
+            />
           )}
 
           {pageType === 'view' && (

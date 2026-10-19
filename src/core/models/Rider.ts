@@ -11,6 +11,8 @@ import {
   RiderMediaItem
 } from '../types/rider.types';
 import { defaultDocumentTheme, isRiderDocumentTheme } from '../constants/document-themes';
+import { RIDER_TYPE_ORDER } from '../constants/rider-type-tokens';
+import { flattenTypedSections, sectionType } from '../utils/type-view';
 import { coverMedia, parseRiderMedia, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { inputListDoc } from '../constants/input-list';
 import { isDocumentIntro, isDocumentCover, DOCUMENT_COVER_ID, buildCoverContentDoc } from '../editor/content-doc';
@@ -88,17 +90,31 @@ export class Rider {
         ? JSON.parse(JSON.stringify(this.modules.tecnico.stagePlot))
         : JSON.parse(JSON.stringify(DEFAULT_STAGE_PLOT)));
 
+    this.unifyDocument();
     this.renumberSections();
     this.renumberChannels();
+  }
 
-    if (!this.modules[this.type]) {
-      this.modules[this.type] = {
-        sections: this.sections,
-        channels: this.channels,
-        completedSectionIds: this.completedSectionIds,
-        stagePlot: this.stagePlot
-      };
+  /**
+   * One document per show: sections from every module become a single ordered list,
+   * each stamped with its type. Legacy `metadata.modules` stay available on save.
+   */
+  private unifyDocument(): void {
+    this.sections = flattenTypedSections(this.sections, this.type, this.modules);
+
+    if (this.type !== 'tecnico') {
+      const tecnico = this.modules.tecnico;
+      if ((tecnico?.channels || []).length > 0 && this.channels.length === 0) {
+        this.channels = (tecnico?.channels || []).map((channel, index) => (
+          channel instanceof ChannelInput ? channel : ChannelInput.fromData(channel, index)
+        ));
+      }
+      if (tecnico?.stagePlot) {
+        this.stagePlot = JSON.parse(JSON.stringify(tecnico.stagePlot));
+      }
     }
+
+    this.syncCurrentModule();
   }
 
   /**
@@ -211,13 +227,9 @@ export class Rider {
    * La plantilla en blanco y el plano por defecto no cuentan como contenido.
    */
   public hasModuleContent(type: RiderType): boolean {
-    const data = this.type === type
-      ? { sections: this.sections, channels: this.channels }
-      : this.modules[type];
-    if (!data) return false;
-
+    const data = this.getModule(type);
     const hasText = (data.sections || []).some((section) => (section.content || '').trim().length > 0);
-    const hasChannels = (data.channels || []).length > 0;
+    const hasChannels = type === 'tecnico' && (data.channels || []).length > 0;
     return hasText || hasChannels;
   }
 
@@ -251,17 +263,10 @@ export class Rider {
     const result = {} as Record<RiderType, { completed: number; total: number; percent: number }>;
 
     types.forEach((t) => {
-      let sectionsCount = 0;
-      let completedCount = 0;
-
-      if (this.type === t) {
-        sectionsCount = this.outlineSections().length;
-        completedCount = this.completedSectionIds.filter((id) => !isDocumentIntro(id)).length;
-      } else {
-        const moduleSections = (this.modules[t]?.sections || []).filter((section) => !isDocumentIntro(section.id));
-        sectionsCount = moduleSections.length;
-        completedCount = (this.modules[t]?.completedSectionIds || []).filter((id) => !isDocumentIntro(id)).length;
-      }
+      const moduleSections = this.outlineSections().filter((section) => sectionType(section, this.type) === t);
+      const ids = new Set(moduleSections.map((section) => section.id));
+      const completedCount = this.completedSectionIds.filter((id) => ids.has(id) && !isDocumentIntro(id)).length;
+      const sectionsCount = moduleSections.length;
 
       result[t] = {
         completed: completedCount,
@@ -302,12 +307,21 @@ export class Rider {
    * Sincroniza el estado del módulo activo dentro del diccionario general de módulos
    */
   public syncCurrentModule(): void {
-    this.modules[this.type] = {
-      sections: this.sections,
-      channels: this.channels.map(c => (typeof c?.toJSON === 'function' ? c.toJSON() : c)),
-      completedSectionIds: [...this.completedSectionIds],
-      stagePlot: this.type === 'tecnico' ? this.stagePlot : this.modules[this.type]?.stagePlot
-    };
+    const channels = this.channels.map(c => (typeof c?.toJSON === 'function' ? c.toJSON() : c));
+    RIDER_TYPE_ORDER.forEach((type) => {
+      const sections = this.sections.filter((section) => (
+        isDocumentCover(section.id) || isDocumentIntro(section.id)
+          ? type === 'tecnico'
+          : sectionType(section, this.type) === type
+      ));
+      const ids = new Set(sections.map((section) => section.id));
+      this.modules[type] = {
+        sections,
+        channels: type === 'tecnico' ? channels : this.modules[type]?.channels,
+        completedSectionIds: this.completedSectionIds.filter((id) => ids.has(id)),
+        stagePlot: type === 'tecnico' ? this.stagePlot : this.modules[type]?.stagePlot
+      };
+    });
   }
 
   /**
@@ -447,22 +461,17 @@ export class Rider {
    * Obtiene la información completa de cualquier módulo (activo o en segundo plano)
    */
   public getModule(type: RiderType): RiderModuleData {
-    if (this.type === type) {
-      return {
-        sections: this.sections,
-        channels: this.channels.map(c => (typeof c?.toJSON === 'function' ? c.toJSON() : c)),
-        completedSectionIds: [...this.completedSectionIds]
-      };
-    }
-
-    if (this.modules[type]) {
-      return this.modules[type]!;
-    }
-
+    const sections = this.sections.filter((section) => (
+      !isDocumentCover(section.id) && !isDocumentIntro(section.id) && sectionType(section, this.type) === type
+    ));
+    const ids = new Set(sections.map((section) => section.id));
     return {
-      sections: [],
-      channels: [],
-      completedSectionIds: []
+      sections,
+      channels: type === 'tecnico'
+        ? this.channels.map(c => (typeof c?.toJSON === 'function' ? c.toJSON() : c))
+        : (this.modules[type]?.channels || []),
+      completedSectionIds: this.completedSectionIds.filter((id) => ids.has(id)),
+      stagePlot: type === 'tecnico' ? this.stagePlot : this.modules[type]?.stagePlot
     };
   }
 
@@ -526,12 +535,12 @@ export class Rider {
    * Conserva metadatos de ids que siguen existiendo y elimina los que ya no están.
    */
   public syncSectionsFromDocument(
-    patches: Array<{ id: string; title: string; content: string; contentDoc?: SectionItem['contentDoc']; pageBreakBefore?: boolean }>
+    patches: Array<{ id: string; title: string; content: string; contentDoc?: SectionItem['contentDoc']; pageBreakBefore?: boolean }>,
+    options?: { retainIds?: string[]; defaultType?: RiderType }
   ): void {
     const byId = new Map(this.sections.map((sec) => [sec.id, sec]));
     const baseTemplates = Object.values(RIDER_DATA).flatMap((d) => d.sections);
-    let count = 0;
-    this.sections = patches.map((patch) => {
+    const built = patches.map((patch) => {
       const current = byId.get(patch.id);
       const isCover = isDocumentCover(patch.id);
       const baseMatch = !current && !isCover
@@ -539,14 +548,9 @@ export class Rider {
             (b) => b.title.trim().toLowerCase() === (patch.title || '').trim().toLowerCase()
           )
         : null;
-      let num = '';
-      if (!isCover) {
-        count += 1;
-        num = String(count).padStart(2, '0');
-      }
       return {
         id: patch.id,
-        num,
+        num: '',
         title: isCover ? 'Portada' : (patch.title || current?.title || 'Sección'),
         subtitle: current?.subtitle || baseMatch?.subtitle || '',
         tag: isCover ? 'Portada' : (current?.tag || baseMatch?.tag || 'Custom'),
@@ -555,18 +559,49 @@ export class Rider {
         content: patch.content,
         contentDoc: patch.contentDoc,
         pageBreakBefore: patch.pageBreakBefore ?? current?.pageBreakBefore ?? false,
+        type: current?.type || options?.defaultType || this.type,
       };
     });
+
+    const retainIds = new Set(options?.retainIds || []);
+    if (retainIds.size > 0) {
+      const builtById = new Map(built.map((section) => [section.id, section]));
+      const seen = new Set<string>();
+      const merged: SectionItem[] = [];
+      for (const section of this.sections) {
+        const updated = builtById.get(section.id);
+        if (updated) {
+          merged.push(updated);
+          seen.add(section.id);
+        } else if (retainIds.has(section.id)) {
+          merged.push(section);
+          seen.add(section.id);
+        }
+      }
+      for (const section of built) {
+        if (!seen.has(section.id)) merged.push(section);
+      }
+      this.sections = merged;
+    } else {
+      this.sections = built;
+    }
+
     const living = new Set(this.sections.map((sec) => sec.id));
     this.completedSectionIds = this.completedSectionIds.filter((id) => living.has(id));
+    this.renumberSections();
     this.syncCurrentModule();
   }
 
   public applyTemplateOutline(): void {
     const template = RIDER_DATA[this.type];
     const rawSections = template?.sections || [];
-    const hasCover = rawSections.some((s) => isDocumentCover(s.id));
-    const coverSection: SectionItem = {
+    const existingCover = this.sections.find((section) => isDocumentCover(section.id));
+    const otherTypes = this.sections.filter((section) => (
+      !isDocumentCover(section.id)
+      && !isDocumentIntro(section.id)
+      && sectionType(section, this.type) !== this.type
+    ));
+    const coverSection: SectionItem = existingCover || {
       id: DOCUMENT_COVER_ID,
       num: '',
       title: 'Portada',
@@ -579,26 +614,24 @@ export class Rider {
       pageBreakBefore: false,
     };
 
-    const sectionsToProcess = hasCover ? rawSections : [coverSection, ...rawSections];
-
-    this.sections = sectionsToProcess.map((section, index) => {
-      if (isDocumentCover(section.id)) {
-        return {
-          ...section,
-          num: '',
-          content: '',
-          contentDoc: buildCoverContentDoc(this.type, this.artistName, this.title, this.version),
-          pageBreakBefore: false,
-        };
-      }
-      return {
+    const templateSections = rawSections
+      .filter((section) => !isDocumentCover(section.id))
+      .map((section, index) => ({
         ...section,
         content: '',
         contentDoc: section.id === 'tech-inputlist' ? inputListDoc() : undefined,
         pageBreakBefore: index > 0,
-      };
-    });
-    this.completedSectionIds = [];
+        type: this.type,
+      }));
+
+    this.sections = flattenTypedSections(
+      [coverSection, ...templateSections, ...otherTypes],
+      this.type,
+      {},
+    );
+    this.completedSectionIds = this.completedSectionIds.filter((id) => (
+      this.sections.some((section) => section.id === id)
+    ));
     this.renumberSections();
     this.syncCurrentModule();
   }
@@ -609,6 +642,7 @@ export class Rider {
       ...section,
       id: `custom-${Date.now()}`,
       num,
+      type: section.type || this.type,
       pageBreakBefore: false,
     };
     const index = afterId ? this.sections.findIndex((item) => item.id === afterId) : -1;
@@ -731,13 +765,7 @@ export class Rider {
    * Prepara el payload para persistir en la API o Supabase
    */
   public toDatabasePayload(): object {
-    // Sincronizar módulo actual en el diccionario de módulos antes de guardar
-    this.modules[this.type] = {
-      sections: this.sections,
-      channels: this.channels.map(c => (typeof c?.toJSON === 'function' ? c.toJSON() : c)),
-      completedSectionIds: this.completedSectionIds,
-      stagePlot: this.type === 'tecnico' ? this.stagePlot : this.modules[this.type]?.stagePlot
-    };
+    this.syncCurrentModule();
 
     return {
       id: this.id && !this.id.startsWith('r-') && !this.id.startsWith('custom-') ? this.id : undefined,

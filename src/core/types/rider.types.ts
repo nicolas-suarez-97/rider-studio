@@ -35,6 +35,8 @@ export interface SectionItem {
   contentDoc?: RiderContentDoc;
   /** When true, pagination starts this heading on a new Letter page. */
   pageBreakBefore?: boolean;
+  /** Label of the section. The rider is one document; type is not a separate file. */
+  type?: RiderType;
 }
 
 export interface RiderDefinition {

@@ -12,9 +12,10 @@ import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { Rider } from '@/core/models/Rider';
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
-import { RiderType } from '@/core/types/rider.types';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 import { SectionCommentItem } from '@/lib/share/comments';
+import { countByType, filterSections } from '@/core/utils/type-view';
+import { useTypeView } from '@/hooks/useTypeView';
 
 type MobileTab = 'sections' | 'document' | 'assistant';
 
@@ -24,7 +25,8 @@ interface RiderViewClientProps {
 }
 
 export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClientProps) {
-  const [rider, setRider] = useState<Rider>(() => new Rider(initialRiderData));
+  const { typeView, setTypeView } = useTypeView();
+  const [rider] = useState<Rider>(() => new Rider(initialRiderData));
   const [activeSectionId, setActiveSectionId] = useState<string>(
     () => initialRiderData?.sections?.[0]?.id || ''
   );
@@ -40,8 +42,9 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
   const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
   const [commentAuthorName, setCommentAuthorName] = useState('');
 
-  const readableTypes = rider.getReadableTypes();
-  const outlineSections = sectionsForOutline(rider.sections);
+  const typeViewCounts = countByType(rider.sections, rider.type);
+  const visibleSections = filterSections(rider.sections, typeView, rider.type);
+  const outlineSections = sectionsForOutline(visibleSections);
   const readCount = outlineSections.filter((section) => readSectionIds.includes(section.id)).length;
   const readPercent = outlineSections.length === 0
     ? 0
@@ -90,14 +93,6 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
     counts[comment.sectionId] = (counts[comment.sectionId] || 0) + 1;
     return counts;
   }, {});
-
-  const handleSelectRiderType = (type: RiderType) => {
-    const updated = new Rider(rider);
-    updated.switchType(type);
-    setRider(updated);
-    setActiveSectionId(updated.sections[0]?.id || '');
-    setMobileTab('document');
-  };
 
   const handleSelectSection = (id: string) => {
     setActiveSectionId(id);
@@ -170,9 +165,9 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
       <Toast message={toastMessage} />
       <Header
         pageType="view"
-        riderType={rider.type}
-        onSelectRiderType={readableTypes.length > 1 ? handleSelectRiderType : undefined}
-        visibleModuleTypes={readableTypes}
+        typeView={typeView}
+        typeViewCounts={typeViewCounts}
+        onSelectTypeView={setTypeView}
         completedCount={readCount}
         totalCount={outlineSections.length}
         progressPercent={readPercent}
@@ -206,7 +201,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
             riderType={rider.type}
             documentTheme={rider.documentTheme}
             version={rider.version}
-            sections={rider.sections}
+            sections={visibleSections}
             channels={rider.channels}
             completedSectionIds={readSectionIds}
             onToggleComplete={toggleReadSection}

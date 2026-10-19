@@ -16,6 +16,9 @@ import { Rider } from '@/core/models/Rider';
 import { riderService } from '@/core/services/rider.service';
 import { chatService } from '@/core/services/chat.service';
 import { RiderType, RiderDocumentTheme, SectionItem, ChannelData, ExportScope, StagePlotConfig } from '@/core/types/rider.types';
+import { isRiderType, type TypeView } from '@/core/constants/rider-type-tokens';
+import { countByType, filterSections } from '@/core/utils/type-view';
+import { useTypeView } from '@/hooks/useTypeView';
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
@@ -62,6 +65,10 @@ export function WorkspaceClient({
   initialType = 'tecnico'
 }: WorkspaceClientProps) {
   const router = useRouter();
+  const { typeView, setTypeView } = useTypeView();
+  const typeViewRef = useRef(typeView);
+  typeViewRef.current = typeView;
+  const [pendingSectionType, setPendingSectionType] = useState<TypeView>('all');
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [rider, setRider] = useState<Rider>(() => new Rider(initialRiderData || { type: initialType }));
@@ -307,21 +314,11 @@ export function WorkspaceClient({
       });
   }, [rider.id, messages, currentSessionId]);
 
-  // Cambiar tipo de rider preservando artista, temporada, id y contenido de módulos
-  const handleSelectRiderType = (type: RiderType) => {
-    const updated = new Rider({ ...rider });
-    updated.switchType(type);
-    setRider(updated);
-    setIsAddingSection(false);
-    setActiveSectionId(updated.sections[0]?.id || '');
-    if (type === 'tecnico') setActiveAgent('audio_foh');
-    else if (type === 'hospitality') setActiveAgent('hospitality');
-    else if (type === 'seguridad') setActiveAgent('security');
-
-    const sessionQuery = currentSessionId ? `&session=${currentSessionId}` : '';
-    const idQuery = updated.id ? `&id=${updated.id}` : '';
-    router.replace(`/artista/workspace?type=${type}${idQuery}${sessionQuery}`);
-    showToast(`✨ Cambiado a Módulo ${type.toUpperCase()} (${updated.artistName || 'Mismo Artista'})`);
+  const handleSelectTypeView = (next: TypeView) => {
+    setTypeView(next);
+    if (next === 'hospitality') setActiveAgent('hospitality');
+    else if (next === 'seguridad') setActiveAgent('security');
+    else if (next === 'tecnico') setActiveAgent('audio_foh');
   };
 
   // Crear un nuevo rider en blanco sin secciones prellenadas
@@ -538,7 +535,10 @@ export function WorkspaceClient({
     });
   };
 
-  const handleStartAddSection = () => {
+  const handleStartAddSection = (type?: TypeView) => {
+    if (type && type !== 'all') setPendingSectionType(type);
+    else if (isRiderType(typeView)) setPendingSectionType(typeView);
+    else setPendingSectionType('all');
     setIsAddingSection(true);
     if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches) {
       setMobileTab('sections');
@@ -560,6 +560,7 @@ export function WorkspaceClient({
       .flatMap((d) => d.sections)
       .find((s) => s.title.trim().toLowerCase() === trimmed.toLowerCase());
     const updated = new Rider({ ...rider });
+    const sectionType = isRiderType(pendingSectionType) ? pendingSectionType : rider.type;
     const section = updated.addSection({
       title: trimmed,
       subtitle: baseMatch?.subtitle || '',
@@ -567,6 +568,7 @@ export function WorkspaceClient({
       tagColor: baseMatch?.tagColor || 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
       iconName: baseMatch?.iconName || 'fileText',
       content: '',
+      type: sectionType,
     }, activeSectionId);
     setRider(updated);
     setActiveSectionId(section.id);
@@ -580,7 +582,15 @@ export function WorkspaceClient({
   const handleDocumentChange = (patches: SectionDocumentPatch[]) => {
     setRider((prev) => {
       const updated = new Rider({ ...prev });
-      updated.syncSectionsFromDocument(patches);
+      const view = typeViewRef.current;
+      const visibleIds = new Set(filterSections(prev.sections, view, prev.type).map((section) => section.id));
+      const retainIds = view === 'all'
+        ? undefined
+        : prev.sections.filter((section) => !visibleIds.has(section.id)).map((section) => section.id);
+      updated.syncSectionsFromDocument(patches, {
+        retainIds,
+        defaultType: isRiderType(view) ? view : prev.type,
+      });
       return updated;
     });
     setActiveSectionId((current) => {
@@ -629,7 +639,7 @@ export function WorkspaceClient({
           return updated;
         });
       } else if (suggestion.kind === 'switch_type' && suggestion.riderType) {
-        handleSelectRiderType(suggestion.riderType);
+        handleSelectTypeView(suggestion.riderType);
       } else if (suggestion.kind === 'switch_theme' && suggestion.theme) {
         handleThemeChange(suggestion.theme);
       } else if (suggestion.kind === 'add_section' && suggestion.newSectionTitle) {
@@ -869,7 +879,7 @@ export function WorkspaceClient({
             draft.status = 'applied';
             appliedItems.push(draft);
           } else if (draft.kind === 'switch_type' && draft.riderType) {
-            handleSelectRiderType(draft.riderType);
+            handleSelectTypeView(draft.riderType);
             draft.applied = true;
             draft.status = 'applied';
             appliedItems.push(draft);
@@ -928,9 +938,11 @@ export function WorkspaceClient({
     }
   };
 
-  const outlineSections = sectionsForOutline(rider.sections);
+  const typeViewCounts = countByType(rider.sections, rider.type);
+  const visibleSections = filterSections(rider.sections, typeView, rider.type);
+  const outlineSections = sectionsForOutline(visibleSections);
   const introHasContent = rider.sections.some((section) => isDocumentIntro(section.id) && Boolean((section.content || '').trim()));
-  const isBlankDocument = outlineSections.length === 0 && !rider.artistName.trim() && !introHasContent;
+  const isBlankDocument = sectionsForOutline(rider.sections).length === 0 && !rider.artistName.trim() && !introHasContent;
 
   const handleAskFromDocument = (text: string, sectionId?: string) => {
     if (text === '__outline__') {
@@ -1036,9 +1048,10 @@ export function WorkspaceClient({
 
       <Header
         pageType="workspace"
-        riderType={rider.type}
-        onSelectRiderType={handleSelectRiderType}
-        moduleStats={rider.getModuleStats()}
+        typeView={typeView}
+        typeViewCounts={typeViewCounts}
+        onSelectTypeView={handleSelectTypeView}
+        onAddSectionOfType={handleStartAddSection}
         onSaveRider={handleSaveRider}
         isSaving={isSaving}
         dbSyncStatus={dbSyncStatus}
@@ -1086,8 +1099,7 @@ export function WorkspaceClient({
             onSaveRider={() => handleSaveRider()}
             isSaving={isSaving}
             dbSyncStatus={dbSyncStatus}
-            riderType={rider.type}
-            onSelectRiderType={handleSelectRiderType}
+            riderType={isRiderType(typeView) ? typeView : rider.type}
             commentCounts={sectionComments.reduce<Record<string, number>>((counts, comment) => {
               counts[comment.sectionId] = (counts[comment.sectionId] || 0) + 1;
               return counts;
@@ -1105,7 +1117,7 @@ export function WorkspaceClient({
             documentTheme={rider.documentTheme}
             version={rider.version}
             onThemeChange={handleThemeChange}
-            sections={rider.sections}
+            sections={visibleSections}
             channels={rider.channels}
             completedSectionIds={rider.completedSectionIds}
             onToggleComplete={handleToggleComplete}
