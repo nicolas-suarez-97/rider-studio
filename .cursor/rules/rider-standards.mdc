@@ -5,20 +5,20 @@ alwaysApply: true
 
 # Estándar de riders
 
-La fuente de verdad técnica está en `docs/standards/`. El chat del producto y cualquier sugerencia de rider deben seguirla.
+Las reglas de calidad vigentes se mantienen. El catálogo nuevo las complementa; no las reemplaza.
 
-- Catálogo operable: `docs/standards/catalogo_json.json` (datos, reglas, equivalencias, textos modelo).
-- Contexto por parte: `parte-1-sistema-de-pa-contexto-ia.md`, `parte-2-consolas-contexto-ia.md`, `parte-3-personal-de-audio-contexto-ia.md`.
-- Calidad y anti-patrones: `docs/standards/RIDER_QUALITY_STANDARDS.md`.
-- Índice: `docs/standards/LEEME.md`.
+Calidad vigente (sigue aplicando):
 
-Al editar prompts, agentes o `/api/chat` y `/api/riders/review`, inyecta el recorte con `buildStandardsContext` (`src/lib/standards`). No copies el JSON entero al prompt.
+- `docs/standards/RIDER_QUALITY_STANDARDS.md`
+- `src/core/constants/rider-guidelines.ts` (red flags y hardware aprobado)
+- Prompts en `src/lib/agents/prompts/rider-llm-prompts.ts` y `SYSTEM_PROMPTS`
 
-Reglas que no se negocian en sugerencias:
+Catálogo de familias (se suma):
 
-- PA por modelo o resultado (SPL, cobertura, respuesta), nunca en vatios.
-- Equivalencias solo dentro de la misma gama del catálogo. Un arreglo no mezcla marcas.
-- No inventar modelos ausentes del catálogo.
-- Solo el artista marca no_negociable / preferido / flexible.
-- Hospitalidad no se mezcla en el rider técnico.
-- Lo desconocido va entre `[corchetes]`; se usa el texto modelo de la familia.
+- `docs/standards/catalogo_json.json`
+- Partes 1–3 en `docs/standards/`
+- Índice: `docs/standards/LEEME.md`
+
+Al editar prompts, agentes o `/api/chat` y `/api/riders/review`, inyecta ambos bloques con `buildStandardsContext`. No copies el JSON entero al prompt.
+
+No se negocia: nunca vatios; SPL 102 dBA / 114 dBC y cobertura; input list tabular; IEM/RF; stage plot; tierra aislada; hospitalidad aparte; alternativas homologadas; equivalentes solo de la misma gama del catálogo.

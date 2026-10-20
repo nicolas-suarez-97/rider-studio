@@ -24,7 +24,9 @@ Cada `.md` de parte es autosuficiente: papel de la IA, cómo trabajar, reglas ge
 
 ## Cómo lo consume el producto
 
-`src/lib/standards` selecciona las familias relevantes del `catalogo_json.json` y las inyecta en:
+Las reglas de calidad vigentes (`RIDER_QUALITY_STANDARDS.md`, red flags y hardware aprobado) se mantienen. El catálogo de familias las complementa.
+
+`src/lib/standards` selecciona las familias relevantes del `catalogo_json.json` y las inyecta, junto con esas reglas, en:
 
 - el chat (`/api/chat`) al redactar o sugerir cláusulas
 - la auditoría (`/api/riders/review`) al proponer mejoras

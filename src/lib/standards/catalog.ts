@@ -1,5 +1,6 @@
 import catalogJson from '../../../docs/standards/catalogo_json.json';
 import { STANDARDS_OPERATING_PROTOCOL } from './protocol';
+import { renderExistingQualityRules } from './quality-rules';
 import { selectStandardFamilies } from './select-families';
 import type {
   BuildStandardsContextInput,
@@ -134,7 +135,8 @@ export function buildStandardsContext(input: BuildStandardsContextInput): string
 
   const header = [
     `=== ESTÁNDAR TÉCNICO RIDER STUDIO (${catalog.documento}, ${catalog.version}) ===`,
-    'Usa este estándar para sugerencias, redacción y auditoría. No contradigas las reglas aprobadas.',
+    'Usa este estándar para sugerencias, redacción y auditoría. No contradigas las reglas aprobadas ni las de calidad vigentes.',
+    renderExistingQualityRules(),
     STANDARDS_OPERATING_PROTOCOL,
     renderValues(),
   ];
@@ -143,7 +145,7 @@ export function buildStandardsContext(input: BuildStandardsContextInput): string
   const parts = [...header, ...body].filter(Boolean);
   let context = parts.join('\n\n');
 
-  const budget = input.maxChars ?? (input.mode === 'review' ? 22000 : 14000);
+  const budget = input.maxChars ?? (input.mode === 'review' ? 26000 : 18000);
   if (context.length > budget) {
     context = `${context.slice(0, budget)}\n\n[Catálogo recortado: aplica las reglas ya listadas y no inventes modelos.]`;
   }

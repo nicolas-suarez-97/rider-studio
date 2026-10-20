@@ -44,7 +44,7 @@ Reglas:
 2. Usa solo sectionId de la lista que te pasamos.
 3. proposedText va en el idioma del documento. rationale y auditSummary van en español.
 4. No repitas cláusulas que el rider ya dice con claridad.
-5. Aplica el estándar técnico inyectado: PA por modelo o SPL (nunca vatios), equivalencias de la misma gama, textos modelo y datos que faltan.
+5. Mantén las reglas de calidad vigentes (SPL 102 dBA / 114 dBC, input list tabular, IEM/RF, stage plot, tierra aislada, hospitalidad aparte, alternativas homologadas) y aplica también el catálogo de familias inyectado.
 6. Responde JSON puro, sin markdown.`;
 
 function sectionSample(sections: ReviewSectionInput[]): string {

@@ -29,7 +29,7 @@ export function outlinePromptsForSection(
     id: 'chat',
     kind: 'chat',
     label: 'Redactar esta sección',
-    prompt: `Ayúdame a redactar e incorporar en el documento la sección «${title}» de este rider ${kind}. Está vacía. Sigue el estándar técnico de Rider Studio: PA por modelo o SPL (nunca vatios), equivalencias de la misma gama, texto modelo de la familia y placeholders [entre corchetes] donde falte un dato.`,
+    prompt: `Ayúdame a redactar e incorporar en el documento la sección «${title}» de este rider ${kind}. Está vacía. Inserta el contenido profesional típico con placeholders claros donde falte un dato.`,
   };
 
   const config = findSectionConfig(section.id, section.title);
@@ -38,7 +38,7 @@ export function outlinePromptsForSection(
     id: field.key,
     kind: 'topic',
     label: topicLabel(field.prefix, field.label),
-    prompt: `Redacta e inserta en el documento el apartado «${field.label}» de la sección «${title}» para un rider ${kind}. Sigue el estándar de Rider Studio, usa viñetas profesionales y deja [placeholders] si falta un dato concreto.`,
+    prompt: `Redacta e inserta en el documento el apartado «${field.label}» de la sección «${title}» para un rider ${kind}. Usa un estilo de rider profesional con viñetas y deja placeholders si falta un dato concreto.`,
   }));
 
   if (!topics.length) {

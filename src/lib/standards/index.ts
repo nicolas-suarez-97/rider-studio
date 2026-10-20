@@ -1,4 +1,5 @@
 export { STANDARDS_OPERATING_PROTOCOL } from './protocol';
+export { renderExistingQualityRules } from './quality-rules';
 export {
   buildStandardsContext,
   findStandardFamily,
