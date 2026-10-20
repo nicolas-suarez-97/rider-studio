@@ -1,0 +1,24 @@
+---
+description: Estándar técnico de riders para sugerencias del chat y de la IA
+alwaysApply: true
+---
+
+# Estándar de riders
+
+La fuente de verdad técnica está en `docs/standards/`. El chat del producto y cualquier sugerencia de rider deben seguirla.
+
+- Catálogo operable: `docs/standards/catalogo_json.json` (datos, reglas, equivalencias, textos modelo).
+- Contexto por parte: `parte-1-sistema-de-pa-contexto-ia.md`, `parte-2-consolas-contexto-ia.md`, `parte-3-personal-de-audio-contexto-ia.md`.
+- Calidad y anti-patrones: `docs/standards/RIDER_QUALITY_STANDARDS.md`.
+- Índice: `docs/standards/LEEME.md`.
+
+Al editar prompts, agentes o `/api/chat` y `/api/riders/review`, inyecta el recorte con `buildStandardsContext` (`src/lib/standards`). No copies el JSON entero al prompt.
+
+Reglas que no se negocian en sugerencias:
+
+- PA por modelo o resultado (SPL, cobertura, respuesta), nunca en vatios.
+- Equivalencias solo dentro de la misma gama del catálogo. Un arreglo no mezcla marcas.
+- No inventar modelos ausentes del catálogo.
+- Solo el artista marca no_negociable / preferido / flexible.
+- Hospitalidad no se mezcla en el rider técnico.
+- Lo desconocido va entre `[corchetes]`; se usa el texto modelo de la familia.

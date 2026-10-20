@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   SYSTEM_PROMPTS,
   AGENT_PROFILES,
-  generateExpertAgentResponse
 } from '@/lib/agents/rider-agent';
+import { buildStandardsContext } from '@/lib/standards';
 import { AgentResponse, AgentSuggestionDraft } from '@/core/types/agent.types';
 import {
   getOrCreateChatSession,
@@ -223,7 +223,16 @@ Dentro de "proposedText" puedes usar:
 Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       : '';
     const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
-    const systemPrompt = `${SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master}${suggestionPrompt}`;
+    const standardsContext = buildStandardsContext({
+      mode: 'chat',
+      riderType,
+      query: lastMessage,
+      sectionTitle: editorContext?.sectionTitle,
+      sectionText: editorContext?.sectionText,
+      selection: editorContext?.selection,
+      sectionTitles: editorContext?.allSections?.map((section) => section.title),
+    });
+    const systemPrompt = `${SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master}\n\n${standardsContext}${suggestionPrompt}`;
 
     const sessionTitle = lastMessage
       ? (lastMessage.length > 36 ? lastMessage.substring(0, 36) + '...' : lastMessage)

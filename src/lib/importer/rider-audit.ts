@@ -6,6 +6,7 @@ import {
   type ReviewPoint,
   type ReviewSectionInput,
 } from '@/core/editor/review-message';
+import { buildStandardsContext } from '@/lib/standards';
 
 interface AiAuditSuggestion {
   sectionId?: string;
@@ -43,7 +44,8 @@ Reglas:
 2. Usa solo sectionId de la lista que te pasamos.
 3. proposedText va en el idioma del documento. rationale y auditSummary van en español.
 4. No repitas cláusulas que el rider ya dice con claridad.
-5. Responde JSON puro, sin markdown.`;
+5. Aplica el estándar técnico inyectado: PA por modelo o SPL (nunca vatios), equivalencias de la misma gama, textos modelo y datos que faltan.
+6. Responde JSON puro, sin markdown.`;
 
 function sectionSample(sections: ReviewSectionInput[]): string {
   return sections
@@ -76,9 +78,15 @@ export async function buildRiderReview(input: {
   let summary = 'El documento ya tiene estructura de rider y todavía puede precisar cláusulas que el promotor tiene que cumplir.';
   let aiPoints: ReviewPoint[] = [];
 
+  const standardsContext = buildStandardsContext({
+    mode: 'review',
+    query: `${input.fileName}\n${outline}`,
+    sectionTitles: input.sections.map((section) => section.title),
+  });
+
   const aiResult = await callAiCompletion({
     messages: [
-      { role: 'system', content: AUDIT_PROMPT },
+      { role: 'system', content: `${AUDIT_PROMPT}\n\n${standardsContext}` },
       {
         role: 'user',
         content:
