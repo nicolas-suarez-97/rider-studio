@@ -6,7 +6,7 @@ import {
   isExplicitRiderTransferIntent,
   planChatDocumentApply,
   resolveStableBlock,
-} from './chat-document-sync';
+} from './chat-document-sync.ts';
 
 describe('isExplicitRiderTransferIntent', () => {
   it('detecta «añade esto al rider»', () => {
