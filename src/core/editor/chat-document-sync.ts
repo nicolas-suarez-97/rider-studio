@@ -139,6 +139,16 @@ export function extractTransferableRiderText(raw: string): string {
     .trim();
 
   source = withoutFooter || source;
+
+  const hasStructured = /(?:^|\n)\s*(?:[-*•]\s+\S|\d+\.\s+\S|\|.+\|)/.test(source);
+  if (hasStructured) {
+    const withoutMeta = source.replace(
+      /^(?:he (?:creado|preparado|armado|generado|incluido)|aqu[ií] (?:tienes|te dejo|va)|te (?:dejo|prepar[eé]|arm[eé]))[^\n]*\n(?:\s*\n)?/i,
+      ''
+    ).trim();
+    if (withoutMeta) source = withoutMeta;
+  }
+
   const fence = source.match(/```(?:markdown|md|text)?\s*([\s\S]*?)```/i);
   if (fence?.[1]?.trim()) return normalizeEscapedNewlines(fence[1]).trim();
 

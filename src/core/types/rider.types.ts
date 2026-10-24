@@ -37,6 +37,8 @@ export interface SectionItem {
   pageBreakBefore?: boolean;
   /** Label of the section. The rider is one document; type is not a separate file. */
   type?: RiderType;
+  /** Apply/replace uses this so a correction updates the same block instead of adding another copy. */
+  revision?: 'proposed' | 'confirmed';
 }
 
 export interface RiderDefinition {

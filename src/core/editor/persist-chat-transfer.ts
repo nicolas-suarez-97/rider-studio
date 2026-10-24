@@ -1,5 +1,9 @@
 import type { RiderContentDoc, RiderContentNode, SectionItem } from '../types/rider.types';
 import {
+  nextSectionContent,
+  nextSectionRevision,
+} from './apply-block-correction';
+import {
   type ChatSuggestionDraft,
   type RiderBlockRef,
   planChatDocumentApply,
@@ -93,23 +97,11 @@ function buildSection(id: string, title: string, text: string): SectionItem {
 }
 
 function applyDraftToSection(section: SectionItem, draft: ChatSuggestionDraft): SectionItem {
-  const proposed = (draft.proposedText || '').trim();
-  if (draft.kind === 'replace') {
-    const existing = section.content || '';
-    const base = (draft.baseText || '').trim();
-    const next = base && existing.includes(base)
-      ? existing.replace(base, draft.proposedText || '')
-      : (draft.proposedText || '');
-    return withContent(section, next);
-  }
-  if (draft.kind === 'delete') {
-    const base = (draft.baseText || '').trim();
-    const next = base ? (section.content || '').replace(base, '').trim() : (section.content || '');
-    return withContent(section, next);
-  }
-  const existing = (section.content || '').trim();
-  const next = existing ? `${existing}\n${proposed}` : proposed;
-  return withContent(section, next);
+  const next = nextSectionContent(section.content || '', draft);
+  return {
+    ...withContent(section, next),
+    revision: nextSectionRevision(section.revision, draft) ?? section.revision,
+  };
 }
 
 export function shouldPersistChatTransferOnServer(editorContext?: {

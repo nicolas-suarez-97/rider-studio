@@ -24,6 +24,7 @@ import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
 import { buildGapSuggestions, docToPlainText, isDocumentIntro, sectionsForOutline, type SectionDocumentPatch } from '@/core/editor/content-doc';
 import { materializeSuggestions } from '@/core/editor/suggestions';
+import { mergeAppliedDocumentSuggestions } from '@/core/editor/apply-block-correction';
 import { chatReplyAfterDocumentApply, ensureChatDocumentSuggestions, planChatDocumentApply } from '@/core/editor/chat-document-sync';
 import { REVIEW_HEADING, readReviewSuggestions } from '@/core/editor/review-message';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
@@ -1013,7 +1014,7 @@ export function WorkspaceClient({
       }]);
 
       if (applied) {
-        setAgentSuggestions((current) => [...current, ...appliedItems]);
+        setAgentSuggestions((current) => mergeAppliedDocumentSuggestions(current, appliedItems));
         showToast('✨ Modificación aplicada en el documento');
       } else if (synced.error) {
         showToast(synced.error);

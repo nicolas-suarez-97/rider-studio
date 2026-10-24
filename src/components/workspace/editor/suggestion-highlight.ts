@@ -5,6 +5,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { Editor } from '@tiptap/core';
+import { alreadyHasProposedText, isInPlaceCorrection } from '@/core/editor/apply-block-correction';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 import { previewRiderMarkup, riderMarkupToContent } from '@/core/editor/rider-markup';
 
@@ -213,6 +214,31 @@ export interface ApplySuggestionResult {
   oldRange?: { from: number; to: number };
 }
 
+function markupToFragment(editor: Editor, proposedText: string) {
+  const blocks = riderMarkupToContent(proposedText);
+  const content = blocks && blocks.length > 0
+    ? blocks
+    : [{
+      type: 'paragraph',
+      content: proposedText.trim() ? [{ type: 'text', text: proposedText }] : [],
+    }];
+  return editor.schema.nodeFromJSON({ type: 'doc', content }).content;
+}
+
+function replaceRangeWithMarkup(
+  editor: Editor,
+  from: number,
+  to: number,
+  proposedText: string
+): { from: number; to: number } {
+  const removed = Math.max(0, to - from);
+  const beforeSize = editor.state.doc.content.size;
+  const fragment = markupToFragment(editor, proposedText);
+  editor.view.dispatch(editor.state.tr.replaceWith(from, to, fragment));
+  const inserted = Math.max(0, editor.state.doc.content.size - (beforeSize - removed));
+  return { from, to: from + inserted };
+}
+
 export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSuggestion): ApplySuggestionResult {
   if (
     suggestion.kind === 'add_channel' ||
@@ -225,12 +251,24 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
 
   const bounds = findSectionBounds(editor.state.doc, suggestion.sectionId);
   const sectionContent = getSectionContentRange(editor.state.doc, suggestion.sectionId);
+  const sectionText = sectionContent
+    ? editor.state.doc.textBetween(sectionContent.from, sectionContent.to)
+    : '';
 
   // ¿Es una modificación o reemplazo?
   const isReplaceIntent =
+    isInPlaceCorrection(suggestion) ||
     suggestion.kind === 'replace' ||
     (Boolean(suggestion.baseText) && suggestion.baseText.trim().length > 0) ||
     shouldReplaceSectionContent(editor.state.doc, suggestion, sectionContent);
+
+  if (
+    isReplaceIntent
+    && alreadyHasProposedText(sectionText, suggestion.proposedText || '')
+    && sectionContent
+  ) {
+    return { success: true, appliedRange: sectionContent };
+  }
 
   // 1. Caso DELETE puro:
   if (suggestion.kind === 'delete') {
@@ -268,38 +306,34 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
     };
   }
 
-  // 2. Caso REPLACE / MODIFICACIÓN:
-  // La versión vieja se deja en el documento y se sombrea en rojo (oldRange).
-  // La versión nueva se inserta a continuación y se sombrea en verde (appliedRange).
-  // Al dar en Aprobar, acceptSuggestionInEditor borrará oldRange.
-  // Al dar en Rechazar, revertSuggestionFromEditor borrará appliedRange.
+  // 2. Caso REPLACE / MODIFICACIÓN: mutar el rango objetivo in-place.
+  // No se deja la versión vieja en el documento (eso duplicaba el bloque).
   if (isReplaceIntent) {
-    let oldRange: { from: number; to: number } | null = null;
+    let targetRange: { from: number; to: number } | null = null;
     if (suggestion.baseText && suggestion.baseText.trim()) {
-      oldRange = locateRangeInDoc(editor.state.doc, suggestion.baseText, bounds);
+      targetRange = locateRangeInDoc(editor.state.doc, suggestion.baseText, bounds);
     }
-    // Si no encontró por baseText específico, pero la sección tiene contenido previo:
-    if (!oldRange && sectionContent && sectionContent.from < sectionContent.to) {
-      oldRange = sectionContent;
+    if (!targetRange && sectionContent && sectionContent.from < sectionContent.to) {
+      targetRange = sectionContent;
     }
 
-    if (oldRange && oldRange.from < oldRange.to) {
-      const $from = editor.state.doc.resolve(oldRange.from);
-      const $to = editor.state.doc.resolve(oldRange.to);
+    if (targetRange && targetRange.from < targetRange.to) {
+      const $from = editor.state.doc.resolve(targetRange.from);
+      const $to = editor.state.doc.resolve(targetRange.to);
       const blocks = riderMarkupToContent(suggestion.proposedText);
 
-      let finalOldRange = oldRange;
+      let finalRange = targetRange;
       if ($from.sameParent($to) && $from.parent.isTextblock && blocks) {
         const parentText = $from.parent.textContent.trim().replace(/^[•\-\*]\s*/, '');
-        const oldText = editor.state.doc.textBetween(oldRange.from, oldRange.to).trim();
+        const oldText = editor.state.doc.textBetween(targetRange.from, targetRange.to).trim();
         if ($from.parentOffset === 0 || parentText === oldText) {
           if ($from.depth > 1 && $from.node($from.depth - 1).type.name === 'listItem') {
-            finalOldRange = {
+            finalRange = {
               from: $from.before($from.depth - 1),
               to: $from.after($from.depth - 1),
             };
           } else {
-            finalOldRange = {
+            finalRange = {
               from: $from.before($from.depth),
               to: $from.after($from.depth),
             };
@@ -307,18 +341,15 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
         }
       }
 
-      const insertAt = finalOldRange.to;
-      const beforeSize = editor.state.doc.content.size;
-      const content = blocks || suggestion.proposedText;
-
-      editor.chain().focus().insertContentAt(insertAt, content).run();
-      const afterSize = editor.state.doc.content.size;
-      const diff = Math.max(0, afterSize - beforeSize);
-      const appliedRange = { from: insertAt, to: insertAt + diff };
+      const appliedRange = replaceRangeWithMarkup(
+        editor,
+        finalRange.from,
+        finalRange.to,
+        suggestion.proposedText
+      );
 
       return {
         success: true,
-        oldRange: finalOldRange,
         appliedRange,
       };
     }
@@ -329,6 +360,10 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
     return { success: false };
   }
 
+  if (alreadyHasProposedText(sectionText, suggestion.proposedText) && sectionContent) {
+    return { success: true, appliedRange: sectionContent };
+  }
+
   let insertAt = bounds?.to ?? editor.state.doc.content.size;
 
   // Si la sección está vacía o solo contiene un párrafo en blanco, limpiar ese espacio e insertar al inicio del cuerpo
@@ -336,32 +371,15 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
     const existingText = editor.state.doc.textBetween(sectionContent.from, sectionContent.to).trim();
     if (!existingText) {
       insertAt = sectionContent.from;
-      editor.chain().focus().deleteRange({ from: sectionContent.from, to: sectionContent.to }).run();
+      editor.view.dispatch(editor.state.tr.delete(sectionContent.from, sectionContent.to));
     }
   }
 
-  const beforeSize = editor.state.doc.content.size;
-  const blocks = riderMarkupToContent(suggestion.proposedText);
-  if (blocks && blocks.length > 0) {
-    editor.chain().focus().insertContentAt(insertAt, blocks).run();
-    const afterSize = editor.state.doc.content.size;
-    const diff = Math.max(0, afterSize - beforeSize);
-    if (diff <= 0) return { success: false };
-    return {
-      success: true,
-      appliedRange: { from: insertAt, to: insertAt + diff },
-    };
-  }
-
-  const prefix = insertAt > 1 ? '\n' : '';
-  const textToInsert = `${prefix}${suggestion.proposedText}`;
-  editor.chain().focus().insertContentAt(insertAt, textToInsert).run();
-  const afterSize = editor.state.doc.content.size;
-  const diff = Math.max(0, afterSize - beforeSize);
-  if (diff <= 0) return { success: false };
+  const appliedRange = replaceRangeWithMarkup(editor, insertAt, insertAt, suggestion.proposedText);
+  if (appliedRange.from >= appliedRange.to) return { success: false };
   return {
     success: true,
-    appliedRange: { from: insertAt, to: insertAt + diff },
+    appliedRange,
   };
 }
 
@@ -403,13 +421,17 @@ export function revertSuggestionFromEditor(editor: Editor, suggestion: DocumentS
 
   const docSize = editor.state.doc.content.size;
 
-  // Si había una versión nueva agregada/propuesta (appliedRange):
-  // Se elimina la versión nueva, restaurando la versión anterior
+  // Si había una versión nueva (appliedRange), restaurar el baseText in-place.
   if (suggestion.appliedRange && suggestion.appliedRange.from < suggestion.appliedRange.to) {
     const from = Math.max(0, Math.min(suggestion.appliedRange.from, docSize));
     const to = Math.max(from, Math.min(suggestion.appliedRange.to, docSize));
     if (from < to) {
-      editor.chain().focus().deleteRange({ from, to }).run();
+      const restore = (suggestion.baseText || '').trim();
+      if (restore) {
+        replaceRangeWithMarkup(editor, from, to, restore);
+      } else {
+        editor.view.dispatch(editor.state.tr.delete(from, to));
+      }
       return true;
     }
   }
