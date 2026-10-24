@@ -220,6 +220,7 @@ describe('acciones del artista sobre shareConfirms', () => {
     assert.equal(foh?.reopened, true);
     assert.equal(foh?.canReopen, false);
     assert.equal(foh?.approvalInForce, false);
+    assert.deepEqual(foh?.previousDecision, { response: 'cubro', offer: '', note: '' });
 
     const cubro = items.find((item) => item.lineId === 'tecnico:tech-foh' && !item.reopened);
     assert.equal(cubro, undefined);
