@@ -8,6 +8,7 @@ import { ChatMessageItem } from '@/core/types/chat.types';
 import { Rider } from '@/core/models/Rider';
 import { AGENT_PROFILES, AGENT_INFO, SAMPLE_FAQS } from '@/core/constants/agent-profiles';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
+import { chatExpandControlLabel } from '@/components/workspace/chat-panel-width';
 
 interface AssistantChatPanelProps {
   activeAgent: AgentRole;
@@ -17,6 +18,8 @@ interface AssistantChatPanelProps {
   onSendMessage: (text: string) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
   rider?: Rider;
   sessionId?: string | null;
   sessionTitle?: string | null;
@@ -38,6 +41,8 @@ export function AssistantChatPanel({
   onSendMessage,
   isCollapsed,
   onToggleCollapse,
+  isExpanded = false,
+  onToggleExpand,
   rider,
   sessionId,
   sessionTitle,
@@ -134,7 +139,7 @@ export function AssistantChatPanel({
   }
 
   return (
-    <aside className="w-full xl:w-96 xl:border-l border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden select-none">
+    <aside className="w-full xl:border-l border-slate-200/80 bg-white/70 backdrop-blur-md flex flex-col shrink-0 h-full overflow-hidden select-none">
       {/* Header del Copilot */}
       <div className="p-3.5 sm:p-4 border-b border-slate-200/60 shrink-0">
         <div className="flex items-center justify-between mb-2.5 sm:mb-3">
@@ -149,13 +154,28 @@ export function AssistantChatPanel({
               </p>
             </div>
           </div>
-          <button
-            onClick={onToggleCollapse}
-            className="hidden xl:flex p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
-            title="Colapsar asistente"
-          >
-            <Icon name="panelRightClose" className="w-4 h-4" />
-          </button>
+          <div className="hidden xl:flex items-center gap-0.5">
+            {onToggleExpand && (
+              <button
+                type="button"
+                onClick={onToggleExpand}
+                aria-label={chatExpandControlLabel(isExpanded)}
+                aria-expanded={isExpanded}
+                title={chatExpandControlLabel(isExpanded)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
+              >
+                <Icon name={isExpanded ? 'chevronsRight' : 'chevronsLeft'} className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
+              title="Colapsar asistente"
+            >
+              <Icon name="panelRightClose" className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Indicador de vinculación con el Rider actual y Conversación */}
