@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { BrandModelOption } from '@/lib/equipment/brand-model';
+import { NO_ACTIVE_INDEX, nextActiveIndexOnArrowDown } from '@/components/common/combobox-focus';
 
 type SearchableComboboxProps = {
   label: string;
@@ -28,13 +29,17 @@ export function SearchableCombobox({
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(NO_ACTIVE_INDEX);
   const query = open ? draft : value;
   const options = useMemo(() => getOptions(query), [getOptions, query]);
+  const focusOptions = useMemo(
+    () => options.map((option) => ({ freeText: Boolean(option.custom) })),
+    [options],
+  );
 
   const openList = () => {
     setDraft(value);
-    setActiveIndex(0);
+    setActiveIndex(NO_ACTIVE_INDEX);
     setOpen(true);
   };
 
@@ -57,20 +62,18 @@ export function SearchableCombobox({
     if (disabled) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      if (!open) {
-        openList();
-        return;
-      }
-      setActiveIndex((index) => Math.min(index + 1, Math.max(options.length - 1, 0)));
+      if (!open) openList();
+      setActiveIndex((index) => nextActiveIndexOnArrowDown(index, focusOptions));
       return;
     }
     if (event.key === 'ArrowUp') {
       event.preventDefault();
-      if (!open) {
-        openList();
-        return;
-      }
-      setActiveIndex((index) => Math.max(index - 1, 0));
+      if (!open) openList();
+      setActiveIndex((index) => {
+        if (!options.length) return NO_ACTIVE_INDEX;
+        if (index < 0) return options.length - 1;
+        return Math.max(index - 1, 0);
+      });
       return;
     }
     if (event.key === 'Home' && open) {
@@ -118,7 +121,7 @@ export function SearchableCombobox({
         value={query}
         onChange={(event) => {
           setDraft(event.target.value);
-          setActiveIndex(0);
+          setActiveIndex(NO_ACTIVE_INDEX);
           setOpen(true);
         }}
         onFocus={() => {

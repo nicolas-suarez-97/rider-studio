@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { NO_ACTIVE_INDEX, nextActiveIndexOnArrowDown } from '@/components/common/combobox-focus';
 import { contactRoleOptions } from '@/core/constants/contact-roles';
 
 type ContactRoleComboboxProps = {
@@ -23,11 +24,15 @@ export function ContactRoleCombobox({
   const listId = `${uid}-listbox`;
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(NO_ACTIVE_INDEX);
   const options = useMemo(() => contactRoleOptions(value), [value]);
+  const focusOptions = useMemo(
+    () => options.map((option) => ({ freeText: option.kind === 'custom' })),
+    [options],
+  );
 
   useEffect(() => {
-    setActiveIndex(0);
+    setActiveIndex(NO_ACTIVE_INDEX);
   }, [value]);
 
   useEffect(() => {
@@ -47,20 +52,18 @@ export function ContactRoleCombobox({
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      if (!open) {
-        setOpen(true);
-        return;
-      }
-      setActiveIndex((index) => (options.length ? (index + 1) % options.length : 0));
+      if (!open) setOpen(true);
+      setActiveIndex((index) => nextActiveIndexOnArrowDown(index, focusOptions, true));
       return;
     }
     if (event.key === 'ArrowUp') {
       event.preventDefault();
-      if (!open) {
-        setOpen(true);
-        return;
-      }
-      setActiveIndex((index) => (options.length ? (index - 1 + options.length) % options.length : 0));
+      if (!open) setOpen(true);
+      setActiveIndex((index) => {
+        if (!options.length) return NO_ACTIVE_INDEX;
+        if (index < 0) return options.length - 1;
+        return (index - 1 + options.length) % options.length;
+      });
       return;
     }
     if (event.key === 'Enter' && open) {
@@ -96,7 +99,9 @@ export function ContactRoleCombobox({
         autoComplete="off"
         onMouseDown={onMouseDown}
         onFocus={() => {
-          if (!readOnly) setOpen(true);
+          if (readOnly) return;
+          setActiveIndex(NO_ACTIVE_INDEX);
+          setOpen(true);
         }}
         onChange={(event) => {
           onChange(event.target.value);
