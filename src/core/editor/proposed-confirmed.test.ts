@@ -8,6 +8,11 @@ import {
   proposalTargetKey,
   replaceActiveProposed,
 } from './proposed-confirmed.ts';
+import { proposalLocateNeedles, trustedStoredRange } from './proposed-ranges.ts';
+
+function sectionDocText(section: SectionItem): string {
+  return JSON.stringify(section.contentDoc || { content: section.content || '' });
+}
 
 function proposal(partial: {
   id: string;
@@ -81,6 +86,36 @@ describe('replaceActiveProposed', () => {
     assert.equal(afterThird.next.length, 1);
   });
 
+  it('alternativas sucesivas del mismo sectionId actualizan proposedText y el preview', () => {
+    const confirmed = 'Backline original';
+    const first = proposal({
+      id: 'sug-1',
+      sectionId: 'tech-backline',
+      proposedText: 'Banda completa: 2× Marshall, 1× Ampeg',
+    });
+    const second = proposal({
+      id: 'sug-2',
+      sectionId: 'tech-backline',
+      proposedText: 'Trío acústico: 1× combo Fender, 1× contrabajo',
+    });
+
+    const afterFirst = replaceActiveProposed([], [first]);
+    const afterSecond = replaceActiveProposed(afterFirst.next, [second]);
+    const preview = previewSectionText(confirmed, afterSecond.next[0]);
+    const approved = applyProposedToConfirmedText(confirmed, afterSecond.next[0], { confirm: true });
+
+    assert.equal(afterSecond.next.length, 1);
+    assert.equal(afterSecond.next[0].proposedText, 'Trío acústico: 1× combo Fender, 1× contrabajo');
+    assert.deepEqual(afterSecond.superseded.map((item) => item.proposedText), [
+      'Banda completa: 2× Marshall, 1× Ampeg',
+    ]);
+    assert.match(preview, /Trío acústico/);
+    assert.doesNotMatch(preview, /Banda completa/);
+    assert.equal(applyProposedToConfirmedText(confirmed, afterSecond.next[0]), confirmed);
+    assert.match(approved, /Trío acústico/);
+    assert.doesNotMatch(approved, /Banda completa/);
+  });
+
   it('no toca un proposed de otro bloque', () => {
     const audio = proposal({ id: 'sug-audio', sectionId: 'tech-audio', proposedText: 'SD12' });
     const hotel = proposal({ id: 'sug-hotel', sectionId: 'hosp-hotel', proposedText: 'Late check-out' });
@@ -144,5 +179,68 @@ describe('overlayProposedOnSections', () => {
     assert.match(preview[0].content || '', /Yamaha CL5/);
     assert.match(preview[0].content || '', /Avid S6L/);
     assert.doesNotMatch(preview[0].content || '', /DiGiCo SD12/);
+  });
+
+  it('alternativas sucesivas reemplazan el body overlayeado aunque el bloque tenga contentDoc confirmado', () => {
+    const confirmedDoc = {
+      type: 'doc' as const,
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Backline original' }] }],
+    };
+    const sections = [section({
+      id: 'tech-backline',
+      title: 'Backline',
+      content: 'Backline original',
+      contentDoc: confirmedDoc,
+    })];
+    const first = proposal({
+      id: 'sug-1',
+      sectionId: 'tech-backline',
+      proposedText: 'Banda completa: 2× Marshall',
+    });
+    const second = proposal({
+      id: 'sug-2',
+      sectionId: 'tech-backline',
+      proposedText: 'Trío acústico: combo Fender',
+    });
+
+    const afterFirst = overlayProposedOnSections(sections, replaceActiveProposed([], [first]).next);
+    const afterSecond = overlayProposedOnSections(
+      sections,
+      replaceActiveProposed(replaceActiveProposed([], [first]).next, [second]).next,
+    );
+
+    assert.match(afterFirst[0].content || '', /Banda completa/);
+    assert.match(sectionDocText(afterFirst[0]), /Banda completa/);
+    assert.match(afterSecond[0].content || '', /Trío acústico/);
+    assert.match(sectionDocText(afterSecond[0]), /Trío acústico/);
+    assert.doesNotMatch(sectionDocText(afterSecond[0]), /Banda completa/);
+    assert.equal(sections[0].content, 'Backline original');
+    assert.match(sectionDocText(sections[0]), /Backline original/);
+  });
+});
+
+describe('rangos propuestos', () => {
+  it('no conserva un appliedRange pegado al texto viejo si el proposedText ya no está ahí', () => {
+    const needles = proposalLocateNeedles('Trío acústico: combo Fender');
+    const located = null;
+    const stale = trustedStoredRange(
+      located,
+      { from: 10, to: 40 },
+      'Banda completa: 2× Marshall',
+      'Trío acústico: combo Fender',
+    );
+
+    assert.ok(needles.some((needle) => needle.includes('Trío acústico')));
+    assert.equal(stale, undefined);
+  });
+
+  it('sí usa el rango guardado si el slice todavía coincide con el proposed activo', () => {
+    const trusted = trustedStoredRange(
+      null,
+      { from: 12, to: 30 },
+      'Trío acústico: combo Fender',
+      'Trío acústico: combo Fender',
+    );
+    assert.deepEqual(trusted, { from: 12, to: 30 });
   });
 });

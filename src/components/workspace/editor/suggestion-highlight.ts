@@ -8,6 +8,7 @@ import type { Editor } from '@tiptap/core';
 import { alreadyHasProposedText, isInPlaceCorrection } from '@/core/editor/apply-block-correction';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 import { previewRiderMarkup, riderMarkupToContent } from '@/core/editor/rider-markup';
+import { proposalLocateNeedles, trustedStoredRange } from '@/core/editor/proposed-ranges';
 
 export function findSectionBounds(doc: PMNode, sectionId?: string | null): { from: number; to: number } | null {
   if (!sectionId) return null;
@@ -390,20 +391,51 @@ function clampRange(range: { from: number; to: number } | undefined, docSize: nu
   return from < to ? { from, to } : null;
 }
 
+function locateAnyNeedle(
+  doc: PMNode,
+  needles: string[],
+  bounds?: { from: number; to: number } | null
+): { from: number; to: number } | null {
+  for (const needle of needles) {
+    const found = locateRangeInDoc(doc, needle, bounds);
+    if (found) return found;
+  }
+  return null;
+}
+
+function rangeSlice(doc: PMNode, range?: { from: number; to: number }): string {
+  if (!range) return '';
+  const size = doc.content.size;
+  const from = Math.max(0, Math.min(range.from, size));
+  const to = Math.max(from, Math.min(range.to, size));
+  if (from >= to) return '';
+  return doc.textBetween(from, to, '\n');
+}
+
 export function resolveAppliedProposalRanges(
   doc: PMNode,
   suggestion: DocumentSuggestion
 ): { appliedRange?: { from: number; to: number }; oldRange?: { from: number; to: number } } {
   const bounds = suggestion.sectionId ? findSectionBounds(doc, suggestion.sectionId) : null;
-  const locatedOld = suggestion.baseText
-    ? locateRangeInDoc(doc, suggestion.baseText, bounds)
-    : null;
-  const locatedApplied = suggestion.proposedText
-    ? locateRangeInDoc(doc, suggestion.proposedText, bounds)
-    : null;
+  const locatedOld = locateAnyNeedle(doc, proposalLocateNeedles(suggestion.baseText), bounds);
+  const appliedNeedles = [
+    ...proposalLocateNeedles(suggestion.proposedText),
+    previewRiderMarkup(suggestion.proposedText || ''),
+  ].filter((needle, index, all) => needle && all.indexOf(needle) === index);
+  const locatedApplied = locateAnyNeedle(doc, appliedNeedles, bounds);
   return {
-    oldRange: locatedOld || suggestion.oldRange,
-    appliedRange: locatedApplied || suggestion.appliedRange,
+    oldRange: trustedStoredRange(
+      locatedOld,
+      suggestion.oldRange,
+      rangeSlice(doc, suggestion.oldRange),
+      suggestion.baseText,
+    ),
+    appliedRange: trustedStoredRange(
+      locatedApplied,
+      suggestion.appliedRange,
+      rangeSlice(doc, suggestion.appliedRange),
+      suggestion.proposedText,
+    ),
   };
 }
 

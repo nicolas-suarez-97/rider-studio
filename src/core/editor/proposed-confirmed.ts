@@ -99,7 +99,18 @@ export function previewSectionText(
 }
 
 function withContent(section: SectionItem, text: string): SectionItem {
-  return { ...section, content: text };
+  const lines = text.length > 0 ? text.split('\n') : [''];
+  return {
+    ...section,
+    content: text,
+    contentDoc: {
+      type: 'doc',
+      content: lines.map((line) => ({
+        type: 'paragraph',
+        content: line ? [{ type: 'text', text: line }] : [],
+      })),
+    },
+  };
 }
 
 export function overlayProposedOnSections(

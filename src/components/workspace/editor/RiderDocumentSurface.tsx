@@ -258,6 +258,7 @@ export function RiderDocumentSurface({
   );
   const proposedKey = activeProposed.map((item) => `${item.id}:${item.proposedText}`).join('|');
   const documentSignature = `${artistName}\0${riderTitle}\0${sectionIds}\0${proposedKey}`;
+  const previousProposedKeyRef = useRef(proposedKey);
   const initialContent = useMemo(
     () => riderDocumentFromSections(sections, { artistName, title: riderTitle }) as JSONContent,
     // Only seed the editor once; later structure changes go through setContent.
@@ -615,10 +616,13 @@ export function RiderDocumentSurface({
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     const nextDoc = riderDocumentFromSections(previewSections, { artistName, title: riderTitle });
-    if (isInternalEditRef.current) {
+    const proposedChanged = previousProposedKeyRef.current !== proposedKey;
+    previousProposedKeyRef.current = proposedKey;
+    if (isInternalEditRef.current && !proposedChanged) {
       isInternalEditRef.current = false;
       if (documentStructureKey(editor.getJSON()) === documentStructureKey(nextDoc)) return;
     }
+    isInternalEditRef.current = false;
 
     let cancelled = false;
     queueMicrotask(() => {
@@ -630,7 +634,7 @@ export function RiderDocumentSurface({
     return () => {
       cancelled = true;
     };
-  }, [editor, documentSignature, artistName, riderTitle, previewSections]);
+  }, [editor, documentSignature, artistName, riderTitle, previewSections, proposedKey]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;

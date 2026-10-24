@@ -926,12 +926,15 @@ export function WorkspaceClient({
             );
             if (ch) handleDeleteChannel(ch.id);
           } else {
-            bridgeRef.current?.revert(previous);
+            const reverted = bridgeRef.current?.revert(previous);
+            if (!reverted) {
+              bridgeRef.current?.revert({
+                ...previous,
+                appliedRange: undefined,
+                oldRange: undefined,
+              });
+            }
           }
-        }
-        if (superseded.length > 0) {
-          const supersededIds = new Set(superseded.map((item) => item.id));
-          setAgentSuggestions((current) => current.filter((item) => !supersededIds.has(item.id)));
         }
         for (const draft of drafts) {
           if (draft.sectionId) applyingSectionIdsRef.current.add(draft.sectionId);
