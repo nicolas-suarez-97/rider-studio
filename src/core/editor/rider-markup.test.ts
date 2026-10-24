@@ -46,3 +46,18 @@ describe('riderMarkupToContent tables', () => {
     assert.equal(table.content?.length, 2);
   });
 });
+
+describe('riderMarkupToContent contactos', () => {
+  it('conserva un rol libre al reabrir el bloque', () => {
+    const blocks = riderMarkupToContent([
+      '[[contactos]]',
+      'RF Coordinator | Ana | 300 | ana@band.test',
+    ].join('\n'));
+    assert.ok(blocks);
+    const contacts = blocks.find((block) => block.type === 'contacts');
+    assert.ok(contacts);
+    const people = contacts.attrs?.people as Array<{ role: string; name: string }>;
+    assert.equal(people[0]?.role, 'RF Coordinator');
+    assert.equal(people[0]?.name, 'Ana');
+  });
+});
