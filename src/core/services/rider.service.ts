@@ -1,3 +1,4 @@
+import { KEEPALIVE_BODY_LIMIT, persistRequestInit } from '../editor/persist-on-leave';
 import { Rider } from '../models/Rider';
 
 export interface IRiderService {
@@ -44,12 +45,11 @@ export class RiderService implements IRiderService {
   }
 
   public async save(rider: Rider): Promise<Rider> {
-    const payload = rider.toDatabasePayload();
-    const res = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    const body = JSON.stringify(rider.toDatabasePayload());
+    const res = await fetch(
+      this.baseUrl,
+      persistRequestInit(body, { keepalive: body.length <= KEEPALIVE_BODY_LIMIT }),
+    );
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
