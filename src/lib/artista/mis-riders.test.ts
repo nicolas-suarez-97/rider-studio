@@ -52,6 +52,40 @@ describe('readShareConfirms', () => {
       shareConfirms: [{ confirmed: true }, { status: 'pending' }, true],
     }), { confirmed: 2, total: 3 });
   });
+
+  it('cuenta 2 de 3 desde el mapa guest de shareConfirms', () => {
+    const progress = readShareConfirms({
+      shareConfirms: {
+        guestA: {
+          answers: {
+            pa: { response: 'cubro' },
+            pb: { response: '' },
+            pc: { response: 'alternativa' },
+          },
+        },
+      },
+    });
+    assert.deepEqual(progress, { confirmed: 2, total: 3 });
+    assert.equal(confirmProgressLabel(progress!), '2 de 3 pedidos confirmados');
+  });
+
+  it('une pedidos por lineId si hay varios guests', () => {
+    assert.deepEqual(readShareConfirms({
+      shareConfirms: {
+        guestA: { answers: { pa: { response: 'cubro' }, pb: { response: '' } } },
+        guestB: { answers: { pb: { response: 'pregunta' }, pc: { response: '' } } },
+      },
+    }), { confirmed: 2, total: 3 });
+  });
+
+  it('cuenta 10 de 10 desde contraRider.answers', () => {
+    const answers = Object.fromEntries(
+      Array.from({ length: 10 }, (_, i) => [`line-${i}`, { response: 'cubro' }]),
+    );
+    const progress = readShareConfirms({ contraRider: { answers } });
+    assert.deepEqual(progress, { confirmed: 10, total: 10 });
+    assert.equal(confirmProgressLabel(progress!), '10 de 10 pedidos confirmados');
+  });
 });
 
 describe('buildRiderHomeCards', () => {
@@ -92,6 +126,26 @@ describe('buildRiderHomeCards', () => {
       venue_name: 'Teatro Colón',
       event_date: '2026-11-01',
     }));
+  });
+
+  it('habilita Respuestas y el avance desde contraRider', () => {
+    const cards = buildRiderHomeCards([
+      {
+        id: 'qa',
+        artist_name: 'Luz Roja',
+        share_token: 'tok',
+        metadata: {
+          contraRider: {
+            answers: {
+              a: { response: 'cubro' },
+              b: { response: 'cubro' },
+            },
+          },
+        },
+      },
+    ]);
+    assert.equal(cards[0].canViewResponses, true);
+    assert.equal(confirmProgressLabel(cards[0].confirmProgress!), '2 de 2 pedidos confirmados');
   });
 
   it('no agrupa borradores sin fecha y lugar', () => {

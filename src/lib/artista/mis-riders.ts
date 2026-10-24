@@ -97,9 +97,43 @@ export function readShowReady(metadata: unknown): boolean {
   return asRecord(metadata)?.showReady === true;
 }
 
+function hasTruthyResponse(value: unknown): boolean {
+  const record = asRecord(value);
+  if (record) return Boolean(record.response);
+  return Boolean(value);
+}
+
+function progressFromAnswers(answers: unknown): ShareConfirmProgress | null {
+  const record = asRecord(answers);
+  if (!record) return null;
+
+  const lineIds = Object.keys(record);
+  if (lineIds.length === 0) return null;
+
+  const confirmed = lineIds.filter((lineId) => hasTruthyResponse(record[lineId])).length;
+  return { confirmed, total: lineIds.length };
+}
+
+function progressFromGuestShareConfirms(record: Record<string, unknown>): ShareConfirmProgress | null {
+  const confirmedByLine = new Map<string, boolean>();
+
+  for (const value of Object.values(record)) {
+    const answers = asRecord(asRecord(value)?.answers);
+    if (!answers) continue;
+    for (const [lineId, answer] of Object.entries(answers)) {
+      const already = confirmedByLine.get(lineId) === true;
+      confirmedByLine.set(lineId, already || hasTruthyResponse(answer));
+    }
+  }
+
+  if (confirmedByLine.size === 0) return null;
+  const confirmed = [...confirmedByLine.values()].filter(Boolean).length;
+  return { confirmed, total: confirmedByLine.size };
+}
+
 export function readShareConfirms(metadata: unknown): ShareConfirmProgress | null {
-  const raw = asRecord(metadata)?.shareConfirms;
-  if (raw == null) return null;
+  const meta = asRecord(metadata);
+  const raw = meta?.shareConfirms;
 
   if (Array.isArray(raw)) {
     if (raw.length === 0) return null;
@@ -114,12 +148,18 @@ export function readShareConfirms(metadata: unknown): ShareConfirmProgress | nul
   }
 
   const record = asRecord(raw);
-  if (!record) return null;
+  if (record) {
+    const confirmed = asCount(record.confirmed ?? record.n);
+    const total = asCount(record.total ?? record.requested ?? record.m);
+    if (confirmed != null && total != null && total > 0) {
+      return { confirmed, total };
+    }
 
-  const confirmed = asCount(record.confirmed ?? record.n);
-  const total = asCount(record.total ?? record.requested ?? record.m);
-  if (confirmed == null || total == null || total <= 0) return null;
-  return { confirmed, total };
+    const fromGuests = progressFromGuestShareConfirms(record);
+    if (fromGuests) return fromGuests;
+  }
+
+  return progressFromAnswers(asRecord(meta?.contraRider)?.answers);
 }
 
 export function riderHomeStatus(source: RiderHomeSource): RiderHomeStatus {
