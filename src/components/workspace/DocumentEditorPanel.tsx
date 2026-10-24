@@ -125,6 +125,7 @@ export function DocumentEditorPanel({
         onAskAssistant={onAskAssistant}
         onDraftWithSelection={onDraftWithSelection}
         onOpenImportModal={onOpenImportModal}
+        absoluteExclusions={absoluteExclusions}
       />
     </main>
   );

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import type { AbsoluteExclusion } from '@/core/types/rider.types';
 import { formatExclusionLabel } from '@/lib/share/exclusions';
+import { BrandModelFields } from '@/components/rider/BrandModelFields';
 
 interface AbsoluteExclusionsPanelProps {
   exclusions: AbsoluteExclusion[];
@@ -70,20 +71,17 @@ export function AbsoluteExclusionsPanel({
 
       {!readOnly && onAdd ? (
         <form onSubmit={submit} className="mt-2 flex flex-wrap items-center gap-2">
-          <input
-            value={brand}
-            onChange={(event) => setBrand(event.target.value)}
-            placeholder="Marca"
-            aria-label="Marca excluida"
-            className="h-8 w-28 rounded-xl border border-rose-200 bg-white px-2.5 text-xs font-medium text-slate-800 outline-none focus:border-rose-400"
-          />
-          <input
-            value={model}
-            onChange={(event) => setModel(event.target.value)}
-            placeholder="Modelo (opcional)"
-            aria-label="Modelo excluido"
-            className="h-8 w-36 rounded-xl border border-rose-200 bg-white px-2.5 text-xs font-medium text-slate-800 outline-none focus:border-rose-400"
-          />
+          <div className="min-w-[16rem] flex-1">
+            <BrandModelFields
+              brand={brand}
+              model={model}
+              modelOptional
+              onChange={(next) => {
+                setBrand(next.brand);
+                setModel(next.model);
+              }}
+            />
+          </div>
           <button
             type="submit"
             disabled={!brand.trim()}

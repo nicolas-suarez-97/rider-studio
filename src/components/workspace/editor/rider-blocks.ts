@@ -1,7 +1,7 @@
 import { mergeAttributes, Node, Extension, type Editor } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { formatRiderDate, riderKicker } from '@/core/constants/document-themes';
-import type { RiderType } from '@/core/types/rider.types';
+import type { AbsoluteExclusion, RiderType } from '@/core/types/rider.types';
 import {
   ColumnsBlock,
   ContactsBlock,
@@ -21,6 +21,7 @@ export type RiderDocumentMeta = {
   version: string;
   riderType: RiderType;
   uploadImage: ((file: File) => Promise<string | null | undefined>) | null;
+  absoluteExclusions: AbsoluteExclusion[];
 };
 
 declare module '@tiptap/core' {
@@ -82,6 +83,7 @@ export const RiderDocumentMetaExtension = Extension.create({
       version: 'v1.0',
       riderType: 'tecnico' as RiderType,
       uploadImage: null,
+      absoluteExclusions: [],
     };
   },
 });
@@ -201,6 +203,8 @@ export const Requirement = Node.create({
   addAttributes() {
     return {
       label: stringField('label', 'data-label', 'Requisito'),
+      brand: stringField('brand', 'data-brand'),
+      model: stringField('model', 'data-model'),
     };
   },
   parseHTML() {

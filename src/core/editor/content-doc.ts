@@ -3,6 +3,7 @@ import { SECTION_FIELD_CONFIGS, findSectionConfig } from '@/core/constants/secti
 import { formatRiderDate, riderKicker } from '@/core/constants/document-themes';
 import { RiderContentDoc, RiderContentNode, RiderType, SectionItem } from '@/core/types/rider.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
+import { formatRequirementPedido } from '@/lib/equipment/brand-model';
 
 interface JsonNode {
   type?: string;
@@ -99,9 +100,12 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
       return;
     }
     if (node.type === 'requirement') {
-      const label = typeof node.attrs?.label === 'string' ? node.attrs.label.trim() : 'Requisito';
-      const body = inlineText(node).trim();
-      lines.push(body ? `${label}: ${body}` : label);
+      lines.push(formatRequirementPedido({
+        label: typeof node.attrs?.label === 'string' ? node.attrs.label : 'Requisito',
+        brand: typeof node.attrs?.brand === 'string' ? node.attrs.brand : '',
+        model: typeof node.attrs?.model === 'string' ? node.attrs.model : '',
+        body: inlineText(node),
+      }));
       return;
     }
     if (node.type === 'notice') {
