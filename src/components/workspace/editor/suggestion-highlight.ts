@@ -8,6 +8,7 @@ import type { Editor } from '@tiptap/core';
 import { alreadyHasProposedText, isInPlaceCorrection } from '@/core/editor/apply-block-correction';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 import { previewRiderMarkup, riderMarkupToContent } from '@/core/editor/rider-markup';
+import { isSafeOldRangeToDelete, proposalLocateNeedles, trustedStoredRange } from '@/core/editor/proposed-ranges';
 
 export function findSectionBounds(doc: PMNode, sectionId?: string | null): { from: number; to: number } | null {
   if (!sectionId) return null;
@@ -383,6 +384,61 @@ export function applySuggestionToEditor(editor: Editor, suggestion: DocumentSugg
   };
 }
 
+function clampRange(range: { from: number; to: number } | undefined, docSize: number): { from: number; to: number } | null {
+  if (!range) return null;
+  const from = Math.max(0, Math.min(range.from, docSize));
+  const to = Math.max(from, Math.min(range.to, docSize));
+  return from < to ? { from, to } : null;
+}
+
+function locateAnyNeedle(
+  doc: PMNode,
+  needles: string[],
+  bounds?: { from: number; to: number } | null
+): { from: number; to: number } | null {
+  for (const needle of needles) {
+    const found = locateRangeInDoc(doc, needle, bounds);
+    if (found) return found;
+  }
+  return null;
+}
+
+function rangeSlice(doc: PMNode, range?: { from: number; to: number }): string {
+  if (!range) return '';
+  const size = doc.content.size;
+  const from = Math.max(0, Math.min(range.from, size));
+  const to = Math.max(from, Math.min(range.to, size));
+  if (from >= to) return '';
+  return doc.textBetween(from, to, '\n');
+}
+
+export function resolveAppliedProposalRanges(
+  doc: PMNode,
+  suggestion: DocumentSuggestion
+): { appliedRange?: { from: number; to: number }; oldRange?: { from: number; to: number } } {
+  const bounds = suggestion.sectionId ? findSectionBounds(doc, suggestion.sectionId) : null;
+  const locatedOld = locateAnyNeedle(doc, proposalLocateNeedles(suggestion.baseText), bounds);
+  const appliedNeedles = [
+    ...proposalLocateNeedles(suggestion.proposedText),
+    previewRiderMarkup(suggestion.proposedText || ''),
+  ].filter((needle, index, all) => needle && all.indexOf(needle) === index);
+  const locatedApplied = locateAnyNeedle(doc, appliedNeedles, bounds);
+  return {
+    oldRange: trustedStoredRange(
+      locatedOld,
+      suggestion.oldRange,
+      rangeSlice(doc, suggestion.oldRange),
+      suggestion.baseText,
+    ),
+    appliedRange: trustedStoredRange(
+      locatedApplied,
+      suggestion.appliedRange,
+      rangeSlice(doc, suggestion.appliedRange),
+      suggestion.proposedText,
+    ),
+  };
+}
+
 export function acceptSuggestionInEditor(editor: Editor, suggestion: DocumentSuggestion): boolean {
   if (
     suggestion.kind === 'add_channel' ||
@@ -394,16 +450,18 @@ export function acceptSuggestionInEditor(editor: Editor, suggestion: DocumentSug
   }
 
   const docSize = editor.state.doc.content.size;
+  const resolved = resolveAppliedProposalRanges(editor.state.doc, suggestion);
+  const oldRange = clampRange(resolved.oldRange, docSize);
 
   // Si había una versión anterior sombreada en rojo (oldRange):
   // ¡Se elimina del documento para dejar únicamente lo nuevo!
-  if (suggestion.oldRange && suggestion.oldRange.from < suggestion.oldRange.to) {
-    const from = Math.max(0, Math.min(suggestion.oldRange.from, docSize));
-    const to = Math.max(from, Math.min(suggestion.oldRange.to, docSize));
-    if (from < to) {
-      editor.chain().focus().deleteRange({ from, to }).run();
-      return true;
-    }
+  if (oldRange && isSafeOldRangeToDelete({
+    oldSlice: rangeSlice(editor.state.doc, oldRange),
+    proposedText: suggestion.proposedText,
+    baseText: suggestion.baseText,
+  })) {
+    editor.chain().focus().deleteRange({ from: oldRange.from, to: oldRange.to }).run();
+    return true;
   }
 
   return true;
@@ -420,6 +478,8 @@ export function revertSuggestionFromEditor(editor: Editor, suggestion: DocumentS
   }
 
   const docSize = editor.state.doc.content.size;
+  const resolved = resolveAppliedProposalRanges(editor.state.doc, suggestion);
+  const appliedRange = clampRange(resolved.appliedRange, docSize);
 
   // Si había una versión nueva (appliedRange), restaurar el baseText in-place.
   if (suggestion.appliedRange && suggestion.appliedRange.from < suggestion.appliedRange.to) {
@@ -571,34 +631,27 @@ export const SuggestionHighlights = Extension.create({
                 continue;
               }
 
-              // Caso 1: Sugerencia directamente aplicada en el documento
+              // Caso 1: Sugerencia propuesta activa en el documento
               if (suggestion.status === 'applied') {
-                // 1. Versión anterior que se está modificando: sombreada en rojito
-                if (suggestion.oldRange && suggestion.oldRange.from < suggestion.oldRange.to) {
-                  const oldFrom = Math.max(0, Math.min(suggestion.oldRange.from, docSize));
-                  const oldTo = Math.max(oldFrom, Math.min(suggestion.oldRange.to, docSize));
-                  if (oldFrom < oldTo) {
-                    addInlineDecorationsForRange(decorations, state.doc, oldFrom, oldTo, 'rider-diff-old');
-                  }
+                const resolved = resolveAppliedProposalRanges(state.doc, suggestion);
+                const oldRange = clampRange(resolved.oldRange, docSize);
+                const appliedRange = clampRange(resolved.appliedRange, docSize);
+
+                if (oldRange) {
+                  addInlineDecorationsForRange(decorations, state.doc, oldRange.from, oldRange.to, 'rider-diff-old');
                 }
 
-                // 2. Versión nueva con propuesta: sombreada en verdecito + Banner de Aprobación
-                if (suggestion.appliedRange && suggestion.appliedRange.from < suggestion.appliedRange.to) {
-                  const from = Math.max(0, Math.min(suggestion.appliedRange.from, docSize));
-                  const to = Math.max(from, Math.min(suggestion.appliedRange.to, docSize));
-                  if (from < to) {
-                    addInlineDecorationsForRange(decorations, state.doc, from, to, 'rider-applied-highlight');
-                  }
+                if (appliedRange) {
+                  addInlineDecorationsForRange(decorations, state.doc, appliedRange.from, appliedRange.to, 'rider-applied-highlight');
                   decorations.push(
-                    Decoration.widget(from, () => createAppliedBanner(suggestion), {
+                    Decoration.widget(appliedRange.from, () => createAppliedBanner(suggestion), {
                       side: -1,
                       key: `applied-banner-${suggestion.id}`,
                     })
                   );
-                } else if (suggestion.oldRange) {
-                  const pos = Math.min(suggestion.oldRange.from, docSize);
+                } else if (oldRange) {
                   decorations.push(
-                    Decoration.widget(pos, () => createAppliedBanner(suggestion), {
+                    Decoration.widget(oldRange.from, () => createAppliedBanner(suggestion), {
                       side: -1,
                       key: `applied-banner-${suggestion.id}`,
                     })

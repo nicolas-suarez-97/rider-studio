@@ -8,6 +8,7 @@ import {
   type RiderBlockRef,
   planChatDocumentApply,
 } from './chat-document-sync';
+import { replaceActiveProposed } from './proposed-confirmed';
 import { riderMarkupToContent } from './rider-markup';
 
 export const CHAT_TRANSFER_PERSIST_FAIL =
@@ -122,9 +123,10 @@ export function applyChatSuggestionsToRiderSections(input: {
 
   const sections = input.sections.map((section) => ({ ...section }));
   const refs: RiderBlockRef[] = sections.map((section) => ({ id: section.id, title: section.title }));
+  const { next: drafts } = replaceActiveProposed([], input.suggestions || []);
   let changed = false;
 
-  for (const draft of input.suggestions || []) {
+  for (const draft of drafts) {
     if (draft.kind === 'switch_theme' || draft.kind === 'switch_type' || draft.kind === 'add_channel') {
       continue;
     }

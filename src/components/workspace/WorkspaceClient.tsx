@@ -26,6 +26,7 @@ import { buildGapSuggestions, docToPlainText, isDocumentIntro, sectionsForOutlin
 import { materializeSuggestions } from '@/core/editor/suggestions';
 import { mergeAppliedDocumentSuggestions } from '@/core/editor/apply-block-correction';
 import { chatReplyAfterDocumentApply, ensureChatDocumentSuggestions, planChatDocumentApply } from '@/core/editor/chat-document-sync';
+import { confirmProposedOnSection, replaceActiveProposed } from '@/core/editor/proposed-confirmed';
 import { REVIEW_HEADING, readReviewSuggestions } from '@/core/editor/review-message';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
 import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
@@ -125,6 +126,12 @@ export function WorkspaceClient({
   const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
   const [agentSuggestions, setAgentSuggestions] = useState<DocumentSuggestion[]>([]);
   const [dismissedGaps, setDismissedGaps] = useState<string[]>([]);
+  const agentSuggestionsRef = useRef(agentSuggestions);
+  agentSuggestionsRef.current = agentSuggestions;
+  const applyingSectionIdsRef = useRef(new Set<string>());
+  useEffect(() => {
+    applyingSectionIdsRef.current.clear();
+  }, [agentSuggestions]);
   const bridgeRef = useRef<EditorBridge | null>(null);
   const selectionRef = useRef({ sectionId: '', text: '' });
   const savedSnap = useRef<string | null>(null);
@@ -589,7 +596,21 @@ export function WorkspaceClient({
       const retainIds = view === 'all'
         ? undefined
         : prev.sections.filter((section) => !visibleIds.has(section.id)).map((section) => section.id);
-      updated.syncSectionsFromDocument(patches, {
+      const proposedIds = new Set(
+        agentSuggestionsRef.current
+          .filter((item) => item.status === 'applied' && item.sectionId)
+          .map((item) => item.sectionId)
+      );
+      for (const id of applyingSectionIdsRef.current) proposedIds.add(id);
+      const confirmedPatches = patches.map((patch) => {
+        if (!proposedIds.has(patch.id)) return patch;
+        const existing = prev.sections.find((section) => section.id === patch.id);
+        if (!existing) {
+          return { ...patch, content: '', contentDoc: undefined };
+        }
+        return { ...patch, content: existing.content || '', contentDoc: existing.contentDoc };
+      });
+      updated.syncSectionsFromDocument(confirmedPatches, {
         retainIds,
         defaultType: isRiderType(view) ? view : prev.type,
       });
@@ -636,6 +657,20 @@ export function WorkspaceClient({
     if (!suggestion || suggestion.status === 'stale') return;
 
     if (suggestion.status === 'applied') {
+      if (suggestion.sectionId && suggestion.kind !== 'switch_theme' && suggestion.kind !== 'switch_type' && suggestion.kind !== 'add_channel') {
+        setRider((prev) => {
+          const updated = new Rider({ ...prev });
+          const section = updated.sections.find((item) => item.id === suggestion.sectionId);
+          if (section) {
+            const confirmed = confirmProposedOnSection(section, suggestion);
+            updated.updateSection(section.id, {
+              content: confirmed.content,
+              contentDoc: confirmed.contentDoc,
+            });
+          }
+          return updated;
+        });
+      }
       bridgeRef.current?.accept(suggestion);
     } else if (suggestion.status === 'pending') {
       if (suggestion.kind === 'add_channel' && suggestion.channel) {
@@ -877,7 +912,35 @@ export function WorkspaceClient({
       const failures: string[] = [];
 
       if (synced.suggestions.length > 0) {
-        const drafts = materializeSuggestions(synced.suggestions, editorContext);
+        const drafts = replaceActiveProposed([], materializeSuggestions(synced.suggestions, editorContext)).next;
+        const { superseded } = replaceActiveProposed(agentSuggestionsRef.current, drafts);
+        for (const previous of superseded) {
+          if (previous.status !== 'applied') continue;
+          if (previous.kind === 'switch_theme' && previous.baseText) {
+            handleThemeChange(previous.baseText as RiderDocumentTheme);
+          } else if (previous.kind === 'add_section' && previous.sectionId) {
+            const updated = new Rider({ ...riderRef.current });
+            updated.deleteSection(previous.sectionId);
+            setRider(updated);
+          } else if (previous.kind === 'add_channel' && previous.channel) {
+            const ch = riderRef.current.channels.find(
+              (c) => c.name === previous.channel?.name || c.mic === previous.channel?.mic
+            );
+            if (ch) handleDeleteChannel(ch.id);
+          } else {
+            const reverted = bridgeRef.current?.revert(previous);
+            if (!reverted) {
+              bridgeRef.current?.revert({
+                ...previous,
+                appliedRange: undefined,
+                oldRange: undefined,
+              });
+            }
+          }
+        }
+        for (const draft of drafts) {
+          if (draft.sectionId) applyingSectionIdsRef.current.add(draft.sectionId);
+        }
         try {
         for (const draft of drafts) {
           if (draft.kind === 'switch_theme' && draft.theme) {
@@ -932,6 +995,7 @@ export function WorkspaceClient({
             }
             draft.sectionId = insertedId;
             draft.newSectionTitle = newTitle;
+            applyingSectionIdsRef.current.add(insertedId);
             draft.applied = true;
             draft.status = 'applied';
             setActiveSectionId(insertedId);
@@ -953,6 +1017,7 @@ export function WorkspaceClient({
 
           if (plan.sectionId) {
             draft.sectionId = plan.sectionId;
+            applyingSectionIdsRef.current.add(plan.sectionId);
             setActiveSectionId(plan.sectionId);
             setTimeout(() => {
               bridgeRef.current?.scrollToSection(plan.sectionId);
@@ -1014,12 +1079,15 @@ export function WorkspaceClient({
       }]);
 
       if (applied) {
-        setAgentSuggestions((current) => mergeAppliedDocumentSuggestions(current, appliedItems));
+        setAgentSuggestions((current) => replaceActiveProposed(current, appliedItems).next);
         showToast('✨ Modificación aplicada en el documento');
-      } else if (synced.error) {
-        showToast(synced.error);
-      } else if (failures.length > 0) {
-        showToast(failures.join(' '));
+      } else {
+        applyingSectionIdsRef.current.clear();
+        if (synced.error) {
+          showToast(synced.error);
+        } else if (failures.length > 0) {
+          showToast(failures.join(' '));
+        }
       }
     } catch (err) {
       console.error(err);
