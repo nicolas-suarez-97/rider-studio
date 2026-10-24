@@ -8,7 +8,7 @@ import type { Editor } from '@tiptap/core';
 import { alreadyHasProposedText, isInPlaceCorrection } from '@/core/editor/apply-block-correction';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 import { previewRiderMarkup, riderMarkupToContent } from '@/core/editor/rider-markup';
-import { proposalLocateNeedles, trustedStoredRange } from '@/core/editor/proposed-ranges';
+import { isSafeOldRangeToDelete, proposalLocateNeedles, trustedStoredRange } from '@/core/editor/proposed-ranges';
 
 export function findSectionBounds(doc: PMNode, sectionId?: string | null): { from: number; to: number } | null {
   if (!sectionId) return null;
@@ -455,7 +455,11 @@ export function acceptSuggestionInEditor(editor: Editor, suggestion: DocumentSug
 
   // Si había una versión anterior sombreada en rojo (oldRange):
   // ¡Se elimina del documento para dejar únicamente lo nuevo!
-  if (oldRange) {
+  if (oldRange && isSafeOldRangeToDelete({
+    oldSlice: rangeSlice(editor.state.doc, oldRange),
+    proposedText: suggestion.proposedText,
+    baseText: suggestion.baseText,
+  })) {
     editor.chain().focus().deleteRange({ from: oldRange.from, to: oldRange.to }).run();
     return true;
   }

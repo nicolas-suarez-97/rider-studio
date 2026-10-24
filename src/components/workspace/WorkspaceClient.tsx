@@ -26,7 +26,7 @@ import { buildGapSuggestions, docToPlainText, isDocumentIntro, sectionsForOutlin
 import { materializeSuggestions } from '@/core/editor/suggestions';
 import { mergeAppliedDocumentSuggestions } from '@/core/editor/apply-block-correction';
 import { chatReplyAfterDocumentApply, ensureChatDocumentSuggestions, planChatDocumentApply } from '@/core/editor/chat-document-sync';
-import { applyProposedToConfirmedText, replaceActiveProposed } from '@/core/editor/proposed-confirmed';
+import { confirmProposedOnSection, replaceActiveProposed } from '@/core/editor/proposed-confirmed';
 import { REVIEW_HEADING, readReviewSuggestions } from '@/core/editor/review-message';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
 import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
@@ -662,8 +662,10 @@ export function WorkspaceClient({
           const updated = new Rider({ ...prev });
           const section = updated.sections.find((item) => item.id === suggestion.sectionId);
           if (section) {
+            const confirmed = confirmProposedOnSection(section, suggestion);
             updated.updateSection(section.id, {
-              content: applyProposedToConfirmedText(section.content || '', suggestion, { confirm: true }),
+              content: confirmed.content,
+              contentDoc: confirmed.contentDoc,
             });
           }
           return updated;

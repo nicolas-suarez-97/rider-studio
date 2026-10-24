@@ -90,6 +90,16 @@ export function applyProposedToConfirmedText(
   return applyDraftToText(confirmed, draft);
 }
 
+export function confirmProposedOnSection<T extends SectionItem>(
+  section: T,
+  draft: ProposedDraft,
+): T {
+  return withContent(
+    section,
+    applyProposedToConfirmedText(section.content || '', draft, { confirm: true }),
+  ) as T;
+}
+
 export function previewSectionText(
   confirmed: string,
   proposed: ProposedDraft | null | undefined,

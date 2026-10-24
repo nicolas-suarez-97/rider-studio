@@ -3,12 +3,13 @@ import { describe, it } from 'node:test';
 import type { SectionItem } from '../types/rider.types.ts';
 import {
   applyProposedToConfirmedText,
+  confirmProposedOnSection,
   overlayProposedOnSections,
   previewSectionText,
   proposalTargetKey,
   replaceActiveProposed,
 } from './proposed-confirmed.ts';
-import { proposalLocateNeedles, trustedStoredRange } from './proposed-ranges.ts';
+import { isSafeOldRangeToDelete, proposalLocateNeedles, trustedStoredRange } from './proposed-ranges.ts';
 
 function sectionDocText(section: SectionItem): string {
   return JSON.stringify(section.contentDoc || { content: section.content || '' });
@@ -217,6 +218,46 @@ describe('overlayProposedOnSections', () => {
     assert.equal(sections[0].content, 'Backline original');
     assert.match(sectionDocText(sections[0]), /Backline original/);
   });
+
+  it('aplicar alt1 → sustituir alt2 → aceptar deja confirmado y contentDoc en alt2', () => {
+    const confirmedText = 'Lista de backline. Batería: por confirmar';
+    const confirmedDoc = {
+      type: 'doc' as const,
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: confirmedText }] }],
+    };
+    const sections = [section({
+      id: 'tech-backline',
+      title: 'Backline',
+      content: confirmedText,
+      contentDoc: confirmedDoc,
+    })];
+    const first = proposal({
+      id: 'sug-1',
+      sectionId: 'tech-backline',
+      proposedText: 'Banda completa: 2× Marshall, 1× Ampeg',
+    });
+    const second = proposal({
+      id: 'sug-2',
+      sectionId: 'tech-backline',
+      proposedText: 'Guitarra Acústica\nContrabajo\nCajón',
+    });
+
+    const afterFirst = replaceActiveProposed([], [first]);
+    const afterSecond = replaceActiveProposed(afterFirst.next, [second]);
+    const preview = overlayProposedOnSections(sections, afterSecond.next);
+    const accepted = confirmProposedOnSection(sections[0], afterSecond.next[0]);
+    const persisted = overlayProposedOnSections([accepted], []);
+
+    assert.match(preview[0].content || '', /Cajón/);
+    assert.doesNotMatch(preview[0].content || '', /Marshall/);
+    assert.match(accepted.content, /Cajón/);
+    assert.doesNotMatch(accepted.content, /Marshall/);
+    assert.match(sectionDocText(accepted), /Cajón/);
+    assert.doesNotMatch(sectionDocText(accepted), /Marshall/);
+    assert.match(persisted[0].content || '', /Cajón/);
+    assert.doesNotMatch(sectionDocText(persisted[0]), /Banda completa/);
+    assert.notEqual(accepted.contentDoc, confirmedDoc);
+  });
 });
 
 describe('rangos propuestos', () => {
@@ -242,5 +283,27 @@ describe('rangos propuestos', () => {
       'Trío acústico: combo Fender',
     );
     assert.deepEqual(trusted, { from: 12, to: 30 });
+  });
+
+  it('no borra el proposed activo si oldRange quedó pegado al texto de alt2', () => {
+    assert.equal(
+      isSafeOldRangeToDelete({
+        oldSlice: 'Guitarra Acústica\nContrabajo\nCajón',
+        proposedText: 'Guitarra Acústica\nContrabajo\nCajón',
+        baseText: 'Lista de backline. Batería: por confirmar',
+      }),
+      false,
+    );
+  });
+
+  it('sí permite borrar el confirmed sombreado cuando es distinto del proposed', () => {
+    assert.equal(
+      isSafeOldRangeToDelete({
+        oldSlice: 'Lista de backline. Batería: por confirmar',
+        proposedText: 'Guitarra Acústica\nContrabajo\nCajón',
+        baseText: 'Lista de backline. Batería: por confirmar',
+      }),
+      true,
+    );
   });
 });

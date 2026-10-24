@@ -30,3 +30,19 @@ export function trustedStoredRange<T extends { from: number; to: number }>(
   });
   return matches ? stored : undefined;
 }
+
+export function isSafeOldRangeToDelete(args: {
+  oldSlice: string;
+  proposedText?: string;
+  baseText?: string;
+}): boolean {
+  const slice = (args.oldSlice || '').trim();
+  if (!slice) return false;
+  const sliceLower = slice.toLowerCase();
+  const proposedNeedles = proposalLocateNeedles(args.proposedText);
+  const looksProposed = proposedNeedles.some((needle) => {
+    const expected = needle.toLowerCase();
+    return sliceLower.includes(expected) || expected.includes(sliceLower);
+  });
+  return !looksProposed;
+}
