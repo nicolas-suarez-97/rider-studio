@@ -22,6 +22,21 @@ describe('isExplicitRiderTransferIntent', () => {
 });
 
 describe('extractTransferableRiderText', () => {
+  it('al transferir, prefiere la tabla y omite la prosa meta del asistente', () => {
+    const prior = [
+      'He creado una tabla con los monitores recomendados:',
+      '',
+      '| Monitor | Modelo |',
+      '| --- | --- |',
+      '| IEM | Shure PSM1000 |',
+    ].join('\n');
+
+    const extracted = extractTransferableRiderText(prior);
+    assert.match(extracted, /\| Monitor \| Modelo \|/);
+    assert.match(extracted, /Shure PSM1000/);
+    assert.doesNotMatch(extracted, /He creado una tabla/);
+  });
+
   it('usa el contenido técnico del mensaje anterior aunque no tenga heading', () => {
     const prior = [
       '**Recomendaciones sobre Consolas de Sala (FOH):**',

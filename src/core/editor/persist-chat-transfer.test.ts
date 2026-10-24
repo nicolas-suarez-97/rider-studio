@@ -89,6 +89,100 @@ describe('applyChatSuggestionsToRiderSections', () => {
     assert.match(result.sections?.[0].content || '', /DiGiCo SD12/);
   });
 
+  it('aplicar dos veces la misma corrección deja una sola versión vigente', () => {
+    const sections = [section({ id: 'tech-audio', title: 'Audio FOH', content: 'Consola vieja' })];
+    const correction = {
+      kind: 'replace' as const,
+      sectionId: 'tech-audio',
+      baseText: 'Consola vieja',
+      proposedText: 'DiGiCo SD12 con fuente redundante',
+    };
+
+    const first = applyChatSuggestionsToRiderSections({ sections, suggestions: [correction] });
+    const second = applyChatSuggestionsToRiderSections({
+      sections: first.sections || [],
+      suggestions: [correction],
+    });
+
+    assert.equal(second.ok, true);
+    assert.equal(second.sections?.length, 1);
+    assert.equal(second.sections?.[0].id, 'tech-audio');
+    const content = second.sections?.[0].content || '';
+    assert.equal(content.includes('Consola vieja'), false);
+    assert.equal(content.split('DiGiCo SD12 con fuente redundante').length - 1, 1);
+  });
+
+  it('una corrección insert sobre el mismo id reemplaza in-place y no añade otra instancia', () => {
+    const result = applyChatSuggestionsToRiderSections({
+      sections: [section({ id: 'tech-audio', title: 'Audio FOH', content: 'Consola vieja' })],
+      suggestions: [{
+        kind: 'insert',
+        sectionId: 'tech-audio',
+        baseText: 'Consola vieja',
+        proposedText: 'DiGiCo SD12',
+        rationale: 'Corregir la consola FOH del bloque.',
+      }, {
+        kind: 'insert',
+        sectionId: 'tech-audio',
+        baseText: 'Consola vieja',
+        proposedText: 'DiGiCo SD12',
+        rationale: 'Corregir la consola FOH del bloque.',
+      }],
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.sections?.filter((item) => item.id === 'tech-audio').length, 1);
+    const content = result.sections?.[0].content || '';
+    assert.equal(content.includes('Consola vieja'), false);
+    assert.equal(content.split('DiGiCo SD12').length - 1, 1);
+  });
+
+  it('si el bloque ya está proposed, la corrección actualiza ese proposed sin duplicar confirmed', () => {
+    const result = applyChatSuggestionsToRiderSections({
+      sections: [section({
+        id: 'tech-audio',
+        title: 'Audio FOH',
+        content: 'DiGiCo SD12',
+        revision: 'proposed',
+      })],
+      suggestions: [{
+        kind: 'replace',
+        sectionId: 'tech-audio',
+        baseText: 'DiGiCo SD12',
+        proposedText: 'Yamaha CL5',
+      }],
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.sections?.length, 1);
+    assert.equal(result.sections?.[0].id, 'tech-audio');
+    assert.equal(result.sections?.[0].revision, 'proposed');
+    assert.equal(result.sections?.[0].content, 'Yamaha CL5');
+  });
+
+  it('si el bloque está confirmed, la corrección reemplaza proposed del mismo id sin duplicar confirmed', () => {
+    const result = applyChatSuggestionsToRiderSections({
+      sections: [section({
+        id: 'tech-audio',
+        title: 'Audio FOH',
+        content: 'Consola confirmada',
+        revision: 'confirmed',
+      })],
+      suggestions: [{
+        kind: 'replace',
+        sectionId: 'tech-audio',
+        baseText: 'Consola confirmada',
+        proposedText: 'DiGiCo SD12',
+      }],
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.sections?.filter((item) => item.id === 'tech-audio').length, 1);
+    assert.equal(result.sections?.[0].content, 'DiGiCo SD12');
+    assert.equal(result.sections?.[0].revision, 'proposed');
+    assert.equal(result.sections?.[0].content?.includes('Consola confirmada'), false);
+  });
+
   it('no muta las secciones si el texto es un aviso no transferible', () => {
     const sections = [section({ id: 'tech-audio', title: 'Audio FOH', content: 'Yamaha CL5' })];
     const result = applyChatSuggestionsToRiderSections({
