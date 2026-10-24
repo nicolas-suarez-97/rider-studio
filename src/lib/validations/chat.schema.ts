@@ -37,7 +37,10 @@ export const SendChatMessageSchema = z.object({
     })).optional().default([]),
     riderTitle: z.string().max(200).optional().default(''),
     artistName: z.string().max(200).optional().default(''),
-    currentTheme: RiderDocumentThemeSchema.optional().default('studio'),
+    currentTheme: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      RiderDocumentThemeSchema.optional().default('studio'),
+    ),
   }).optional()
 });
 

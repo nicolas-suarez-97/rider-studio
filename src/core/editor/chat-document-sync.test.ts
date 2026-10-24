@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  chatReplyAfterDocumentApply,
   ensureChatDocumentSuggestions,
   extractTransferableRiderText,
   isExplicitRiderTransferIntent,
+  isSparseEditorContext,
   planChatDocumentApply,
   resolveStableBlock,
+  shouldUseDocumentJsonMode,
 } from './chat-document-sync.ts';
 
 describe('isExplicitRiderTransferIntent', () => {
@@ -155,5 +158,59 @@ describe('planChatDocumentApply', () => {
 
     assert.equal(plan.action, 'fail');
     assert.match(plan.error || '', /no pude/i);
+  });
+});
+
+describe('empty rider chat context', () => {
+  it('detecta un rider sin secciones como contexto disperso', () => {
+    assert.equal(isSparseEditorContext(undefined), false);
+    assert.equal(isSparseEditorContext({
+      sectionId: '',
+      sectionText: '',
+      allSections: [],
+    }), true);
+    assert.equal(shouldUseDocumentJsonMode({
+      sectionId: '',
+      sectionText: '',
+      allSections: [],
+    }), false);
+  });
+
+  it('sigue pidiendo JSON cuando hay un bloque activo', () => {
+    assert.equal(isSparseEditorContext({
+      sectionId: 'tech-audio',
+      sectionText: 'DiGiCo SD12',
+      allSections: [{ id: 'tech-audio', title: 'Audio FOH' }],
+    }), false);
+    assert.equal(shouldUseDocumentJsonMode({
+      sectionId: 'tech-audio',
+      sectionText: 'DiGiCo SD12',
+      allSections: [{ id: 'tech-audio', title: 'Audio FOH' }],
+    }), true);
+  });
+});
+
+describe('chatReplyAfterDocumentApply', () => {
+  it('no deja el error genérico de IA si el apply al documento tuvo éxito', () => {
+    const reply = chatReplyAfterDocumentApply({
+      aiText: '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
+      isError: true,
+      applied: true,
+    });
+
+    assert.equal(reply.isError, false);
+    assert.match(reply.text, /documento/i);
+    assert.doesNotMatch(reply.text, /servicio de IA/i);
+  });
+
+  it('conserva el error de IA si no se aplicó nada al documento', () => {
+    const reply = chatReplyAfterDocumentApply({
+      aiText: '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
+      isError: true,
+      applied: false,
+    });
+
+    assert.equal(reply.isError, true);
+    assert.match(reply.text, /servicio de IA/i);
   });
 });

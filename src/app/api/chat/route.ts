@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   SYSTEM_PROMPTS,
   AGENT_PROFILES,
+  generateExpertAgentResponse,
 } from '@/lib/agents/rider-agent';
 import { buildStandardsContext } from '@/lib/standards';
 import { AgentResponse, AgentSuggestionDraft } from '@/core/types/agent.types';
@@ -11,7 +12,12 @@ import {
 } from '@/lib/services/rider-storage';
 import { SendChatMessageSchema } from '@/lib/validations/chat.schema';
 import { parseSuggestionJson, collectSuggestionDrafts } from '@/core/editor/suggestions';
-import { ensureChatDocumentSuggestions } from '@/core/editor/chat-document-sync';
+import {
+  ensureChatDocumentSuggestions,
+  isExplicitRiderTransferIntent,
+  isSparseEditorContext,
+  shouldUseDocumentJsonMode,
+} from '@/core/editor/chat-document-sync';
 import { callAiCompletion, getAiDiagnostics } from '@/lib/ai/ai-provider';
 
 export async function GET() {
@@ -79,11 +85,23 @@ export async function POST(req: NextRequest) {
     const lastMsgObj = messages[messages.length - 1];
     const lastMessage = lastMsgObj?.content || lastMsgObj?.text || '';
 
+    const sparseDocument = isSparseEditorContext(editorContext);
+    const useDocumentJsonMode = shouldUseDocumentJsonMode(editorContext);
     const sectionsList = editorContext?.allSections?.length
       ? editorContext.allSections.map((s) => `- ID: "${s.id}", Título: "${s.title}"`).join('\n')
-      : editorContext ? `- ID: "${editorContext.sectionId}", Título: "${editorContext.sectionTitle}"` : '';
+      : editorContext && editorContext.sectionId
+        ? `- ID: "${editorContext.sectionId}", Título: "${editorContext.sectionTitle}"`
+        : '(el rider no tiene bloques todavía)';
 
-    const suggestionPrompt = editorContext
+    const emptyRiderPrompt = sparseDocument
+      ? `\n\n=== CONTEXTO DEL DOCUMENTO ===
+El rider está vacío: no hay secciones ni texto previo. El usuario puede consultar o pedir recomendaciones.
+Responde en español con markdown profesional (listas, negritas y tablas si aportan).
+No inventes sectionId. Si solo pregunta o pide recomendación, no edites el documento.
+Si pide explícitamente pasar contenido al rider, el servidor transferirá el texto previo.`
+      : '';
+
+    const suggestionPrompt = editorContext && useDocumentJsonMode
       ? `\n\n=== CONTEXTO DEL DOCUMENTO (JSON) ===
 Rider: "${editorContext.riderTitle || 'Rider de Producción'}" | Artista: "${editorContext.artistName || 'Sin artista'}" | Tema: "${editorContext.currentTheme || 'studio'}"
 Secciones disponibles en el documento:
@@ -233,7 +251,7 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       selection: editorContext?.selection,
       sectionTitles: editorContext?.allSections?.map((section) => section.title),
     });
-    const systemPrompt = `${SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master}\n\n${standardsContext}${suggestionPrompt}`;
+    const systemPrompt = `${SYSTEM_PROMPTS[activeAgent] || SYSTEM_PROMPTS.master}\n\n${standardsContext}${emptyRiderPrompt}${suggestionPrompt}`;
 
     const sessionTitle = lastMessage
       ? (lastMessage.length > 36 ? lastMessage.substring(0, 36) + '...' : lastMessage)
@@ -286,12 +304,43 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
 
     let finalResponse: AgentResponse | null = null;
 
+    const priorAssistant = [...messages]
+      .slice(0, -1)
+      .reverse()
+      .find((item) => item.role === 'assistant' || item.role === 'ai');
+    const priorAssistantText = priorAssistant?.content || priorAssistant?.text || '';
+
+    if (isExplicitRiderTransferIntent(lastMessage)) {
+      const synced = ensureChatDocumentSuggestions({
+        userText: lastMessage,
+        priorAssistantText,
+        suggestions: [],
+        sections: editorContext?.allSections || [],
+        activeSectionId: editorContext?.sectionId,
+      });
+      if (synced.error || synced.suggestions.length > 0) {
+        finalResponse = {
+          sessionId: session.id,
+          role: activeAgent,
+          roleName: profile.name,
+          roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
+          message: synced.error
+            || 'He pasado el contenido al documento. Revisa el bloque y confirma o deshaz el cambio.',
+          suggestions: synced.suggestions,
+          gatewayProvider: 'production_expert_engine',
+          actions: [],
+        };
+      }
+    }
+
     // 3. Llamar al proveedor de IA configurado (Vercel AI Gateway, OIDC automático o OpenAI directo)
-    const aiResult = await callAiCompletion({
+    const aiResult = finalResponse
+      ? null
+      : await callAiCompletion({
       messages: [
         {
           role: 'system',
-          content: editorContext
+          content: useDocumentJsonMode
             ? `${systemPrompt}\n\nContexto actual: El usuario está editando un Rider de tipo: "${riderType}". Recuerda responder SIEMPRE en formato JSON válido.`
             : `${systemPrompt}\n\nContexto actual: El usuario está consultando sobre un Rider de tipo: "${riderType}". Responde en español de forma profesional, cordial, experta y enriquecida con markdown.`
         },
@@ -300,9 +349,9 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
           content: m.content || m.text || ''
         }))
       ],
-      temperature: editorContext ? 0.3 : 0.7,
-      max_tokens: editorContext ? 1200 : 700,
-      jsonMode: Boolean(editorContext),
+      temperature: useDocumentJsonMode ? 0.3 : 0.7,
+      max_tokens: useDocumentJsonMode ? 1200 : 900,
+      jsonMode: useDocumentJsonMode,
     });
 
     if (aiResult) {
@@ -310,7 +359,7 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       let replyText = replyRaw;
       let suggestions: AgentSuggestionDraft[] = [];
 
-      if (editorContext) {
+      if (useDocumentJsonMode && editorContext) {
         const parsed = parseSuggestionJson(replyRaw);
         if (parsed) {
           if (parsed.message) replyText = parsed.message;
@@ -385,12 +434,6 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
         }
       }
 
-      const priorAssistant = [...messages]
-        .slice(0, -1)
-        .reverse()
-        .find((item) => item.role === 'assistant' || item.role === 'ai');
-      const priorAssistantText = priorAssistant?.content || priorAssistant?.text || '';
-
       const synced = ensureChatDocumentSuggestions({
         userText: lastMessage,
         priorAssistantText,
@@ -427,22 +470,35 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
     if (!finalResponse) {
       const diagnostics = getAiDiagnostics();
       console.warn('[API Chat] No se obtuvo respuesta del servicio de IA. Diagnóstico:', diagnostics);
-      const profile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
-      finalResponse = {
-        sessionId: session.id,
-        role: activeAgent,
-        roleName: profile.name,
-        roleAvatar: '⚠️',
-        message: '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
-        isError: true,
-        retryable: true,
-        suggestions: [],
-        gatewayProvider: 'openai',
-        actions: [],
-        notice: diagnostics.configured
-          ? `Proveedores IA detectados: ${diagnostics.activeProviders.join(', ')}, pero la llamada a la nube falló.`
-          : 'Token de IA no detectado en producción. Configura AI_GATEWAY_API_KEY o OPENAI_API_KEY en las variables de entorno de Vercel.'
-      };
+      if (sparseDocument) {
+        const fallback = generateExpertAgentResponse(lastMessage, riderType, activeAgent, editorContext);
+        finalResponse = {
+          ...fallback,
+          sessionId: session.id,
+          notice: diagnostics.configured
+            ? 'La nube de IA no respondió en un rider vacío; usé el copiloto local para no dejar el chat en blanco.'
+            : 'Token de IA no detectado en este entorno. Configura AI_GATEWAY_API_KEY u OPENAI_API_KEY (y OIDC de Vercel si aplica). Respondí con el copiloto local.',
+        };
+      } else {
+        const errorProfile = AGENT_PROFILES[activeAgent] || AGENT_PROFILES.master;
+        finalResponse = {
+          sessionId: session.id,
+          role: activeAgent,
+          roleName: errorProfile.name,
+          roleAvatar: '⚠️',
+          message: diagnostics.configured
+            ? '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.'
+            : '⚠️ El chat de IA no tiene credenciales en este entorno. Configura AI_GATEWAY_API_KEY u OPENAI_API_KEY en Vercel y vuelve a intentar.',
+          isError: true,
+          retryable: true,
+          suggestions: [],
+          gatewayProvider: 'openai',
+          actions: [],
+          notice: diagnostics.configured
+            ? `Proveedores IA detectados: ${diagnostics.activeProviders.join(', ')}, pero la llamada a la nube falló.`
+            : 'Token de IA no detectado. Configura AI_GATEWAY_API_KEY o OPENAI_API_KEY en las variables de entorno de Vercel.'
+        };
+      }
     }
 
     if (finalResponse && editorContext && finalResponse.suggestions === undefined) {

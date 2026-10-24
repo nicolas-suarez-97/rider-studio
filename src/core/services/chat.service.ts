@@ -136,11 +136,25 @@ export class ChatService implements IChatService {
       body: JSON.stringify(params)
     });
 
+    const data = await res.json().catch(() => null) as AgentResponse | null;
     if (!res.ok) {
+      if (data && typeof data === 'object') {
+        return {
+          ...data,
+          isError: true,
+          message: data.message || '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
+          suggestions: data.suggestions || [],
+          actions: data.actions || [],
+          role: data.role || 'master',
+          roleName: data.roleName || 'Asistente',
+          roleAvatar: data.roleAvatar || '⚠️',
+          gatewayProvider: data.gatewayProvider || 'openai',
+        };
+      }
       throw new Error(`Chat API error: ${res.status}`);
     }
 
-    return await res.json();
+    return data as AgentResponse;
   }
 
   public async deleteSession(sessionId: string): Promise<boolean> {

@@ -24,7 +24,7 @@ import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
 import { buildGapSuggestions, docToPlainText, isDocumentIntro, sectionsForOutline, type SectionDocumentPatch } from '@/core/editor/content-doc';
 import { materializeSuggestions } from '@/core/editor/suggestions';
-import { ensureChatDocumentSuggestions, planChatDocumentApply } from '@/core/editor/chat-document-sync';
+import { chatReplyAfterDocumentApply, ensureChatDocumentSuggestions, planChatDocumentApply } from '@/core/editor/chat-document-sync';
 import { REVIEW_HEADING, readReviewSuggestions } from '@/core/editor/review-message';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
 import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
@@ -827,39 +827,33 @@ export function WorkspaceClient({
           : '',
         gaps: documentSuggestions
           .filter((item) => item.source === 'gap' && item.sectionId === (section?.id || ''))
-          .map((item) => item.rationale),
+          .map((item) => (item.rationale || '').slice(0, 200))
+          .filter(Boolean),
         allSections: blockRefs,
         riderTitle: rider.title,
         artistName: rider.artistName,
         currentTheme: rider.documentTheme,
       };
-      const data = await chatService.sendMessage({
-        messages: updatedMessages.map(m => ({
-          role: m.sender === 'user' ? 'user' : 'assistant',
-          content: m.text
-        })),
-        riderType: rider.type,
-        activeAgent,
-        sessionId: currentSessionId || undefined,
-        riderId: rider.id || undefined,
-        editorContext,
-      });
+      let data: Awaited<ReturnType<typeof chatService.sendMessage>> | null = null;
+      let requestFailed = false;
+      try {
+        data = await chatService.sendMessage({
+          messages: updatedMessages.map(m => ({
+            role: m.sender === 'user' ? 'user' : 'assistant',
+            content: m.text
+          })),
+          riderType: rider.type,
+          activeAgent,
+          sessionId: currentSessionId || undefined,
+          riderId: rider.id || undefined,
+          editorContext,
+        });
+      } catch (sendError) {
+        console.error(sendError);
+        requestFailed = true;
+      }
 
-      const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const aiMsg: ChatMessageItem = {
-        sender: 'ai',
-        text: data.message || (data.isError ? '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.' : 'Entendido. Procesando requerimiento de escenario.'),
-        time: replyTime,
-        role: activeAgent,
-        roleName: data.roleName || AGENT_PROFILES[activeAgent].name,
-        roleAvatar: data.roleAvatar || (data.isError ? '⚠️' : activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠'),
-        isError: data.isError,
-        retryPrompt: data.isError ? text : undefined
-      };
-      setMessages(prev => [...prev, aiMsg]);
-
-      // Sincronizar ID de sesión si el backend generó una nueva
-      if (data.sessionId && data.sessionId !== currentSessionId) {
+      if (data?.sessionId && data.sessionId !== currentSessionId) {
         setCurrentSessionId(data.sessionId);
         const currentUrl = new URL(window.location.href);
         currentUrl.searchParams.set('session', data.sessionId);
@@ -870,26 +864,17 @@ export function WorkspaceClient({
       const synced = ensureChatDocumentSuggestions({
         userText: text,
         priorAssistantText,
-        suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+        suggestions: Array.isArray(data?.suggestions) ? data.suggestions : [],
         sections: blockRefs,
         activeSectionId: targetSectionId || editorContext.sectionId,
       });
 
-      if (synced.error && synced.suggestions.length === 0) {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (last?.sender === 'ai') {
-            next[next.length - 1] = { ...last, text: synced.error as string };
-          }
-          return next;
-        });
-        showToast(synced.error);
-      } else if (synced.suggestions.length > 0) {
-        const drafts = materializeSuggestions(synced.suggestions, editorContext);
-        const appliedItems: DocumentSuggestion[] = [];
-        const failures: string[] = [];
+      const appliedItems: DocumentSuggestion[] = [];
+      const failures: string[] = [];
 
+      if (synced.suggestions.length > 0) {
+        const drafts = materializeSuggestions(synced.suggestions, editorContext);
+        try {
         for (const draft of drafts) {
           if (draft.kind === 'switch_theme' && draft.theme) {
             draft.baseText = rider.documentTheme;
@@ -986,24 +971,51 @@ export function WorkspaceClient({
             failures.push('No pude insertar el contenido en el bloque indicado. El resto de apartados se mantiene.');
           }
         }
-
-        if (appliedItems.length > 0) {
-          setAgentSuggestions((current) => [...current, ...appliedItems]);
-          showToast('✨ Modificación aplicada en el documento');
+        } catch (applyError) {
+          console.error(applyError);
+          failures.push('No pude insertar el contenido en el bloque indicado. El resto de apartados se mantiene.');
         }
+      }
 
-        if (failures.length > 0) {
-          const report = failures.join(' ');
-          setMessages((prev) => {
-            const next = [...prev];
-            const last = next[next.length - 1];
-            if (last?.sender === 'ai') {
-              next[next.length - 1] = { ...last, text: `${last.text}\n\n⚠️ ${report}` };
-            }
-            return next;
-          });
-          showToast(report);
-        }
+      const applied = appliedItems.length > 0;
+      const serviceErrorText = data?.notice && !data?.message
+        ? data.notice
+        : (data?.message || '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.');
+      const reply = chatReplyAfterDocumentApply({
+        aiText: synced.error
+          || data?.message
+          || (data?.isError || requestFailed
+            ? serviceErrorText
+            : 'Entendido. Procesando requerimiento de escenario.'),
+        isError: Boolean((data?.isError || requestFailed) && !applied && !synced.error),
+        applied,
+      });
+
+      let finalText = !applied && synced.error ? synced.error : reply.text;
+      if (failures.length > 0) {
+        finalText = `${finalText}\n\n⚠️ ${failures.join(' ')}`;
+      }
+
+      const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const isError = !applied && (reply.isError || Boolean(synced.error));
+      setMessages((prev) => [...prev, {
+        sender: 'ai',
+        text: finalText,
+        time: replyTime,
+        role: activeAgent,
+        roleName: data?.roleName || AGENT_PROFILES[activeAgent].name,
+        roleAvatar: data?.roleAvatar || (isError ? '⚠️' : activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠'),
+        isError,
+        retryPrompt: isError && !synced.error ? text : undefined,
+      }]);
+
+      if (applied) {
+        setAgentSuggestions((current) => [...current, ...appliedItems]);
+        showToast('✨ Modificación aplicada en el documento');
+      } else if (synced.error) {
+        showToast(synced.error);
+      } else if (failures.length > 0) {
+        showToast(failures.join(' '));
       }
     } catch (err) {
       console.error(err);

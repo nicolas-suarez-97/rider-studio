@@ -55,6 +55,48 @@ const TRANSFER_FAIL =
 const APPLY_EMPTY_FAIL =
   'No pude aplicar el cambio al documento: la instrucción no incluye contenido para insertar. El resto de apartados se mantiene.';
 
+export function isSparseEditorContext(ctx?: {
+  sectionId?: string;
+  sectionText?: string;
+  allSections?: unknown[];
+}): boolean {
+  if (!ctx) return false;
+  const hasSection = (ctx.allSections || []).length > 0;
+  return !hasSection && !(ctx.sectionId || '').trim() && !(ctx.sectionText || '').trim();
+}
+
+export function shouldUseDocumentJsonMode(ctx?: {
+  sectionId?: string;
+  sectionText?: string;
+  allSections?: unknown[];
+}): boolean {
+  return Boolean(ctx) && !isSparseEditorContext(ctx);
+}
+
+const AI_SERVICE_ERROR =
+  /no se pudo obtener una respuesta del servicio de ia/i;
+
+export function chatReplyAfterDocumentApply(input: {
+  aiText: string;
+  isError?: boolean;
+  applied: boolean;
+}): { text: string; isError: boolean } {
+  if (input.applied) {
+    const looksLikeServiceError = Boolean(input.isError) || AI_SERVICE_ERROR.test(input.aiText || '');
+    if (looksLikeServiceError || !(input.aiText || '').trim()) {
+      return {
+        text: 'He pasado el contenido al documento. Revisa el bloque y confirma o deshaz el cambio.',
+        isError: false,
+      };
+    }
+    return { text: input.aiText, isError: false };
+  }
+  return {
+    text: input.aiText,
+    isError: Boolean(input.isError),
+  };
+}
+
 export function isExplicitRiderTransferIntent(prompt: string): boolean {
   const text = (prompt || '').trim();
   if (!text) return false;
