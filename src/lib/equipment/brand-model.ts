@@ -20,16 +20,24 @@ function matchesQuery(value: string, query: string): boolean {
   return normalize(value).includes(needle);
 }
 
-function uniqueBrands(catalog: EquipmentCatalogItem[]): string[] {
+function uniqueValues(values: readonly string[]): string[] {
   const seen = new Set<string>();
-  const brands: string[] = [];
-  for (const row of catalog) {
-    const key = normalize(row.brand);
+  const unique: string[] = [];
+  for (const value of values) {
+    const key = normalize(value);
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    brands.push(row.brand);
+    unique.push(value.trim());
   }
-  return brands;
+  return unique;
+}
+
+function uniqueBrands(catalog: EquipmentCatalogItem[], extras: readonly string[] = []): string[] {
+  return uniqueValues([...catalog.map((row) => row.brand), ...extras]);
+}
+
+function brandModelPairKey(brand: string, model?: string): string {
+  return `${normalize(brand)}\0${normalize(model || '')}`;
 }
 
 function withCustomOption(options: BrandModelOption[], query: string): BrandModelOption[] {
@@ -39,8 +47,12 @@ function withCustomOption(options: BrandModelOption[], query: string): BrandMode
   return [...options, { value: trimmed, label: customLabel(trimmed), custom: true }];
 }
 
-export function listBrands(catalog: EquipmentCatalogItem[], query: string): BrandModelOption[] {
-  const options = uniqueBrands(catalog)
+export function listBrands(
+  catalog: EquipmentCatalogItem[],
+  query: string,
+  extras: readonly string[] = [],
+): BrandModelOption[] {
+  const options = uniqueBrands(catalog, extras)
     .filter((brand) => matchesQuery(brand, query))
     .map((brand) => ({ value: brand, label: brand }));
   return withCustomOption(options, query);
@@ -50,14 +62,15 @@ export function listModels(
   catalog: EquipmentCatalogItem[],
   brand: string,
   query: string,
+  extras: readonly string[] = [],
 ): BrandModelOption[] {
   const brandKey = normalize(brand);
   const rows = brandKey
     ? catalog.filter((row) => normalize(row.brand) === brandKey)
     : catalog;
-  const options = rows
-    .filter((row) => matchesQuery(row.model, query))
-    .map((row) => ({ value: row.model, label: row.model }));
+  const options = uniqueValues([...rows.map((row) => row.model), ...extras])
+    .filter((model) => matchesQuery(model, query))
+    .map((model) => ({ value: model, label: model }));
   return withCustomOption(options, query);
 }
 
@@ -91,6 +104,23 @@ export function applyBrandChange(input: {
     model,
     warning: `Cambiaste a «${brand}». El modelo «${model}» no coincide con esa marca y sigue escrito. Quítalo si ya no aplica.`,
   };
+}
+
+export function resolveListedValue(candidates: readonly string[], query: string): string {
+  const key = normalize(query);
+  if (!key) return '';
+  const listed = candidates.find((value) => normalize(value) === key);
+  return listed ?? query.trim();
+}
+
+export function appendUniqueBrandModel<T extends { brand: string; model?: string }>(
+  items: readonly T[],
+  next: T,
+): { items: T[]; existing: T | undefined } {
+  const key = brandModelPairKey(next.brand, next.model);
+  const existing = items.find((item) => brandModelPairKey(item.brand, item.model) === key);
+  if (existing) return { items: [...items], existing };
+  return { items: [...items, next], existing: undefined };
 }
 
 export function formatBrandModelLabel(brand: string, model?: string): string {

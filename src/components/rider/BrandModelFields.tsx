@@ -8,9 +8,14 @@ import {
   formatBrandModelLabel,
   listBrands,
   listModels,
+  resolveListedValue,
 } from '@/lib/equipment/brand-model';
 import { textIncludesExclusion } from '@/lib/share/exclusions';
 import type { AbsoluteExclusion } from '@/core/types/rider.types';
+
+function listedKey(value: string): string {
+  return value.trim().toLowerCase();
+}
 
 type BrandModelFieldsProps = {
   brand: string;
@@ -18,6 +23,8 @@ type BrandModelFieldsProps = {
   onChange: (next: { brand: string; model: string }) => void;
   disabled?: boolean;
   exclusions?: AbsoluteExclusion[];
+  knownBrands?: string[];
+  knownModels?: string[];
   modelOptional?: boolean;
 };
 
@@ -27,15 +34,35 @@ export function BrandModelFields({
   onChange,
   disabled = false,
   exclusions = [],
+  knownBrands = [],
+  knownModels = [],
   modelOptional = false,
 }: BrandModelFieldsProps) {
   const [brandWarning, setBrandWarning] = useState<string | null>(null);
   const warning = !brand.trim() && !model.trim() ? null : brandWarning;
 
-  const brandOptions = useCallback((query: string) => listBrands(EQUIPMENT_CATALOG, query), []);
+  const brandExtras = useMemo(
+    () => [brand, ...knownBrands, ...exclusions.map((item) => item.brand)],
+    [brand, knownBrands, exclusions],
+  );
+  const modelExtras = useMemo(() => {
+    const current = listedKey(brand);
+    return [
+      model,
+      ...knownModels,
+      ...exclusions
+        .filter((item) => !current || listedKey(item.brand) === current)
+        .map((item) => item.model || ''),
+    ];
+  }, [brand, model, knownModels, exclusions]);
+
+  const brandOptions = useCallback(
+    (query: string) => listBrands(EQUIPMENT_CATALOG, query, brandExtras),
+    [brandExtras],
+  );
   const modelOptions = useCallback(
-    (query: string) => listModels(EQUIPMENT_CATALOG, brand, query),
-    [brand],
+    (query: string) => listModels(EQUIPMENT_CATALOG, brand, query, modelExtras),
+    [brand, modelExtras],
   );
 
   const exclusionHit = useMemo(() => {
@@ -44,19 +71,43 @@ export function BrandModelFields({
     return exclusions.find((item) => textIncludesExclusion(haystack, item)) || null;
   }, [brand, model, exclusions]);
 
-  const setBrand = (nextBrand: string) => {
+  const setBrand = (incomingBrand: string) => {
     const result = applyBrandChange({
       previousBrand: brand,
-      nextBrand,
+      nextBrand: incomingBrand,
       model,
       catalog: EQUIPMENT_CATALOG,
     });
-    onChange({ brand: result.brand, model: result.model });
+    const nextBrand = resolveListedValue(
+      [...EQUIPMENT_CATALOG.map((row) => row.brand), ...brandExtras],
+      result.brand,
+    );
+    const nextModel = resolveListedValue(
+      [
+        ...EQUIPMENT_CATALOG
+          .filter((row) => listedKey(row.brand) === listedKey(nextBrand))
+          .map((row) => row.model),
+        ...modelExtras,
+      ],
+      result.model,
+    );
+    onChange({ brand: nextBrand, model: nextModel });
     setBrandWarning(result.warning);
   };
 
   const setModel = (nextModel: string) => {
-    onChange({ brand, model: nextModel });
+    onChange({
+      brand,
+      model: resolveListedValue(
+        [
+          ...EQUIPMENT_CATALOG
+            .filter((row) => listedKey(row.brand) === listedKey(brand))
+            .map((row) => row.model),
+          ...modelExtras,
+        ],
+        nextModel,
+      ),
+    });
     setBrandWarning(null);
   };
 

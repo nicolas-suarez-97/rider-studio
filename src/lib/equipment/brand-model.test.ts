@@ -4,9 +4,11 @@ import { EQUIPMENT_CATALOG } from '../../core/constants/equipment-catalog.ts';
 import { absoluteExclusionConflict } from '../share/exclusions.ts';
 import {
   applyBrandChange,
+  appendUniqueBrandModel,
   formatRequirementPedido,
   listBrands,
   listModels,
+  resolveListedValue,
 } from './brand-model.ts';
 
 describe('catálogo mínimo de marcas y modelos', () => {
@@ -100,5 +102,51 @@ describe('pedido persistido y exclusiones #18', () => {
     });
     assert.match(error || '', /no aceptado/i);
     assert.match(error || '', /JBL/i);
+  });
+});
+
+describe('dedup case-insensitive #51', () => {
+  it('no ofrece Usar si ya hay una marca extra con otro casing', () => {
+    const options = listBrands(EQUIPMENT_CATALOG, 'qa marca xyz', ['QA Marca Xyz']);
+    const listed = options.find((option) => option.value === 'QA Marca Xyz');
+    assert.ok(listed);
+    assert.equal(listed?.custom, undefined);
+    assert.equal(options.some((option) => option.custom), false);
+  });
+
+  it('no ofrece Usar si ya hay un modelo extra con otro casing', () => {
+    const options = listModels(EQUIPMENT_CATALOG, 'QA Marca Xyz', 'qa modelo 9', ['QA Modelo 9']);
+    const listed = options.find((option) => option.value === 'QA Modelo 9');
+    assert.ok(listed);
+    assert.equal(options.some((option) => option.custom), false);
+  });
+
+  it('al seleccionar, reutiliza el valor ya listado y no el casing nuevo', () => {
+    assert.equal(resolveListedValue(['QA Marca Xyz', 'DiGiCo'], 'qa marca xyz'), 'QA Marca Xyz');
+    assert.equal(resolveListedValue(['DiGiCo'], '  digico  '), 'DiGiCo');
+  });
+
+  it('no añade un segundo chip si el par ya está con otro casing', () => {
+    const first = appendUniqueBrandModel([], {
+      id: 'ex-1',
+      brand: 'QA Marca Xyz',
+      model: 'QA Modelo 9',
+    });
+    const second = appendUniqueBrandModel(first.items, {
+      id: 'ex-2',
+      brand: 'qa marca xyz',
+      model: 'qa modelo 9',
+    });
+    assert.equal(second.items.length, 1);
+    assert.equal(second.items[0]?.id, 'ex-1');
+    assert.equal(second.existing?.id, 'ex-1');
+  });
+
+  it('sigue permitiendo un par distinto', () => {
+    const first = appendUniqueBrandModel([], { id: 'ex-1', brand: 'QA Marca Xyz', model: 'QA Modelo 9' });
+    const second = appendUniqueBrandModel(first.items, { id: 'ex-2', brand: 'QA Marca Xyz', model: 'QA Modelo 10' });
+    const brandOnly = appendUniqueBrandModel(second.items, { id: 'ex-3', brand: 'QA Marca Xyz' });
+    assert.equal(brandOnly.items.length, 3);
+    assert.equal(brandOnly.existing, undefined);
   });
 });
