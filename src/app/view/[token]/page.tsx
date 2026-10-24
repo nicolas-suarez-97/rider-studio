@@ -7,6 +7,9 @@ import { getRiderByShareToken } from '@/lib/services/rider-storage';
 import { isShareToken } from '@/lib/share/token';
 import { RiderViewClient } from '@/components/view/RiderViewClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: 'Rider compartido',
   robots: { index: false, follow: false },

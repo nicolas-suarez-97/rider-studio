@@ -1,4 +1,4 @@
-import { createServerSupabaseClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
+import { createAdminSupabaseClient, createServerSupabaseClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
 import { Database, Json } from '@/lib/supabase/database.types';
 import { createShareToken } from '@/lib/share/token';
 import { applyPublishedSnapshot, capturePublishedSnapshot } from '@/lib/share/published-snapshot';
@@ -165,7 +165,9 @@ export class RiderRepository implements IRiderRepository {
 
   public async getByShareToken(token: string): Promise<DbRider | null> {
     if (isSupabaseServerConfigured()) {
-      const supabase = await createServerSupabaseClient();
+      // Prefer admin so public share reads do not depend on the viewer session/RLS.
+      const admin = createAdminSupabaseClient();
+      const supabase = admin ?? (await createServerSupabaseClient());
       if (supabase) {
         const { data, error } = await supabase
           .from('riders')
@@ -178,16 +180,18 @@ export class RiderRepository implements IRiderRepository {
           return applyPublishedSnapshot(data);
         }
 
-        const { data: rows, error: scanError } = await supabase
-          .from('riders')
-          .select('*');
+        if (!admin) {
+          const { data: rows, error: scanError } = await supabase
+            .from('riders')
+            .select('*');
 
-        if (!scanError && rows) {
-          const found = rows.find((row) => {
-            const share = readShareLink(row);
-            return share?.token === token && share.enabled;
-          });
-          if (found) return applyPublishedSnapshot(found);
+          if (!scanError && rows) {
+            const found = rows.find((row) => {
+              const share = readShareLink(row);
+              return share?.token === token && share.enabled;
+            });
+            if (found) return applyPublishedSnapshot(found);
+          }
         }
       }
     }
@@ -335,9 +339,12 @@ export class RiderRepository implements IRiderRepository {
     const confirms = mergeShareConfirms(readShareConfirms(rider.metadata), guestName, lineId, answer);
     const metadata: Json = { ...base, shareConfirms: confirmsToJson(confirms) };
     const next: DbRider = { ...rider, metadata, updated_at: now };
+    const guest = confirms[guestKey(guestName)] ?? null;
 
+    // Guest share has no owner session; UPDATE must bypass RLS (same pattern as section comments).
     if (isSupabaseServerConfigured()) {
-      const supabase = await createServerSupabaseClient();
+      const admin = createAdminSupabaseClient();
+      const supabase = admin ?? (await createServerSupabaseClient());
       if (supabase) {
         const { data, error } = await supabase
           .from('riders')
@@ -348,22 +355,28 @@ export class RiderRepository implements IRiderRepository {
 
         if (!error && data) {
           const existingIdx = memoryRiders.findIndex((row) => row.id === rider.id);
-          if (existingIdx >= 0) memoryRiders[existingIdx] = data;
-          return confirms[guestKey(guestName)] ?? null;
+          if (existingIdx >= 0) memoryRiders[existingIdx] = data as DbRider;
+          else memoryRiders.unshift(data as DbRider);
+          return guest;
         }
         if (error) console.warn('[Supabase saveShareConfirm]', error);
       }
     }
 
     const existingIdx = memoryRiders.findIndex((row) => row.id === rider.id);
-    if (existingIdx < 0) return null;
-    memoryRiders[existingIdx] = next;
-    return confirms[guestKey(guestName)] ?? null;
+    if (existingIdx >= 0) {
+      memoryRiders[existingIdx] = next;
+      return guest;
+    }
+    // Persist in memory when the live row was only visible via Supabase read
+    memoryRiders.unshift(next);
+    return guest;
   }
 
   private async getLiveByShareToken(token: string): Promise<DbRider | null> {
     if (isSupabaseServerConfigured()) {
-      const supabase = await createServerSupabaseClient();
+      const admin = createAdminSupabaseClient();
+      const supabase = admin ?? (await createServerSupabaseClient());
       if (supabase) {
         const { data, error } = await supabase
           .from('riders')
