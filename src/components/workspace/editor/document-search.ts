@@ -10,6 +10,7 @@ import {
   type InputListColumn,
   type InputListRow,
 } from '@/core/constants/input-list';
+import { formatWorkAreasPlainText, normalizeWorkAreas } from '@/core/constants/work-areas';
 
 export type SearchDirection = 'first' | 'next' | 'prev';
 
@@ -51,6 +52,13 @@ export function findAllDocumentMatches(doc: PMNode, query: string): SearchMatch[
         from = index + Math.max(1, needle.length);
       }
       return;
+    }
+
+    if (node.type.name === 'workAreas') {
+      if (haystack(formatWorkAreasPlainText(normalizeWorkAreas(node.attrs.areas))).includes(needle)) {
+        matches.push({ from: pos, to: pos + node.nodeSize, atom: true });
+      }
+      return false;
     }
 
     if (node.type.name === 'inputList') {

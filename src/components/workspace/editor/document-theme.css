@@ -336,6 +336,8 @@
 .docs-requirement-label input,
 .docs-tiers textarea,
 .docs-contacts input,
+.docs-work-areas input,
+.docs-work-areas select,
 .docs-columns textarea,
 .docs-columns-side > input {
   width: 100%;
@@ -353,6 +355,8 @@
 .docs-requirement-label input:focus,
 .docs-tiers textarea:focus,
 .docs-contacts input:focus,
+.docs-work-areas input:focus,
+.docs-work-areas select:focus,
 .docs-columns textarea:focus,
 .docs-columns-side > input:focus {
   box-shadow: inset 0 -1px 0 currentColor;
@@ -561,8 +565,92 @@
   min-height: 72px;
 }
 
-.docs-contacts-card {
+.docs-contacts-card,
+.docs-work-areas-card {
   border: 1px solid var(--rider-line);
+}
+
+.docs-work-areas-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--rider-table-head);
+  color: var(--rider-table-head-ink);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 7px 10px;
+}
+
+.docs-work-areas-head-title {
+  font: inherit;
+}
+
+.docs-work-areas-add-btn {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.docs-work-areas-empty {
+  margin: 0;
+  padding: 12px 10px;
+  font-size: 11px;
+  color: var(--rider-muted);
+}
+
+.docs-work-areas-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.9fr 1.4fr auto;
+  gap: 8px;
+  align-items: end;
+  padding: 8px 10px;
+}
+
+.docs-work-areas-row + .docs-work-areas-row {
+  border-top: 1px solid var(--rider-line);
+}
+
+.docs-work-areas-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.docs-work-areas-field span {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rider-muted);
+}
+
+.docs-work-areas-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.docs-work-areas-actions button {
+  border: 0;
+  background: transparent;
+  color: var(--rider-muted);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.docs-work-areas-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .docs-contacts-head {
@@ -647,6 +735,7 @@
 .docs-notice.is-selected,
 .docs-tiers.is-selected .docs-tiers-grid,
 .docs-contacts.is-selected .docs-contacts-card,
+.docs-work-areas.is-selected .docs-work-areas-card,
 .docs-columns.is-selected .docs-columns-grid,
 .docs-input-list.is-selected .docs-input-list-card,
 .docs-editor .tableWrapper:has(.ProseMirror-selectednode),
@@ -661,7 +750,8 @@
   .docs-requirement,
   .docs-tiers-grid,
   .docs-columns-grid,
-  .docs-contacts-row {
+  .docs-contacts-row,
+  .docs-work-areas-row {
     grid-template-columns: 1fr;
   }
   .docs-tiers-col { border-right: 0; border-bottom: 1px solid var(--rider-line); }
