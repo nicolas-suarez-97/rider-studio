@@ -24,6 +24,7 @@ import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
 import { buildGapSuggestions, docToPlainText, isDocumentIntro, sectionsForOutline, type SectionDocumentPatch } from '@/core/editor/content-doc';
 import { materializeSuggestions } from '@/core/editor/suggestions';
+import { ensureChatDocumentSuggestions, planChatDocumentApply } from '@/core/editor/chat-document-sync';
 import { REVIEW_HEADING, readReviewSuggestions } from '@/core/editor/review-message';
 import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestion.types';
 import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
@@ -813,21 +814,25 @@ export function WorkspaceClient({
 
     try {
       const section = rider.sections.find((item) => item.id === targetSectionId) || rider.sections[0];
-      const editorContext: EditorContextPayload | undefined = section
-        ? {
-            sectionId: section.id,
-            sectionTitle: section.title,
-            sectionText: (section.content || '').slice(0, 7000),
-            selection: selectionRef.current.sectionId === section.id ? selectionRef.current.text.slice(0, 1800) : '',
-            gaps: documentSuggestions
-              .filter((item) => item.source === 'gap' && item.sectionId === section.id)
-              .map((item) => item.rationale),
-            allSections: rider.sections.map((s) => ({ id: s.id, title: s.title })),
-            riderTitle: rider.title,
-            artistName: rider.artistName,
-            currentTheme: rider.documentTheme,
-          }
-        : undefined;
+      const blockRefs = rider.sections.map((item) => ({ id: item.id, title: item.title }));
+      const editorContext: EditorContextPayload = {
+        sectionId: section?.id || '',
+        sectionTitle: section?.title || '',
+        sectionText: (
+          (section?.content || '').trim()
+          || (section?.contentDoc ? docToPlainText(section.contentDoc) : '')
+        ).slice(0, 7000),
+        selection: section && selectionRef.current.sectionId === section.id
+          ? selectionRef.current.text.slice(0, 1800)
+          : '',
+        gaps: documentSuggestions
+          .filter((item) => item.source === 'gap' && item.sectionId === (section?.id || ''))
+          .map((item) => item.rationale),
+        allSections: blockRefs,
+        riderTitle: rider.title,
+        artistName: rider.artistName,
+        currentTheme: rider.documentTheme,
+      };
       const data = await chatService.sendMessage({
         messages: updatedMessages.map(m => ({
           role: m.sender === 'user' ? 'user' : 'assistant',
@@ -861,42 +866,47 @@ export function WorkspaceClient({
         router.replace(currentUrl.pathname + currentUrl.search);
       }
 
-      if (editorContext && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
-        const drafts = materializeSuggestions(data.suggestions || [], editorContext);
+      const priorAssistantText = [...messages].reverse().find((item) => item.sender === 'ai')?.text || '';
+      const synced = ensureChatDocumentSuggestions({
+        userText: text,
+        priorAssistantText,
+        suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+        sections: blockRefs,
+        activeSectionId: targetSectionId || editorContext.sectionId,
+      });
+
+      if (synced.error && synced.suggestions.length === 0) {
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.sender === 'ai') {
+            next[next.length - 1] = { ...last, text: synced.error as string };
+          }
+          return next;
+        });
+        showToast(synced.error);
+      } else if (synced.suggestions.length > 0) {
+        const drafts = materializeSuggestions(synced.suggestions, editorContext);
         const appliedItems: DocumentSuggestion[] = [];
+        const failures: string[] = [];
 
         for (const draft of drafts) {
-          if (draft.kind === 'add_section') {
-            const newTitle = draft.newSectionTitle || draft.proposedText || 'Nueva Sección';
-            const insertedId = bridgeRef.current?.insertSectionTitle(newTitle);
-            if (insertedId) {
-              draft.sectionId = insertedId;
-              draft.applied = true;
-              draft.status = 'applied';
-              setActiveSectionId(insertedId);
-              if (draft.proposedText && draft.proposedText !== newTitle) {
-                const res = bridgeRef.current?.apply({
-                  ...draft,
-                  sectionId: insertedId,
-                  kind: 'insert',
-                  baseText: '',
-                });
-                if (res?.appliedRange) draft.appliedRange = res.appliedRange;
-              }
-            }
-            appliedItems.push(draft);
-          } else if (draft.kind === 'switch_theme' && draft.theme) {
+          if (draft.kind === 'switch_theme' && draft.theme) {
             draft.baseText = rider.documentTheme;
             handleThemeChange(draft.theme);
             draft.applied = true;
             draft.status = 'applied';
             appliedItems.push(draft);
-          } else if (draft.kind === 'switch_type' && draft.riderType) {
+            continue;
+          }
+          if (draft.kind === 'switch_type' && draft.riderType) {
             handleSelectTypeView(draft.riderType);
             draft.applied = true;
             draft.status = 'applied';
             appliedItems.push(draft);
-          } else if (draft.kind === 'add_channel' && draft.channel) {
+            continue;
+          }
+          if (draft.kind === 'add_channel' && draft.channel) {
             const ch = draft.channel;
             setRider((prev) => {
               const updated = new Rider({ ...prev });
@@ -906,28 +916,93 @@ export function WorkspaceClient({
             draft.applied = true;
             draft.status = 'applied';
             appliedItems.push(draft);
+            continue;
+          }
+
+          const plan = planChatDocumentApply({
+            draft,
+            sections: blockRefs,
+            activeSectionId: targetSectionId || editorContext.sectionId,
+          });
+
+          if (plan.action === 'fail') {
+            failures.push(plan.error || 'No pude aplicar el cambio al documento.');
+            continue;
+          }
+
+          if (plan.action === 'create_section') {
+            const newTitle = plan.newSectionTitle || draft.newSectionTitle || 'Nueva Sección';
+            if (!bridgeRef.current) {
+              failures.push('No pude actualizar el editor. Recarga e inténtalo de nuevo. El resto de apartados se mantiene.');
+              continue;
+            }
+            const insertedId = bridgeRef.current.insertSectionTitle(newTitle, plan.sectionId);
+            if (!insertedId) {
+              failures.push('No pude crear el bloque en el documento. El resto de apartados se mantiene.');
+              continue;
+            }
+            draft.sectionId = insertedId;
+            draft.newSectionTitle = newTitle;
+            draft.applied = true;
+            draft.status = 'applied';
+            setActiveSectionId(insertedId);
+            if (draft.proposedText && draft.proposedText !== newTitle) {
+              const res = bridgeRef.current.apply({
+                ...draft,
+                sectionId: insertedId,
+                kind: 'insert',
+                baseText: '',
+              });
+              if (res?.appliedRange) draft.appliedRange = res.appliedRange;
+              if (!res?.success) {
+                failures.push('Creé el bloque, pero no pude insertar el contenido. El resto de apartados se mantiene.');
+              }
+            }
+            appliedItems.push(draft);
+            continue;
+          }
+
+          if (plan.sectionId) {
+            draft.sectionId = plan.sectionId;
+            setActiveSectionId(plan.sectionId);
+            setTimeout(() => {
+              bridgeRef.current?.scrollToSection(plan.sectionId);
+            }, 40);
+          }
+
+          if (!bridgeRef.current) {
+            failures.push('No pude actualizar el editor. Recarga e inténtalo de nuevo. El resto de apartados se mantiene.');
+            continue;
+          }
+
+          const res = bridgeRef.current.apply(draft);
+          if (res?.success) {
+            draft.applied = true;
+            draft.status = 'applied';
+            draft.appliedRange = res.appliedRange;
+            draft.oldRange = res.oldRange;
+            appliedItems.push(draft);
           } else {
-            // Modificación directa de texto o bloques en el editor TipTap
-            if (draft.sectionId) {
-              setActiveSectionId(draft.sectionId);
-              setTimeout(() => {
-                bridgeRef.current?.scrollToSection(draft.sectionId);
-              }, 40);
-            }
-            const res = bridgeRef.current?.apply(draft);
-            if (res?.success) {
-              draft.applied = true;
-              draft.status = 'applied';
-              draft.appliedRange = res.appliedRange;
-              draft.oldRange = res.oldRange;
-              appliedItems.push(draft);
-            }
+            failures.push('No pude insertar el contenido en el bloque indicado. El resto de apartados se mantiene.');
           }
         }
 
         if (appliedItems.length > 0) {
           setAgentSuggestions((current) => [...current, ...appliedItems]);
           showToast('✨ Modificación aplicada en el documento');
+        }
+
+        if (failures.length > 0) {
+          const report = failures.join(' ');
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.sender === 'ai') {
+              next[next.length - 1] = { ...last, text: `${last.text}\n\n⚠️ ${report}` };
+            }
+            return next;
+          });
+          showToast(report);
         }
       }
     } catch (err) {

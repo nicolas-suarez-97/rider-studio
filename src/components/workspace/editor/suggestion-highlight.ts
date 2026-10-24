@@ -14,6 +14,23 @@ export function findSectionBounds(doc: PMNode, sectionId?: string | null): { fro
   let to: number | null = null;
   const target = sectionId.trim().toLowerCase();
 
+  let exactFrom: number | null = null;
+  let exactTo: number | null = null;
+  doc.forEach((node, pos) => {
+    if (node.type.name !== 'heading') return;
+    const nodeId = (node.attrs.id || '').toLowerCase();
+    if (nodeId && nodeId === target && exactFrom === null) {
+      exactFrom = pos;
+      return;
+    }
+    if (exactFrom !== null && exactTo === null) {
+      exactTo = pos;
+    }
+  });
+  if (exactFrom !== null) {
+    return { from: exactFrom, to: exactTo ?? doc.content.size };
+  }
+
   doc.forEach((node, pos) => {
     if (node.type.name === 'heading') {
       const nodeId = (node.attrs.id || '').toLowerCase();

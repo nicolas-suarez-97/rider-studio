@@ -11,6 +11,7 @@ import {
 } from '@/lib/services/rider-storage';
 import { SendChatMessageSchema } from '@/lib/validations/chat.schema';
 import { parseSuggestionJson, collectSuggestionDrafts } from '@/core/editor/suggestions';
+import { ensureChatDocumentSuggestions } from '@/core/editor/chat-document-sync';
 import { callAiCompletion, getAiDiagnostics } from '@/lib/ai/ai-provider';
 
 export async function GET() {
@@ -381,6 +382,28 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
               }
             }
           }
+        }
+      }
+
+      const priorAssistant = [...messages]
+        .slice(0, -1)
+        .reverse()
+        .find((item) => item.role === 'assistant' || item.role === 'ai');
+      const priorAssistantText = priorAssistant?.content || priorAssistant?.text || '';
+
+      const synced = ensureChatDocumentSuggestions({
+        userText: lastMessage,
+        priorAssistantText,
+        suggestions,
+        sections: editorContext?.allSections || [],
+        activeSectionId: editorContext?.sectionId,
+      });
+      suggestions = synced.suggestions;
+      if (synced.error) {
+        replyText = synced.error;
+      } else if (synced.suggestions.length > 0 && /añade esto|agrega esto|al rider|al documento/i.test(lastMessage)) {
+        if (!replyText.trim() || replyText === replyRaw) {
+          replyText = 'He pasado el contenido al documento. Revisa el bloque y confirma o deshaz el cambio.';
         }
       }
 
