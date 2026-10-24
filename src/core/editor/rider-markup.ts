@@ -66,6 +66,55 @@ export function parseInlineMarkdown(text: string): JSONContent[] {
  * Converts a sequence of markdown lines into TipTap JSONContent blocks:
  * headings (h2/h3), bullet lists, ordered lists, and paragraphs with inline marks.
  */
+function splitMarkdownTableCells(line: string): string[] {
+  let clean = line.trim();
+  if (clean.startsWith('|')) clean = clean.slice(1);
+  if (clean.endsWith('|')) clean = clean.slice(0, -1);
+  return clean.split('|').map((cell) => cell.trim());
+}
+
+function isMarkdownTableSeparator(line: string): boolean {
+  const cells = splitMarkdownTableCells(line);
+  return cells.length >= 2 && cells.every((cell) => /^:?-{2,}:?$/.test(cell));
+}
+
+function isMarkdownTableRow(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes('|')) return false;
+  if (isMarkdownTableSeparator(trimmed)) return true;
+  return splitMarkdownTableCells(trimmed).length >= 2;
+}
+
+function tableCellNode(text: string, header: boolean): JSONContent {
+  const inline = parseInlineMarkdown(text);
+  return {
+    type: header ? 'tableHeader' : 'tableCell',
+    content: [{
+      type: 'paragraph',
+      content: inline.length > 0 ? inline : (text ? [{ type: 'text', text }] : []),
+    }],
+  };
+}
+
+function markdownTableToNode(rows: string[]): JSONContent | null {
+  const dataRows = rows.filter((row) => !isMarkdownTableSeparator(row));
+  if (dataRows.length === 0) return null;
+
+  const parsed = dataRows.map((row) => splitMarkdownTableCells(row));
+  const width = Math.max(...parsed.map((cells) => cells.length), 0);
+  if (width < 2) return null;
+
+  return {
+    type: 'table',
+    content: parsed.map((cells, rowIndex) => ({
+      type: 'tableRow',
+      content: Array.from({ length: width }, (_, index) => (
+        tableCellNode(cells[index] || '', rowIndex === 0)
+      )),
+    })),
+  };
+}
+
 export function markdownLinesToBlocks(lines: string[]): JSONContent[] {
   const blocks: JSONContent[] = [];
   let currentList: { type: 'bulletList' | 'orderedList'; items: string[] } | null = null;
@@ -118,6 +167,26 @@ export function markdownLinesToBlocks(lines: string[]): JSONContent[] {
       flushParagraph();
       flushList();
       continue;
+    }
+
+    if (isMarkdownTableRow(trimmed)) {
+      const tableLines: string[] = [rawLine];
+      let look = i + 1;
+      while (look < lines.length && isMarkdownTableRow(lines[look])) {
+        tableLines.push(lines[look]);
+        look += 1;
+      }
+      const hasSeparator = tableLines.some((line) => isMarkdownTableSeparator(line));
+      if (hasSeparator || tableLines.filter((line) => !isMarkdownTableSeparator(line)).length >= 2) {
+        flushParagraph();
+        flushList();
+        const table = markdownTableToNode(tableLines);
+        if (table) {
+          blocks.push(table);
+          i = look - 1;
+          continue;
+        }
+      }
     }
 
     // Heading: #, ##, ###, ####
@@ -303,10 +372,19 @@ function markdownToParagraphs(raw: string): JSONContent[] {
  * handles markdown headings, bullet/numbered lists, inline bold/italic,
  * and custom rider blocks [[requisito]], [[aviso]], [[tiers]], [[contactos]], [[columnas]].
  */
-export function riderMarkupToContent(text: string): JSONContent[] | null {
-  if (!text || !text.trim()) return null;
+export function normalizeEscapedNewlines(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n');
+}
 
-  const lines = text.split('\n');
+export function riderMarkupToContent(text: string): JSONContent[] | null {
+  const normalized = normalizeEscapedNewlines(text || '');
+  if (!normalized.trim()) return null;
+
+  const lines = normalized.split('\n');
   const blocks: JSONContent[] = [];
   let pendingLines: string[] = [];
   let sawTag = false;
@@ -380,7 +458,7 @@ export function riderMarkupToContent(text: string): JSONContent[] | null {
   if (sawTag && blocks.length > 0) return blocks;
 
   // If no [[ tags were present, check if text contains block-level markdown:
-  const trimmed = text.trim();
+  const trimmed = normalized.trim();
   const hasMarkdown =
     /(?:^|\n)\s*#{1,6}\s+/.test(trimmed) ||
     /(?:^|\n)\s*[-*+]\s+/.test(trimmed) ||
