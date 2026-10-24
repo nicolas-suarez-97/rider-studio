@@ -4,6 +4,8 @@ import { connection } from 'next/server';
 import { notFound } from 'next/navigation';
 import { Rider } from '@/core/models/Rider';
 import { getRiderByShareToken } from '@/lib/services/rider-storage';
+import { listArtistShareItems, summarizeArtistShareItems } from '@/lib/share/artist-confirms';
+import { readShareConfirms } from '@/lib/share/confirm';
 import { isShareToken } from '@/lib/share/token';
 import { RiderViewClient } from '@/components/view/RiderViewClient';
 
@@ -28,12 +30,14 @@ async function ViewServer({ params }: PageProps) {
   const domainRider = Rider.fromDatabase(row);
   domainRider.linkedSessions = [];
   const initialRiderData = JSON.parse(JSON.stringify(domainRider));
+  const initialShareSummary = summarizeArtistShareItems(listArtistShareItems(readShareConfirms(row.metadata)));
 
   return (
     <RiderViewClient
       key={token}
       shareToken={token}
       initialRiderData={initialRiderData}
+      initialShareSummary={initialShareSummary}
     />
   );
 }

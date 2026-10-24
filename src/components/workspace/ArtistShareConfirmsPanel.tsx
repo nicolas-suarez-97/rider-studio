@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { ShowReadyStatus } from '@/components/share/ShowReadyStatus';
 import {
   REOPEN_BADGE,
   REOPEN_LABEL,
@@ -79,13 +80,19 @@ export function ArtistShareConfirmsPanel({
               Respuestas del organizador
             </h2>
             <p className="text-xs text-slate-500 mt-1">{title}</p>
-            <p className="text-xs text-slate-600 mt-2 font-semibold">
-              {summary.answeredCount} {summary.answeredCount === 1 ? 'respuesta' : 'respuestas'}
-              {' · '}
-              Faltan {summary.needsActionCount} de tu lado
-              {' · '}
-              {guests}
-            </p>
+            {summary.showReady ? (
+              <div className="mt-2">
+                <ShowReadyStatus summary={summary} audience="artist" />
+              </div>
+            ) : (
+              <p className="text-xs text-slate-600 mt-2 font-semibold">
+                {summary.answeredCount} {summary.answeredCount === 1 ? 'respuesta' : 'respuestas'}
+                {' · '}
+                Faltan {summary.needsActionCount} de tu lado
+                {' · '}
+                {guests}
+              </p>
+            )}
           </div>
           <button
             type="button"

@@ -35,7 +35,8 @@ function viewFor(row: NonNullable<Awaited<ReturnType<typeof getRiderById>>>) {
     pedidoByLineId[line.id] = lineHasPedido(line.pedido) ? line.pedido : line.sectionTitle;
   }
   const items = listArtistShareItems(readShareConfirms(row.metadata), pedidoByLineId);
-  return { title: rider.title, items, summary: summarizeArtistShareItems(items) };
+  const summary = summarizeArtistShareItems(items);
+  return { title: rider.title, items, summary, showReady: summary.showReady };
 }
 
 export async function GET(

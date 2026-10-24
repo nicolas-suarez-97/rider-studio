@@ -50,14 +50,16 @@ describe('published snapshot', () => {
         season: 'borrador',
         published: snapshot,
         shareConfirms: { ana: { name: 'Ana', answers: {} } },
+        showReady: true,
       } as Json,
     });
 
     const visible = applyPublishedSnapshot(draft);
     assert.equal(visible.title, 'Rider publicado');
     assert.deepEqual(visible.sections, publishedRow.sections);
-    const meta = visible.metadata as { season?: string; shareConfirms?: unknown };
+    const meta = visible.metadata as { season?: string; shareConfirms?: unknown; showReady?: boolean };
     assert.equal(meta.season, '2026');
     assert.deepEqual(meta.shareConfirms, { ana: { name: 'Ana', answers: {} } });
+    assert.equal(meta.showReady, true);
   });
 });

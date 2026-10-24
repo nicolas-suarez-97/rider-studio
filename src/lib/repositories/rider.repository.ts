@@ -5,7 +5,7 @@ import { applyPublishedSnapshot, capturePublishedSnapshot } from '@/lib/share/pu
 import { confirmsToJson, guestKey, mergeShareConfirms, readShareConfirms, type ShareGuestRecord } from '@/lib/share/confirm';
 import {
   applyArtistShareAction,
-  clearShowReady,
+  withShowReady,
   type ArtistShareActionContext,
   type ArtistShareActionType,
 } from '@/lib/share/artist-confirms';
@@ -358,7 +358,10 @@ export class RiderRepository implements IRiderRepository {
     const now = new Date().toISOString();
     const base = asMetadataRecord(rider.metadata) ?? {};
     const confirms = mergeShareConfirms(readShareConfirms(rider.metadata), guestName, lineId, answer);
-    const metadata: Json = { ...base, shareConfirms: confirmsToJson(confirms) };
+    const metadata: Json = {
+      ...withShowReady(base, confirms),
+      shareConfirms: confirmsToJson(confirms),
+    };
     const next: DbRider = { ...rider, metadata, updated_at: now };
     const guest = confirms[guestKey(guestName)] ?? null;
 
@@ -417,8 +420,10 @@ export class RiderRepository implements IRiderRepository {
 
     const now = new Date().toISOString();
     const base = asMetadataRecord(rider.metadata) ?? {};
-    const nextMeta = action === 'reopen' ? clearShowReady(base) : base;
-    const metadata: Json = { ...nextMeta, shareConfirms: confirmsToJson(applied.confirms) };
+    const metadata: Json = {
+      ...withShowReady(base, applied.confirms),
+      shareConfirms: confirmsToJson(applied.confirms),
+    };
     const next: DbRider = { ...rider, metadata, updated_at: now };
 
     if (isSupabaseServerConfigured()) {

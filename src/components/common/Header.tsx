@@ -10,6 +10,8 @@ import {
   type TypeViewCounts,
 } from '@/core/constants/rider-type-tokens';
 import { TypeViewSelector, type TypeViewCountMode } from './TypeViewSelector';
+import { ShowReadyStatus } from '@/components/share/ShowReadyStatus';
+import type { ArtistShareSummary } from '@/lib/share/artist-confirms';
 
 interface HeaderProps {
   pageType: 'gate' | 'landing' | 'workspace' | 'chat' | 'view' | 'promotor' | 'promotor-home';
@@ -32,6 +34,8 @@ interface HeaderProps {
   isSharing?: boolean;
   onOpenShareConfirms?: () => void;
   shareConfirmsCount?: number;
+  showReady?: boolean;
+  showReadySummary?: ArtistShareSummary;
   onStartConfirm?: () => void;
   contraRiderHref?: string;
   chatSessionId?: string | null;
@@ -97,6 +101,8 @@ export function Header({
   isSharing = false,
   onOpenShareConfirms,
   shareConfirmsCount = 0,
+  showReady = false,
+  showReadySummary,
   onStartConfirm,
   contraRiderHref,
   documentTitle,
@@ -165,7 +171,9 @@ export function Header({
               <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
                 Vista compartida
               </span>
-              {onStartConfirm ? (
+              {showReady && showReadySummary ? (
+                <ShowReadyStatus summary={showReadySummary} audience="organizer" variant="badge" />
+              ) : onStartConfirm ? (
                 <button
                   type="button"
                   onClick={onStartConfirm}
@@ -318,6 +326,9 @@ export function Header({
             </button>
             )}
 
+            {pageType === 'workspace' && showReady && showReadySummary ? (
+              <ShowReadyStatus summary={showReadySummary} audience="artist" variant="badge" />
+            ) : null}
             {pageType === 'workspace' && onOpenShareConfirms && (
               <button
                 type="button"
