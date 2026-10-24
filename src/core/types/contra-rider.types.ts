@@ -6,6 +6,8 @@ export interface ContraAnswer {
   response: ContraResponse;
   offer: string;
   note: string;
+  artistResponse?: string;
+  acceptedAlternative?: boolean;
 }
 
 export interface ContraLine extends ContraAnswer {
