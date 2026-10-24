@@ -65,6 +65,7 @@ import {
   splitDocumentToSections,
   type SectionDocumentPatch,
 } from '@/core/editor/content-doc';
+import { overlayProposedOnSections } from '@/core/editor/proposed-confirmed';
 import { SectionItem, RiderType } from '@/core/types/rider.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 
@@ -247,7 +248,16 @@ export function RiderDocumentSurface({
   }, [sections]);
   const footerLabel = [artistName.trim() || coverArtist, version.trim()].filter(Boolean).join(' · ');
   const sectionIds = useMemo(() => sections.map((section) => section.id).join('|'), [sections]);
-  const documentSignature = `${artistName}\0${riderTitle}\0${sectionIds}`;
+  const activeProposed = useMemo(
+    () => suggestions.filter((item) => item.source !== 'gap' && item.status === 'applied'),
+    [suggestions],
+  );
+  const previewSections = useMemo(
+    () => overlayProposedOnSections(sections, activeProposed),
+    [sections, activeProposed],
+  );
+  const proposedKey = activeProposed.map((item) => `${item.id}:${item.proposedText}`).join('|');
+  const documentSignature = `${artistName}\0${riderTitle}\0${sectionIds}\0${proposedKey}`;
   const initialContent = useMemo(
     () => riderDocumentFromSections(sections, { artistName, title: riderTitle }) as JSONContent,
     // Only seed the editor once; later structure changes go through setContent.
@@ -604,7 +614,7 @@ export function RiderDocumentSurface({
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    const nextDoc = riderDocumentFromSections(sections, { artistName, title: riderTitle });
+    const nextDoc = riderDocumentFromSections(previewSections, { artistName, title: riderTitle });
     if (isInternalEditRef.current) {
       isInternalEditRef.current = false;
       if (documentStructureKey(editor.getJSON()) === documentStructureKey(nextDoc)) return;
@@ -620,7 +630,7 @@ export function RiderDocumentSurface({
     return () => {
       cancelled = true;
     };
-  }, [editor, documentSignature, artistName, riderTitle, sections]);
+  }, [editor, documentSignature, artistName, riderTitle, previewSections]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;

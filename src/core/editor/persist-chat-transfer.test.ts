@@ -181,6 +181,19 @@ describe('applyChatSuggestionsToRiderSections', () => {
     assert.equal(result.sections?.[0].content, 'DiGiCo SD12');
     assert.equal(result.sections?.[0].revision, 'proposed');
     assert.equal(result.sections?.[0].content?.includes('Consola confirmada'), false);
+  it('dos alternativas al mismo bloque dejan solo la sugerencia activa', () => {
+    const result = applyChatSuggestionsToRiderSections({
+      sections: [section({ id: 'tech-audio', title: 'Audio FOH', content: 'Yamaha CL5' })],
+      suggestions: [
+        { kind: 'insert', sectionId: 'tech-audio', proposedText: 'DiGiCo SD12' },
+        { kind: 'insert', sectionId: 'tech-audio', proposedText: 'Avid S6L' },
+      ],
+    });
+
+    assert.equal(result.ok, true);
+    assert.match(result.sections?.[0].content || '', /Yamaha CL5/);
+    assert.match(result.sections?.[0].content || '', /Avid S6L/);
+    assert.doesNotMatch(result.sections?.[0].content || '', /DiGiCo SD12/);
   });
 
   it('no muta las secciones si el texto es un aviso no transferible', () => {
