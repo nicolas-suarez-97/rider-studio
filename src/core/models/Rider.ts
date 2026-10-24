@@ -17,6 +17,7 @@ import { coverMedia, parseRiderMedia, MAX_GALLERY_IMAGES } from '@/lib/media/rid
 import { inputListDoc } from '../constants/input-list';
 import { isDocumentIntro, isDocumentCover, DOCUMENT_COVER_ID, buildCoverContentDoc } from '../editor/content-doc';
 import { RIDER_DATA } from '../constants/rider-templates';
+import { migratePaConsolasHierarchy } from '../constants/section-hierarchy';
 import { DEFAULT_STAGE_PLOT } from '../constants/stage-plot';
 import { ChannelInput } from './ChannelInput';
 
@@ -100,7 +101,9 @@ export class Rider {
    * each stamped with its type. Legacy `metadata.modules` stay available on save.
    */
   private unifyDocument(): void {
-    this.sections = flattenTypedSections(this.sections, this.type, this.modules);
+    this.sections = migratePaConsolasHierarchy(
+      flattenTypedSections(this.sections, this.type, this.modules),
+    );
 
     if (this.type !== 'tecnico') {
       const tecnico = this.modules.tecnico;

@@ -28,7 +28,7 @@ export const SECTION_FIELD_CONFIGS: Record<string, SectionConfig> = {
     ]
   },
   'tech-pa': {
-    sectionTitleHint: 'Sistema de PA & Consola de Sala',
+    sectionTitleHint: 'Sistema de PA',
     fields: [
       {
         key: 'criterio_pa',
@@ -50,7 +50,12 @@ export const SECTION_FIELD_CONFIGS: Record<string, SectionConfig> = {
         placeholder: 'ej. Requerido técnico de sistemas certificado por el fabricante presente en alineación y show',
         prefix: 'Ingeniero de Sistemas',
         chips: ['Obligatorio certificado por fábrica', 'Presente desde ajuste inicial y todo el show']
-      },
+      }
+    ]
+  },
+  'tech-consolas-foh': {
+    sectionTitleHint: 'Consola FOH',
+    fields: [
       {
         key: 'consola_foh',
         label: 'Consola FOH Preferida y Alternativa',
@@ -64,6 +69,18 @@ export const SECTION_FIELD_CONFIGS: Record<string, SectionConfig> = {
         placeholder: 'ej. Manguera Cat6e blindada etherCON, protocolo Dante/MADI redundante, split pasivo',
         prefix: 'Conectividad',
         chips: ['Líneas Cat6e blindadas etherCON', 'Split pasivo aislado por transformador', 'Dante Redundante']
+      }
+    ]
+  },
+  'tech-consolas-monitores': {
+    sectionTitleHint: 'Consola de Monitores',
+    fields: [
+      {
+        key: 'consola_mon',
+        label: 'Consola de Monitores Dedicada',
+        placeholder: 'ej. DiGiCo SD12 con 48 entradas y split galvánico pasivo',
+        prefix: 'Consola de Monitores',
+        chips: ['DiGiCo SD12 (Consola dedicada)', 'DiGiCo Quantum 225', 'Yamaha CL5 dedicada']
       }
     ]
   },
@@ -97,13 +114,6 @@ export const SECTION_FIELD_CONFIGS: Record<string, SectionConfig> = {
         placeholder: 'ej. Subwoofer 18" + satélite para batería; 2x side fills estéreo en laterales',
         prefix: 'Side fills y Drum fill',
         chips: ['Sub 18" + Top para Drum fill', '2x Side Fills estéreo laterales d&b/L-Acoustics']
-      },
-      {
-        key: 'consola_mon',
-        label: 'Consola de Monitores Dedicada',
-        placeholder: 'ej. DiGiCo SD12 con 48 entradas y split galvánico pasivo',
-        prefix: 'Consola de Monitores',
-        chips: ['DiGiCo SD12 (Consola dedicada)', 'DiGiCo Quantum 225', 'Yamaha CL5 dedicada']
       }
     ]
   },
@@ -651,7 +661,9 @@ export const SECTION_FIELD_CONFIGS: Record<string, SectionConfig> = {
 const KEYWORD_MAP: Array<{ id: string; keywords: string[] }> = [
   // Técnico
   { id: 'tech-contactos', keywords: ['contacto', 'produccion general', 'produccion ejecutiva', 'staff', 'personal clave', 'directorio'] },
-  { id: 'tech-pa', keywords: ['pa', 'line array', 'consola de sala', 'consola foh', 'sonido de sala', 'spl', 'cobertura'] },
+  { id: 'tech-consolas-foh', keywords: ['consola de sala', 'consola foh', 'consola principal', 'mezcla de sala'] },
+  { id: 'tech-consolas-monitores', keywords: ['consola de monitores', 'consola dedicada'] },
+  { id: 'tech-pa', keywords: ['pa', 'line array', 'sonido de sala', 'spl', 'cobertura'] },
   { id: 'tech-monitores', keywords: ['monitoreo', 'iem', 'in-ear', 'in ear', 'cuna', 'cuña', 'radiofrecuencia', 'rf', 'mezclas'] },
   { id: 'tech-backline', keywords: ['backline', 'bateria', 'bajo', 'guitarra', 'teclado', 'amplificador', 'voltaje'] },
   { id: 'tech-inputlist', keywords: ['input list', 'patch', 'canales', 'microfonia', 'directas', 'phantom'] },

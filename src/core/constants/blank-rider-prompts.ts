@@ -19,13 +19,13 @@ export const BLANK_RIDER_PROMPTS: Record<RiderType, BlankRiderPrompt[]> = {
       id: 'full',
       label: 'Redactar rider técnico',
       icon: 'sparkles',
-      prompt: 'Arma un rider técnico completo para este artista: contactos, PA y consola FOH, monitores e IEM, backline, input list, stage plot, iluminación y cláusulas. Usa el formato de secciones del documento y deja placeholders claros donde falte un dato.',
+      prompt: 'Arma un rider técnico completo para este artista: contactos, PA, consolas FOH y de monitores, IEM, backline, input list, stage plot, iluminación y cláusulas. Usa el formato de secciones del documento (Audio > PA y Audio > Consolas > FOH / Monitores) y deja placeholders claros donde falte un dato.',
     },
     {
       id: 'pa',
-      label: 'PA y consola FOH',
+      label: 'PA',
       icon: 'speaker',
-      prompt: 'Propón el sistema de PA, cobertura SPL y consola FOH típicos para un rider técnico profesional, listos para pegar en el documento.',
+      prompt: 'Propón el sistema de PA, cobertura y SPL para la sección Audio > PA, sin mezclar consolas. Listo para pegar en el documento.',
     },
     {
       id: 'inputlist',

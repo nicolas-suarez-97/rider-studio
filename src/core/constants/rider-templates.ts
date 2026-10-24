@@ -30,26 +30,46 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
       {
         id: 'tech-pa',
         num: '02',
-        title: 'Sistema de PA & Consola FOH',
-        subtitle: 'Line Array, presión sonora y consola de sala',
-        tag: 'Audio FOH',
+        title: 'PA',
+        subtitle: 'Audio · line array, cobertura y SPL',
+        tag: 'Audio',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'speaker',
-        content: '• Criterio PA: Sistema Line Array profesional de primer nivel (Preferencia Tier 1: L-Acoustics K1/K2, d&b audiotechnik GSL/KSL, Meyer Sound Panther).\n• Cobertura & SPL: Cobertura homogénea (+/-3dB) en toda la audiencia con mínimo 102 dBA continuo / 114 dBC pico en FOH (10-12 dB de headroom sin distorsión).\n• Ingeniero de Sistemas: Obligatoriedad de presencia de técnico de sistemas certificado por el fabricante durante alineación y show.\n• Consola FOH preferida: [Tier 1: DiGiCo Quantum 338 / Avid S6L / Yamaha Rivage PM5. Tier 2: DiGiCo SD12 / Yamaha CL5].\n• Conectividad: Líneas Cat6e blindadas etherCON desde escenario a FOH, split pasivo aislado por transformadores.'
+        content: '• Criterio PA: Sistema Line Array profesional de primer nivel (Preferencia Tier 1: L-Acoustics K1/K2, d&b audiotechnik GSL/KSL, Meyer Sound Panther).\n• Cobertura & SPL: Cobertura homogénea (+/-3dB) en toda la audiencia con mínimo 102 dBA continuo / 114 dBC pico en FOH (10-12 dB de headroom sin distorsión).\n• Ingeniero de Sistemas: Obligatoriedad de presencia de técnico de sistemas certificado por el fabricante durante alineación y show.'
+      },
+      {
+        id: 'tech-consolas-foh',
+        num: '03',
+        title: 'Consolas — FOH',
+        subtitle: 'Audio › Consolas',
+        tag: 'Consolas',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'headphones',
+        content: '• Consola FOH preferida: [Tier 1: DiGiCo Quantum 338 / Avid S6L / Yamaha Rivage PM5. Tier 2: DiGiCo SD12 / Yamaha CL5].\n• Conectividad: Líneas Cat6e blindadas etherCON desde escenario a FOH, split pasivo aislado por transformadores.'
+      },
+      {
+        id: 'tech-consolas-monitores',
+        num: '04',
+        title: 'Consolas — Monitores',
+        subtitle: 'Audio › Consolas',
+        tag: 'Consolas',
+        tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
+        iconName: 'headphones',
+        content: '• Consola de Monitores: [Consola dedicada de 48+ canales con split pasivo aislado galvánicamente].'
       },
       {
         id: 'tech-monitores',
-        num: '03',
+        num: '05',
         title: 'Monitoreo, IEM & Radiofrecuencia (RF)',
         subtitle: 'In-Ears inalámbricos, mezclas, cuñas y RF',
-        tag: 'Monitores',
+        tag: 'IEM / RF',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'headphones',
-        content: '• Sistema de IEM (In-Ear Monitors): Cantidad de canales inalámbricos estéreo requeridos (ej: Shure PSM1000 / Sennheiser 2000 con combinador de antena activo).\n• Coordinación de RF: Escaneo de radiofrecuencia obligatorio in-situ previo al soundcheck.\n• Monitores de Piso: Cuñas/wedges bi-amplificadas de 15" (d&b M4 o L-Acoustics X15) y mezclas independientes.\n• Side fills y Drum fill: Subwoofer 18" + satélite para batería; 2x side fills estéreo en laterales.\n• Consola de Monitores: [Consola dedicada de 48+ canales con split pasivo aislado galvánicamente].'
+        content: '• Sistema de IEM (In-Ear Monitors): Cantidad de canales inalámbricos estéreo requeridos (ej: Shure PSM1000 / Sennheiser 2000 con combinador de antena activo).\n• Coordinación de RF: Escaneo de radiofrecuencia obligatorio in-situ previo al soundcheck.\n• Monitores de Piso: Cuñas/wedges bi-amplificadas de 15" (d&b M4 o L-Acoustics X15) y mezclas independientes.\n• Side fills y Drum fill: Subwoofer 18" + satélite para batería; 2x side fills estéreo en laterales.'
       },
       {
         id: 'tech-backline',
-        num: '04',
+        num: '06',
         title: 'Backline Requerido & Voltajes',
         subtitle: 'Instrumentos, amplificadores & transformadores',
         tag: 'Instrumentos',
@@ -59,7 +79,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
       },
       {
         id: 'tech-inputlist',
-        num: '05',
+        num: '07',
         title: 'Input List & Patch de Escenario',
         subtitle: 'Canales, microfonía, cajas directas y phantom',
         tag: 'Canales',
@@ -69,7 +89,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
       },
       {
         id: 'tech-stageplot',
-        num: '06',
+        num: '08',
         title: 'Stage Plot & Acometida Eléctrica',
         subtitle: 'Distribución en tarima, risers y tierra aislada',
         tag: 'Tarima',
@@ -79,7 +99,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
       },
       {
         id: 'tech-iluminacion',
-        num: '07',
+        num: '09',
         title: 'Iluminación, Pantallas LED & Visuales',
         subtitle: 'Patch DMX, luminarias, pantalla LED y niebla',
         tag: 'Visuales',
@@ -89,7 +109,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
       },
       {
         id: 'tech-rigging',
-        num: '08',
+        num: '10',
         title: 'Rigging, Cargas & Puntos de Cuelgue',
         subtitle: 'Motores, truss, cargas estáticas y dinámicas',
         tag: 'Estructuras',
@@ -99,7 +119,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
       },
       {
         id: 'tech-terminos',
-        num: '09',
+        num: '11',
         title: 'Condiciones Contractuales & SLA Contra-Rider',
         subtitle: 'Aprobación de sustituciones y plazos de entrega',
         tag: 'Términos',
