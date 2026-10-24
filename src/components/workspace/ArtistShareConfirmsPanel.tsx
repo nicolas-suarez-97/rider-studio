@@ -109,6 +109,13 @@ export function ArtistShareConfirmsPanel({
               const key = itemKey(item);
               const form = openForm[key];
               const draft = drafts[key] ?? item.artistResponse;
+              const previousDecision = item.previousDecision;
+              const previousText = previousDecision
+                ? (previousDecision.response === 'alternativa'
+                    ? previousDecision.offer
+                    : previousDecision.note
+                  ).trim()
+                : '';
               return (
                 <article key={key} className="py-4">
                   <div className="flex items-start justify-between gap-3">
@@ -144,6 +151,22 @@ export function ArtistShareConfirmsPanel({
                       {item.reopenedAt ? ` · ${item.reopenedAt}` : ''}
                       {item.reopenReason ? `: ${item.reopenReason}` : ''}
                     </p>
+                  ) : null}
+                  {item.reopened && previousDecision ? (
+                    <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Decisión anterior
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-700">
+                        {previousDecision.response
+                          ? SHARE_RESPONSE_LABEL[previousDecision.response]
+                          : 'Sin estado'}
+                        {previousDecision.acceptedAlternative ? ' · alternativa aceptada' : ''}
+                      </p>
+                      {previousText ? (
+                        <p className="mt-1 text-xs text-slate-600 whitespace-pre-wrap">{previousText}</p>
+                      ) : null}
+                    </div>
                   ) : null}
                   {item.artistResponse ? (
                     <p className="mt-2 text-xs text-slate-600 whitespace-pre-wrap">

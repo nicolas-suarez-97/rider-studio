@@ -42,6 +42,7 @@ export interface ArtistShareItem {
   reopenReason: string;
   reopenAuthor: string;
   reopenedAt: string;
+  previousDecision?: SharePreviousDecision | null;
 }
 
 export interface ArtistShareSummary {
@@ -107,6 +108,7 @@ export function listArtistShareItems(
         reopenReason: answer.reopenReason?.trim() || '',
         reopenAuthor: answer.reopenAuthor?.trim() || '',
         reopenedAt: answer.reopenedAt || '',
+        previousDecision: answer.previousDecision ?? null,
       });
     }
   }
