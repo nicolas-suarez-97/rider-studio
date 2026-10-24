@@ -213,6 +213,8 @@ interface RiderDocumentSurfaceProps {
   onDraftWithSelection?: (selectedText: string, sectionId?: string, mode?: 'quote' | 'adjust' | 'analyze') => void;
   onOpenImportModal?: () => void;
   absoluteExclusions?: AbsoluteExclusion[];
+  /** En el workspace con chat a la derecha, pega la hoja al asistente (sin columna muerta). */
+  pageAlign?: 'center' | 'end';
 }
 
 export function RiderDocumentSurface({
@@ -238,6 +240,7 @@ export function RiderDocumentSurface({
   onDraftWithSelection,
   onOpenImportModal,
   absoluteExclusions = [],
+  pageAlign = 'center',
 }: RiderDocumentSurfaceProps) {
   const theme = documentTheme || defaultDocumentTheme();
   const coverArtist = useMemo(() => {
@@ -790,7 +793,7 @@ export function RiderDocumentSurface({
     }
     const update = () => {
       if (!root || root.clientWidth <= 0) return;
-      const gutter = root.clientWidth < 768 ? 24 : 48;
+      const gutter = root.clientWidth < 768 ? 16 : pageAlign === 'end' ? 16 : 32;
       const next = Math.min(1, (root.clientWidth - gutter) / PAGE_WIDTH);
       const valid = Number.isFinite(next) && next > 0.2 ? next : 1;
       setScale((prev) => (Math.abs(prev - valid) < 0.005 ? prev : valid));
@@ -805,7 +808,7 @@ export function RiderDocumentSurface({
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
     };
-  }, [zoom]);
+  }, [zoom, pageAlign]);
 
   return (
     <div className={`docs-theme docs-theme-${theme} relative flex-1 h-full min-h-0 min-w-0 flex flex-col`}>
@@ -914,7 +917,8 @@ export function RiderDocumentSurface({
         style={{ scrollPaddingTop: SECTION_SCROLL_PADDING }}
       >
         <div
-          className="mx-auto my-4 sm:my-6"
+          data-docs-page
+          className={`my-4 sm:my-6 ${pageAlign === 'end' ? 'mx-auto xl:ml-auto xl:mr-0' : 'mx-auto'}`}
           style={{
             width: PAGE_WIDTH * scale,
             height: documentHeight * scale,
