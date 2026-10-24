@@ -28,6 +28,8 @@ export interface ChatDocumentSyncInput {
   suggestions: ChatSuggestionDraft[];
   sections: RiderBlockRef[];
   activeSectionId?: string;
+  priorAssistantIsError?: boolean;
+  priorAssistantNotice?: string;
 }
 
 export interface ChatDocumentSyncResult {
@@ -76,6 +78,18 @@ export function shouldUseDocumentJsonMode(ctx?: {
 const AI_SERVICE_ERROR =
   /no se pudo obtener una respuesta del servicio de ia/i;
 
+const AI_ERROR_NOTICE =
+  /no se pudo obtener una respuesta del servicio de ia|el chat de ia no tiene credenciales|token de ia no detectado|no se encontraron credenciales de ia|ai_gateway_api_key|openai_api_key|vercel_oidc_token|copiloto local|la nube de ia no respondi[oó]|could not get a response from the ai|missing (?:ai_|openai_)?api[_ ]?key|no ai credentials|ai (?:service|gateway) (?:error|unavailable|failed|not configured)|configura (?:ai_gateway|openai_api)/i;
+
+export function isNonTransferableAssistantNotice(
+  text?: string,
+  meta?: { isError?: boolean; notice?: string }
+): boolean {
+  if (meta?.isError) return true;
+  if (AI_ERROR_NOTICE.test((text || '').trim())) return true;
+  return AI_ERROR_NOTICE.test((meta?.notice || '').trim());
+}
+
 export function chatReplyAfterDocumentApply(input: {
   aiText: string;
   isError?: boolean;
@@ -105,7 +119,7 @@ export function isExplicitRiderTransferIntent(prompt: string): boolean {
 
 export function extractTransferableRiderText(raw: string): string {
   const text = (raw || '').trim();
-  if (!text) return '';
+  if (!text || isNonTransferableAssistantNotice(text)) return '';
 
   const withoutFooter = text
     .replace(/(?:^|\n)\s*💡[\s\S]*$/u, '')
@@ -168,7 +182,10 @@ function normalizeSuggestion(
 }
 
 export function ensureChatDocumentSuggestions(input: ChatDocumentSyncInput): ChatDocumentSyncResult {
-  const usable = (input.suggestions || []).filter(hasUsableProposedText).map((draft) => (
+  const usable = (input.suggestions || [])
+    .filter(hasUsableProposedText)
+    .filter((draft) => !isNonTransferableAssistantNotice(draft.proposedText || ''))
+    .map((draft) => (
     normalizeSuggestion(draft, input.sections, input.activeSectionId)
   ));
 
@@ -178,6 +195,13 @@ export function ensureChatDocumentSuggestions(input: ChatDocumentSyncInput): Cha
 
   if (!isExplicitRiderTransferIntent(input.userText)) {
     return { suggestions: input.suggestions || [] };
+  }
+
+  if (isNonTransferableAssistantNotice(input.priorAssistantText, {
+    isError: input.priorAssistantIsError,
+    notice: input.priorAssistantNotice,
+  })) {
+    return { suggestions: [], error: TRANSFER_FAIL };
   }
 
   const proposedText = extractTransferableRiderText(input.priorAssistantText);
@@ -222,6 +246,10 @@ export function planChatDocumentApply(input: {
       sectionId: draft.sectionId || input.activeSectionId || '',
       draft,
     };
+  }
+
+  if (isNonTransferableAssistantNotice(draft.proposedText || '')) {
+    return { action: 'fail', sectionId: draft.sectionId || '', draft, error: APPLY_EMPTY_FAIL };
   }
 
   if (draft.kind === 'add_section') {

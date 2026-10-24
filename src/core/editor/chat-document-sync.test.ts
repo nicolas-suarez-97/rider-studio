@@ -36,6 +36,19 @@ describe('extractTransferableRiderText', () => {
     assert.match(extracted, /DiGiCo SD12/);
     assert.doesNotMatch(extracted, /Si deseas que lo incorpore/);
   });
+
+  it('no trata un aviso de credenciales o de servicio de IA como contenido transferible', () => {
+    const notices = [
+      '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
+      '⚠️ El chat de IA no tiene credenciales en este entorno. Configura AI_GATEWAY_API_KEY u OPENAI_API_KEY en Vercel y vuelve a intentar.',
+      'Token de IA no detectado. Configura AI_GATEWAY_API_KEY o OPENAI_API_KEY en las variables de entorno de Vercel.',
+      'Missing AI_GATEWAY_API_KEY / OPENAI_API_KEY. Could not get a response from the AI service.',
+    ];
+
+    for (const notice of notices) {
+      assert.equal(extractTransferableRiderText(notice), '');
+    }
+  });
 });
 
 describe('resolveStableBlock', () => {
@@ -122,6 +135,61 @@ describe('ensureChatDocumentSuggestions', () => {
     assert.equal(result.suggestions[0].sectionId, 'hosp-hotel');
     assert.equal(result.suggestions[0].proposedText, 'Check-out 16:00');
   });
+
+  it('falla la transferencia si el mensaje previo es un aviso de error de IA', () => {
+    const result = ensureChatDocumentSuggestions({
+      userText: 'añade esto al rider',
+      priorAssistantText: '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
+      suggestions: [],
+      sections: [{ id: 'tech-audio', title: 'Audio FOH' }],
+      activeSectionId: 'tech-audio',
+    });
+
+    assert.equal(result.suggestions.length, 0);
+    assert.match(result.error || '', /no pude/i);
+    assert.doesNotMatch(result.error || '', /servicio de IA/i);
+  });
+
+  it('falla la transferencia si el mensaje previo marca isError o notice de diagnóstico', () => {
+    const byFlag = ensureChatDocumentSuggestions({
+      userText: 'añade esto al rider',
+      priorAssistantText: 'Configura el gateway para continuar.',
+      priorAssistantIsError: true,
+      suggestions: [],
+      sections: [],
+      activeSectionId: '',
+    });
+    assert.equal(byFlag.suggestions.length, 0);
+    assert.match(byFlag.error || '', /no pude/i);
+
+    const byNotice = ensureChatDocumentSuggestions({
+      userText: 'añade esto al rider',
+      priorAssistantText: 'Respondí con el copiloto local.',
+      priorAssistantNotice: 'Token de IA no detectado. Configura AI_GATEWAY_API_KEY o OPENAI_API_KEY.',
+      suggestions: [],
+      sections: [],
+      activeSectionId: '',
+    });
+    assert.equal(byNotice.suggestions.length, 0);
+    assert.match(byNotice.error || '', /no pude/i);
+  });
+
+  it('no aplica una sugerencia cuyo proposedText es un aviso de error de IA', () => {
+    const result = ensureChatDocumentSuggestions({
+      userText: 'añade esto al rider',
+      priorAssistantText: '⚠️ El chat de IA no tiene credenciales en este entorno.',
+      suggestions: [{
+        kind: 'insert',
+        sectionId: 'tech-audio',
+        proposedText: '⚠️ El chat de IA no tiene credenciales en este entorno. Configura AI_GATEWAY_API_KEY u OPENAI_API_KEY en Vercel y vuelve a intentar.',
+      }],
+      sections: [{ id: 'tech-audio', title: 'Audio FOH' }],
+      activeSectionId: 'tech-audio',
+    });
+
+    assert.equal(result.suggestions.length, 0);
+    assert.match(result.error || '', /no pude/i);
+  });
 });
 
 describe('planChatDocumentApply', () => {
@@ -154,6 +222,36 @@ describe('planChatDocumentApply', () => {
       draft: { kind: 'insert', sectionId: 'tech-audio', proposedText: '' },
       sections: [{ id: 'tech-audio', title: 'Audio FOH' }],
       activeSectionId: 'tech-audio',
+    });
+
+    assert.equal(plan.action, 'fail');
+    assert.match(plan.error || '', /no pude/i);
+  });
+
+  it('no muta el documento si el texto a aplicar es un aviso de error de IA', () => {
+    const plan = planChatDocumentApply({
+      draft: {
+        kind: 'insert',
+        sectionId: 'tech-audio',
+        proposedText: '⚠️ No se pudo obtener una respuesta del servicio de IA en este momento. Por favor, vuelve a intentar.',
+      },
+      sections: [{ id: 'tech-audio', title: 'Audio FOH' }],
+      activeSectionId: 'tech-audio',
+    });
+
+    assert.equal(plan.action, 'fail');
+    assert.match(plan.error || '', /no pude/i);
+  });
+
+  it('no crea un bloque si add_section trae un aviso de error de IA', () => {
+    const plan = planChatDocumentApply({
+      draft: {
+        kind: 'add_section',
+        newSectionTitle: 'Requerimientos',
+        proposedText: '⚠️ El chat de IA no tiene credenciales en este entorno. Configura AI_GATEWAY_API_KEY u OPENAI_API_KEY en Vercel y vuelve a intentar.',
+      },
+      sections: [],
+      activeSectionId: '',
     });
 
     assert.equal(plan.action, 'fail');

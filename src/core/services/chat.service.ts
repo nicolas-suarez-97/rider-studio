@@ -5,7 +5,7 @@ import { RiderType } from '../types/rider.types';
 import { EditorContextPayload } from '../types/suggestion.types';
 
 export interface SendMessageParams {
-  messages: Array<{ role?: string; content?: string; text?: string; sender?: string }>;
+  messages: Array<{ role?: string; content?: string; text?: string; sender?: string; isError?: boolean; notice?: string }>;
   riderType: RiderType;
   activeAgent: AgentRole;
   sessionId?: string;

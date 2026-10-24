@@ -840,7 +840,8 @@ export function WorkspaceClient({
         data = await chatService.sendMessage({
           messages: updatedMessages.map(m => ({
             role: m.sender === 'user' ? 'user' : 'assistant',
-            content: m.text
+            content: m.text,
+            isError: m.isError,
           })),
           riderType: rider.type,
           activeAgent,
@@ -860,10 +861,12 @@ export function WorkspaceClient({
         router.replace(currentUrl.pathname + currentUrl.search);
       }
 
-      const priorAssistantText = [...messages].reverse().find((item) => item.sender === 'ai')?.text || '';
+      const priorAssistant = [...messages].reverse().find((item) => item.sender === 'ai');
+      const priorAssistantText = priorAssistant?.text || '';
       const synced = ensureChatDocumentSuggestions({
         userText: text,
         priorAssistantText,
+        priorAssistantIsError: Boolean(priorAssistant?.isError),
         suggestions: Array.isArray(data?.suggestions) ? data.suggestions : [],
         sections: blockRefs,
         activeSectionId: targetSectionId || editorContext.sectionId,

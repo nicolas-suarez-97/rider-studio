@@ -309,11 +309,15 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       .reverse()
       .find((item) => item.role === 'assistant' || item.role === 'ai');
     const priorAssistantText = priorAssistant?.content || priorAssistant?.text || '';
+    const priorAssistantIsError = Boolean(priorAssistant?.isError);
+    const priorAssistantNotice = priorAssistant?.notice;
 
     if (isExplicitRiderTransferIntent(lastMessage)) {
       const synced = ensureChatDocumentSuggestions({
         userText: lastMessage,
         priorAssistantText,
+        priorAssistantIsError,
+        priorAssistantNotice,
         suggestions: [],
         sections: editorContext?.allSections || [],
         activeSectionId: editorContext?.sectionId,
@@ -437,6 +441,8 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
       const synced = ensureChatDocumentSuggestions({
         userText: lastMessage,
         priorAssistantText,
+        priorAssistantIsError,
+        priorAssistantNotice,
         suggestions,
         sections: editorContext?.allSections || [],
         activeSectionId: editorContext?.sectionId,

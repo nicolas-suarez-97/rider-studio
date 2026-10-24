@@ -16,7 +16,9 @@ export const RiderDocumentThemeSchema = z.enum([
 export const ChatMessageInputSchema = z.object({
   role: z.string().optional().default('user'),
   content: z.string().max(8000, 'El mensaje excede el límite de seguridad de 8000 caracteres').optional(),
-  text: z.string().max(8000, 'El mensaje excede el límite de seguridad de 8000 caracteres').optional()
+  text: z.string().max(8000, 'El mensaje excede el límite de seguridad de 8000 caracteres').optional(),
+  isError: z.boolean().optional(),
+  notice: z.string().max(2000).optional(),
 });
 
 export const SendChatMessageSchema = z.object({
