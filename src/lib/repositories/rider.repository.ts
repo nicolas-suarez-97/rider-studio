@@ -108,6 +108,11 @@ function isMissingMediaColumn(error: { code?: string; message?: string }) {
   return /PGRST204|42703/.test(message) || /Could not find the 'media' column/i.test(message);
 }
 
+function isMissingShareColumn(error: { code?: string; message?: string }) {
+  const message = `${error.code ?? ''} ${error.message ?? ''}`;
+  return /PGRST204|42703/.test(message) || /share_token|share_enabled|shared_at/i.test(message);
+}
+
 function isOwnerSession(session: LinkedSessionItem): boolean {
   return session.active_agent !== 'archived' && !session.title?.startsWith('consulta:');
 }
@@ -180,18 +185,17 @@ export class RiderRepository implements IRiderRepository {
           return applyPublishedSnapshot(data);
         }
 
-        if (!admin) {
-          const { data: rows, error: scanError } = await supabase
-            .from('riders')
-            .select('*');
+        // Fallback: older rows may only store the token in metadata.share
+        const { data: rows, error: scanError } = await supabase
+          .from('riders')
+          .select('*');
 
-          if (!scanError && rows) {
-            const found = rows.find((row) => {
-              const share = readShareLink(row);
-              return share?.token === token && share.enabled;
-            });
-            if (found) return applyPublishedSnapshot(found);
-          }
+        if (!scanError && rows) {
+          const found = rows.find((row) => {
+            const share = readShareLink(row);
+            return share?.token === token && share.enabled;
+          });
+          if (found) return applyPublishedSnapshot(found);
         }
       }
     }
@@ -222,7 +226,9 @@ export class RiderRepository implements IRiderRepository {
     );
 
     if (isSupabaseServerConfigured()) {
-      const supabase = await createServerSupabaseClient();
+      // Owner session can publish; admin covers missing RLS/column edge cases for metadata.published.
+      const admin = createAdminSupabaseClient();
+      const supabase = admin ?? (await createServerSupabaseClient());
       if (supabase) {
         const columnWrite = await supabase
           .from('riders')
@@ -242,7 +248,7 @@ export class RiderRepository implements IRiderRepository {
           return enabledShare;
         }
 
-        if (columnWrite.error) {
+        if (columnWrite.error && !isMissingShareColumn(columnWrite.error)) {
           console.warn('[Supabase publishShare columns]', columnWrite.error);
         }
 
@@ -385,6 +391,17 @@ export class RiderRepository implements IRiderRepository {
           .eq('share_enabled', true)
           .maybeSingle();
         if (!error && data && readShareLink(data)?.enabled) return data;
+
+        const { data: rows, error: scanError } = await supabase
+          .from('riders')
+          .select('*');
+        if (!scanError && rows) {
+          const found = rows.find((row) => {
+            const share = readShareLink(row);
+            return share?.token === token && share.enabled;
+          });
+          if (found) return found;
+        }
       }
     }
     return memoryRiders.find((row) => {
