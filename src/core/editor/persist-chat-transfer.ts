@@ -1,11 +1,11 @@
-import type { RiderContentDoc, RiderContentNode, SectionItem } from '../types/rider.types.ts';
+import type { RiderContentDoc, RiderContentNode, SectionItem } from '../types/rider.types';
 import {
   type ChatSuggestionDraft,
   type RiderBlockRef,
   planChatDocumentApply,
   shouldUseDocumentJsonMode,
-} from './chat-document-sync.ts';
-import { riderMarkupToContent } from './rider-markup.ts';
+} from './chat-document-sync';
+import { riderMarkupToContent } from './rider-markup';
 
 export const CHAT_TRANSFER_PERSIST_FAIL =
   'No pude guardar el contenido en el rider. El documento no se modificó.';
@@ -237,12 +237,12 @@ export async function persistChatTransferToRider(input: {
 }
 
 async function defaultLoadRider(id: string): Promise<PersistRiderRow | null> {
-  const { getRiderById } = await import('../../lib/services/rider-storage.ts');
+  const { getRiderById } = await import('../../lib/services/rider-storage');
   return getRiderById(id);
 }
 
 async function defaultSaveRider(payload: PersistRiderSaveInput): Promise<unknown> {
-  const { saveRider } = await import('../../lib/services/rider-storage.ts');
+  const { saveRider } = await import('../../lib/services/rider-storage');
   return saveRider({
     ...payload,
     channels: payload.channels as never,
