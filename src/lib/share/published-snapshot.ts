@@ -120,6 +120,7 @@ export function applyPublishedSnapshot<T extends SnapshotRider & { metadata: Jso
       shareConfirms: liveMeta.shareConfirms ?? {},
       contraRider: liveMeta.contraRider ?? null,
       published: liveMeta.published ?? null,
+      ...(liveMeta.showReady !== undefined ? { showReady: liveMeta.showReady } : {}),
     }),
   };
 }

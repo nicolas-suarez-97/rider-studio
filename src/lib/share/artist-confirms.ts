@@ -1,4 +1,5 @@
-import type { ContraAnswer, ContraResponse } from '../../core/types/contra-rider.types';
+import type { ContraAnswer, ContraResponse, SharePreviousDecision } from '../../core/types/contra-rider.types';
+import type { Json } from '../supabase/database.types';
 import type { ShareGuestRecord } from './confirm';
 
 export const SHARE_RESPONSE_LABEL: Record<Exclude<ContraResponse, ''>, string> = {
@@ -15,7 +16,15 @@ export const SHARE_RESPONSE_BADGE: Record<Exclude<ContraResponse, ''>, string> =
   pregunta: 'bg-amber-50 text-amber-800 border-amber-200',
 };
 
-export type ArtistShareActionType = 'accept_alternative' | 'reply' | 'propose';
+export const REOPEN_BADGE = 'bg-orange-50 text-orange-800 border-orange-200';
+export const REOPEN_LABEL = 'Reabierto';
+
+export type ArtistShareActionType = 'accept_alternative' | 'reply' | 'propose' | 'reopen';
+
+export interface ArtistShareActionContext {
+  author?: string;
+  now?: string;
+}
 
 export interface ArtistShareItem {
   guestKey: string;
@@ -27,6 +36,12 @@ export interface ArtistShareItem {
   artistResponse: string;
   acceptedAlternative: boolean;
   needsAction: boolean;
+  approvalInForce: boolean;
+  canReopen: boolean;
+  reopened: boolean;
+  reopenReason: string;
+  reopenAuthor: string;
+  reopenedAt: string;
 }
 
 export interface ArtistShareSummary {
@@ -39,12 +54,33 @@ export function organizerShareText(answer: Pick<ContraAnswer, 'response' | 'offe
   return answer.response === 'alternativa' ? answer.offer : answer.note;
 }
 
+export function isApprovalInForce(answer: ContraAnswer): boolean {
+  if (answer.reopened) return false;
+  return answer.response === 'cubro' || answer.acceptedAlternative === true;
+}
+
+export function canReopenShareAnswer(answer: ContraAnswer): boolean {
+  return isApprovalInForce(answer);
+}
+
 export function needsArtistAction(answer: ContraAnswer): boolean {
+  if (answer.reopened) return false;
   if (answer.response !== 'alternativa' && answer.response !== 'pregunta' && answer.response !== 'no_puedo') {
     return false;
   }
   if (answer.acceptedAlternative) return false;
   return !answer.artistResponse?.trim();
+}
+
+export function isShowReady(items: Pick<ArtistShareItem, 'approvalInForce' | 'needsAction'>[]): boolean {
+  return items.length > 0 && items.every((item) => item.approvalInForce && !item.needsAction);
+}
+
+export function clearShowReady(metadata: Json | Record<string, unknown> | undefined): Record<string, unknown> {
+  const base = metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+    ? { ...(metadata as Record<string, unknown>) }
+    : {};
+  return { ...base, showReady: false };
 }
 
 export function listArtistShareItems(
@@ -65,6 +101,12 @@ export function listArtistShareItems(
         artistResponse: answer.artistResponse?.trim() || '',
         acceptedAlternative: answer.acceptedAlternative === true,
         needsAction: needsArtistAction(answer),
+        approvalInForce: isApprovalInForce(answer),
+        canReopen: canReopenShareAnswer(answer),
+        reopened: answer.reopened === true,
+        reopenReason: answer.reopenReason?.trim() || '',
+        reopenAuthor: answer.reopenAuthor?.trim() || '',
+        reopenedAt: answer.reopenedAt || '',
       });
     }
   }
@@ -85,6 +127,16 @@ export function summarizeArtistShareItems(items: ArtistShareItem[]): ArtistShare
   };
 }
 
+function snapshotDecision(answer: ContraAnswer): SharePreviousDecision {
+  return {
+    response: answer.response,
+    offer: answer.offer,
+    note: answer.note,
+    ...(answer.artistResponse ? { artistResponse: answer.artistResponse } : {}),
+    ...(answer.acceptedAlternative ? { acceptedAlternative: true } : {}),
+  };
+}
+
 function persistAnswer(answer: ContraAnswer): ContraAnswer {
   const next: ContraAnswer = {
     response: answer.response,
@@ -94,6 +146,13 @@ function persistAnswer(answer: ContraAnswer): ContraAnswer {
   if (answer.acceptedAlternative) next.acceptedAlternative = true;
   const artistResponse = answer.artistResponse?.trim().slice(0, 1000);
   if (artistResponse) next.artistResponse = artistResponse;
+  if (answer.reopened) next.reopened = true;
+  const reopenReason = answer.reopenReason?.trim().slice(0, 1000);
+  if (reopenReason) next.reopenReason = reopenReason;
+  const reopenAuthor = answer.reopenAuthor?.trim().slice(0, 160);
+  if (reopenAuthor) next.reopenAuthor = reopenAuthor;
+  if (answer.reopenedAt) next.reopenedAt = answer.reopenedAt;
+  if (answer.previousDecision) next.previousDecision = answer.previousDecision;
   return next;
 }
 
@@ -102,7 +161,8 @@ export function applyArtistShareAction(
   guestKey: string,
   lineId: string,
   action: ArtistShareActionType,
-  text = ''
+  text = '',
+  context: ArtistShareActionContext = {}
 ): { error: string | null; confirms: Record<string, ShareGuestRecord> } {
   const guest = confirms[guestKey];
   const answer = guest?.answers[lineId];
@@ -111,6 +171,37 @@ export function applyArtistShareAction(
   }
 
   const trimmed = text.trim().slice(0, 1000);
+
+  if (action === 'reopen') {
+    if (!canReopenShareAnswer(answer)) {
+      return { error: 'Solo puedes reabrir un pedido aprobado o con aceptación vigente', confirms };
+    }
+    if (!trimmed) {
+      return { error: 'Escribe un motivo para reabrir', confirms };
+    }
+    const author = context.author?.trim().slice(0, 160) || 'artista';
+    const now = context.now || new Date().toISOString();
+    return {
+      error: null,
+      confirms: {
+        ...confirms,
+        [guestKey]: {
+          ...guest,
+          answers: {
+            ...guest.answers,
+            [lineId]: persistAnswer({
+              ...answer,
+              reopened: true,
+              reopenReason: trimmed,
+              reopenAuthor: author,
+              reopenedAt: now,
+              previousDecision: snapshotDecision(answer),
+            }),
+          },
+        },
+      },
+    };
+  }
 
   if (action === 'accept_alternative') {
     if (answer.response !== 'alternativa') {
@@ -124,7 +215,7 @@ export function applyArtistShareAction(
           ...guest,
           answers: {
             ...guest.answers,
-            [lineId]: persistAnswer({ ...answer, acceptedAlternative: true }),
+            [lineId]: persistAnswer({ ...answer, acceptedAlternative: true, reopened: false }),
           },
         },
       },

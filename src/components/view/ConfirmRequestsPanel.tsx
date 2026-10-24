@@ -97,7 +97,11 @@ export function ConfirmRequestsPanel({ guestName, lines, onClose, onSave }: Conf
                       <h3 className="text-sm font-extrabold text-slate-900">{line.sectionTitle}</h3>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{line.moduleLabel}</p>
                     </div>
-                    {responded && line.response ? (
+                    {line.reopened ? (
+                      <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-orange-800 bg-orange-50 border border-orange-200 px-2 py-1 rounded-full">
+                        Reabierto · En revisión
+                      </span>
+                    ) : responded && line.response ? (
                       <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full">
                         Respondido · {RESPONSE_LABEL[line.response]}
                       </span>

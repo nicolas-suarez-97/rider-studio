@@ -8,6 +8,7 @@ import {
   type ArtistShareActionType,
 } from '@/lib/share/artist-confirms';
 import { readShareConfirms } from '@/lib/share/confirm';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getRiderById, saveArtistShareAction } from '@/lib/services/rider-storage';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -15,9 +16,17 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const ActionSchema = z.object({
   guestKey: z.string().trim().min(1).max(80),
   lineId: z.string().trim().min(1).max(160),
-  action: z.enum(['accept_alternative', 'reply', 'propose']),
+  action: z.enum(['accept_alternative', 'reply', 'propose', 'reopen']),
   text: z.string().optional().default(''),
 });
+
+async function resolveArtistAuthor(artistName: string): Promise<string> {
+  const supabase = await createServerSupabaseClient();
+  const user = supabase ? (await supabase.auth.getUser()).data.user : null;
+  if (user?.id) return user.id;
+  if (user?.email) return user.email;
+  return artistName.trim() || 'artista';
+}
 
 function viewFor(row: NonNullable<Awaited<ReturnType<typeof getRiderById>>>) {
   const rider = Rider.fromDatabase(row);
@@ -66,12 +75,18 @@ export async function POST(
       return NextResponse.json({ error: 'No se pudo guardar la acción' }, { status: 400 });
     }
 
+    const riderBefore = await getRiderById(id);
+    if (!riderBefore) {
+      return NextResponse.json({ error: 'Rider no encontrado' }, { status: 404 });
+    }
+
     const saved = await saveArtistShareAction(
       id,
       parsed.data.guestKey,
       parsed.data.lineId,
       parsed.data.action as ArtistShareActionType,
-      parsed.data.text
+      parsed.data.text,
+      { author: await resolveArtistAuthor(riderBefore.artist_name || '') }
     );
     if (!saved) {
       return NextResponse.json({ error: 'Rider no encontrado' }, { status: 404 });

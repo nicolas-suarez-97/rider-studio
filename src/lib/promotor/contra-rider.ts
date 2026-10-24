@@ -260,6 +260,9 @@ export function buildContraLines(rider: Rider, answers: Record<string, ContraAns
         response: saved?.response || '',
         offer: saved?.offer || '',
         note: saved?.note || '',
+        ...(saved?.reopened ? { reopened: true } : {}),
+        ...(saved?.reopenReason ? { reopenReason: saved.reopenReason } : {}),
+        ...(saved?.previousDecision ? { previousDecision: saved.previousDecision } : {}),
       };
     });
   });

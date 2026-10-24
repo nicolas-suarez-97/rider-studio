@@ -3,7 +3,12 @@ import { Database, Json } from '@/lib/supabase/database.types';
 import { createShareToken } from '@/lib/share/token';
 import { applyPublishedSnapshot, capturePublishedSnapshot } from '@/lib/share/published-snapshot';
 import { confirmsToJson, guestKey, mergeShareConfirms, readShareConfirms, type ShareGuestRecord } from '@/lib/share/confirm';
-import { applyArtistShareAction, type ArtistShareActionType } from '@/lib/share/artist-confirms';
+import {
+  applyArtistShareAction,
+  clearShowReady,
+  type ArtistShareActionContext,
+  type ArtistShareActionType,
+} from '@/lib/share/artist-confirms';
 import type { ContraAnswer } from '@/core/types/contra-rider.types';
 import { deleteStoredImages } from '@/lib/media/image-store';
 import { mediaPathnames } from '@/lib/media/rider-media';
@@ -54,7 +59,8 @@ export interface IRiderRepository {
     guestKey: string,
     lineId: string,
     action: ArtistShareActionType,
-    text: string
+    text: string,
+    context?: ArtistShareActionContext
   ): Promise<{ error: string | null } | null>;
   save(rider: SaveRiderInput): Promise<DbRider>;
   delete(id: string): Promise<boolean>;
@@ -108,6 +114,7 @@ function preserveServerMetadata(incoming: Json, previous: Record<string, Json | 
     ...(previous.contraRider ? { contraRider: previous.contraRider } : {}),
     ...(previous.published ? { published: previous.published } : {}),
     ...(previous.shareConfirms ? { shareConfirms: previous.shareConfirms } : {}),
+    ...(previous.showReady !== undefined ? { showReady: previous.showReady } : {}),
   };
 }
 
@@ -392,17 +399,26 @@ export class RiderRepository implements IRiderRepository {
     guestKey: string,
     lineId: string,
     action: ArtistShareActionType,
-    text: string
+    text: string,
+    context: ArtistShareActionContext = {}
   ): Promise<{ error: string | null } | null> {
     const rider = await this.getById(id);
     if (!rider) return null;
 
-    const applied = applyArtistShareAction(readShareConfirms(rider.metadata), guestKey, lineId, action, text);
+    const applied = applyArtistShareAction(
+      readShareConfirms(rider.metadata),
+      guestKey,
+      lineId,
+      action,
+      text,
+      context
+    );
     if (applied.error) return { error: applied.error };
 
     const now = new Date().toISOString();
     const base = asMetadataRecord(rider.metadata) ?? {};
-    const metadata: Json = { ...base, shareConfirms: confirmsToJson(applied.confirms) };
+    const nextMeta = action === 'reopen' ? clearShowReady(base) : base;
+    const metadata: Json = { ...nextMeta, shareConfirms: confirmsToJson(applied.confirms) };
     const next: DbRider = { ...rider, metadata, updated_at: now };
 
     if (isSupabaseServerConfigured()) {

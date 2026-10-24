@@ -1,4 +1,4 @@
-import type { ContraAnswer, ContraResponse } from '../../core/types/contra-rider.types';
+import type { ContraAnswer, ContraResponse, SharePreviousDecision } from '../../core/types/contra-rider.types';
 import type { Json } from '../supabase/database.types';
 
 const RESPONSES = new Set<Exclude<ContraResponse, ''>>(['cubro', 'alternativa', 'no_puedo', 'pregunta']);
@@ -13,6 +13,41 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     return value as Record<string, unknown>;
   }
   return null;
+}
+
+function readPreviousDecision(value: unknown): SharePreviousDecision | undefined {
+  const raw = asRecord(value);
+  if (!raw) return undefined;
+  const response = typeof raw.response === 'string' && RESPONSES.has(raw.response as Exclude<ContraResponse, ''>)
+    ? (raw.response as Exclude<ContraResponse, ''>)
+    : '';
+  if (!response) return undefined;
+  const artistResponse = typeof raw.artistResponse === 'string' ? raw.artistResponse : '';
+  return {
+    response,
+    offer: typeof raw.offer === 'string' ? raw.offer : '',
+    note: typeof raw.note === 'string' ? raw.note : '',
+    ...(artistResponse ? { artistResponse } : {}),
+    ...(raw.acceptedAlternative === true ? { acceptedAlternative: true } : {}),
+  };
+}
+
+export function carryShareDecisionHistory(previous: ContraAnswer | undefined, next: ContraAnswer): ContraAnswer {
+  if (!previous) return next;
+  const previousDecision = previous.previousDecision ?? {
+    response: previous.response,
+    offer: previous.offer,
+    note: previous.note,
+    ...(previous.artistResponse ? { artistResponse: previous.artistResponse } : {}),
+    ...(previous.acceptedAlternative ? { acceptedAlternative: true } : {}),
+  };
+  return {
+    ...next,
+    previousDecision,
+    ...(previous.reopenReason ? { reopenReason: previous.reopenReason } : {}),
+    ...(previous.reopenAuthor ? { reopenAuthor: previous.reopenAuthor } : {}),
+    ...(previous.reopenedAt ? { reopenedAt: previous.reopenedAt } : {}),
+  };
 }
 
 export function guestStorageKey(token: string): string {
@@ -78,12 +113,21 @@ export function readShareConfirms(metadata: Json | undefined): Record<string, Sh
           : '';
         if (!response) continue;
         const artistResponse = typeof answer.artistResponse === 'string' ? answer.artistResponse : '';
+        const reopenReason = typeof answer.reopenReason === 'string' ? answer.reopenReason : '';
+        const reopenAuthor = typeof answer.reopenAuthor === 'string' ? answer.reopenAuthor : '';
+        const reopenedAt = typeof answer.reopenedAt === 'string' ? answer.reopenedAt : '';
+        const previousDecision = readPreviousDecision(answer.previousDecision);
         answers[lineId] = {
           response,
           offer: typeof answer.offer === 'string' ? answer.offer : '',
           note: typeof answer.note === 'string' ? answer.note : '',
           ...(artistResponse ? { artistResponse } : {}),
           ...(answer.acceptedAlternative === true ? { acceptedAlternative: true } : {}),
+          ...(answer.reopened === true ? { reopened: true } : {}),
+          ...(reopenReason ? { reopenReason } : {}),
+          ...(reopenAuthor ? { reopenAuthor } : {}),
+          ...(reopenedAt ? { reopenedAt } : {}),
+          ...(previousDecision ? { previousDecision } : {}),
         };
       }
     }
@@ -113,7 +157,7 @@ export function mergeShareConfirms(
       name: name.trim(),
       answers: {
         ...(existing?.answers ?? {}),
-        [lineId]: answer,
+        [lineId]: carryShareDecisionHistory(existing?.answers[lineId], answer),
       },
     },
   };
