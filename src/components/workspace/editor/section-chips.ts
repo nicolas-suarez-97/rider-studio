@@ -144,8 +144,8 @@ export const SectionChips = Extension.create<SectionChipsOptions>({
       new Plugin({
         key: chipsKey,
         state: {
-          init: () => ({}),
-          apply(tr, value) {
+          init: (): SectionChipsState => ({}),
+          apply(tr, value: SectionChipsState): SectionChipsState {
             const next = tr.getMeta(chipsKey) as { sectionId: string; activeId: string } | undefined;
             if (!next?.sectionId || !next.activeId) return value;
             const prev = value[next.sectionId] || { activeId: null, visited: [] };
