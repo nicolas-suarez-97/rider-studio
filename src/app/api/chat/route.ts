@@ -18,7 +18,50 @@ import {
   isSparseEditorContext,
   shouldUseDocumentJsonMode,
 } from '@/core/editor/chat-document-sync';
+import {
+  CHAT_TRANSFER_PERSIST_FAIL,
+  loadRiderTransferContext,
+  persistChatTransferToRider,
+  shouldPersistChatTransferOnServer,
+} from '@/core/editor/persist-chat-transfer';
 import { callAiCompletion, getAiDiagnostics } from '@/lib/ai/ai-provider';
+
+const TRANSFER_SUCCESS =
+  'He pasado el contenido al documento. Revisa el bloque y confirma o deshaz el cambio.';
+
+async function riderBlocksForChatTransfer(
+  riderId: string | undefined,
+  editorContext?: { sectionId?: string; allSections?: Array<{ id: string; title: string }> }
+) {
+  if (!shouldPersistChatTransferOnServer(editorContext) || !riderId) {
+    return {
+      sections: editorContext?.allSections || [],
+      activeSectionId: editorContext?.sectionId,
+    };
+  }
+  const loaded = await loadRiderTransferContext(riderId);
+  if (!loaded) {
+    return {
+      sections: editorContext?.allSections || [],
+      activeSectionId: editorContext?.sectionId,
+    };
+  }
+  return loaded;
+}
+
+async function persistStandaloneTransferIfNeeded(input: {
+  riderId?: string;
+  editorContext?: { sectionId?: string; sectionText?: string; allSections?: unknown[] };
+  suggestions: AgentSuggestionDraft[];
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!shouldPersistChatTransferOnServer(input.editorContext)) {
+    return { ok: true };
+  }
+  return persistChatTransferToRider({
+    riderId: input.riderId,
+    suggestions: input.suggestions,
+  });
+}
 
 export async function GET() {
   const diagnostics = getAiDiagnostics();
@@ -313,24 +356,37 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
     const priorAssistantNotice = priorAssistant?.notice;
 
     if (isExplicitRiderTransferIntent(lastMessage)) {
+      const blocks = await riderBlocksForChatTransfer(riderId, editorContext);
       const synced = ensureChatDocumentSuggestions({
         userText: lastMessage,
         priorAssistantText,
         priorAssistantIsError,
         priorAssistantNotice,
         suggestions: [],
-        sections: editorContext?.allSections || [],
-        activeSectionId: editorContext?.sectionId,
+        sections: blocks.sections,
+        activeSectionId: blocks.activeSectionId,
       });
       if (synced.error || synced.suggestions.length > 0) {
+        let transferMessage = synced.error || TRANSFER_SUCCESS;
+        let transferSuggestions = synced.suggestions;
+        if (!synced.error && synced.suggestions.length > 0) {
+          const persist = await persistStandaloneTransferIfNeeded({
+            riderId,
+            editorContext,
+            suggestions: synced.suggestions,
+          });
+          if (!persist.ok) {
+            transferMessage = persist.error || CHAT_TRANSFER_PERSIST_FAIL;
+            transferSuggestions = [];
+          }
+        }
         finalResponse = {
           sessionId: session.id,
           role: activeAgent,
           roleName: profile.name,
           roleAvatar: activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠',
-          message: synced.error
-            || 'He pasado el contenido al documento. Revisa el bloque y confirma o deshaz el cambio.',
-          suggestions: synced.suggestions,
+          message: transferMessage,
+          suggestions: transferSuggestions,
           gatewayProvider: 'production_expert_engine',
           actions: [],
         };
@@ -438,21 +494,31 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
         }
       }
 
+      const blocks = await riderBlocksForChatTransfer(riderId, editorContext);
       const synced = ensureChatDocumentSuggestions({
         userText: lastMessage,
         priorAssistantText,
         priorAssistantIsError,
         priorAssistantNotice,
         suggestions,
-        sections: editorContext?.allSections || [],
-        activeSectionId: editorContext?.sectionId,
+        sections: blocks.sections,
+        activeSectionId: blocks.activeSectionId,
       });
       suggestions = synced.suggestions;
       if (synced.error) {
         replyText = synced.error;
-      } else if (synced.suggestions.length > 0 && /añade esto|agrega esto|al rider|al documento/i.test(lastMessage)) {
-        if (!replyText.trim() || replyText === replyRaw) {
-          replyText = 'He pasado el contenido al documento. Revisa el bloque y confirma o deshaz el cambio.';
+        suggestions = [];
+      } else if (synced.suggestions.length > 0 && isExplicitRiderTransferIntent(lastMessage)) {
+        const persist = await persistStandaloneTransferIfNeeded({
+          riderId,
+          editorContext,
+          suggestions: synced.suggestions,
+        });
+        if (!persist.ok) {
+          replyText = persist.error || CHAT_TRANSFER_PERSIST_FAIL;
+          suggestions = [];
+        } else if (shouldPersistChatTransferOnServer(editorContext) || !replyText.trim() || replyText === replyRaw) {
+          replyText = TRANSFER_SUCCESS;
         }
       }
 
