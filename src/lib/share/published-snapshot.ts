@@ -49,6 +49,7 @@ function contentMetadata(metadata: Json | undefined): Json {
     modules: asRecord(meta.modules) ?? {},
     stagePlot: meta.stagePlot ?? null,
     media: meta.media ?? null,
+    absoluteExclusions: Array.isArray(meta.absoluteExclusions) ? meta.absoluteExclusions : [],
   });
 }
 
@@ -120,6 +121,7 @@ export function applyPublishedSnapshot<T extends SnapshotRider & { metadata: Jso
       shareConfirms: liveMeta.shareConfirms ?? {},
       contraRider: liveMeta.contraRider ?? null,
       published: liveMeta.published ?? null,
+      absoluteExclusions: liveMeta.absoluteExclusions ?? publishedMeta.absoluteExclusions ?? [],
     }),
   };
 }

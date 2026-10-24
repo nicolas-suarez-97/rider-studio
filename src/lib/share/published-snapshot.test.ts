@@ -40,6 +40,20 @@ describe('published snapshot', () => {
     assert.equal(hasPublishedSnapshot({ published: snapshot }), true);
   });
 
+  it('publica las exclusiones absolutas vigentes', () => {
+    const snapshot = capturePublishedSnapshot(
+      rider({
+        metadata: {
+          season: '2026',
+          absoluteExclusions: [{ id: 'ex-1', brand: 'JBL', model: 'SRX' }],
+        } as Json,
+      }),
+      '2026-10-24T12:00:00.000Z'
+    );
+    const meta = (snapshot as { metadata?: { absoluteExclusions?: unknown } }).metadata;
+    assert.deepEqual(meta?.absoluteExclusions, [{ id: 'ex-1', brand: 'JBL', model: 'SRX' }]);
+  });
+
   it('al aplicar el snapshot oculta ediciones sin publicar', () => {
     const publishedRow = rider();
     const snapshot = capturePublishedSnapshot(publishedRow, '2026-10-24T12:00:00.000Z');
@@ -50,14 +64,20 @@ describe('published snapshot', () => {
         season: 'borrador',
         published: snapshot,
         shareConfirms: { ana: { name: 'Ana', answers: {} } },
+        absoluteExclusions: [{ id: 'ex-live', brand: 'JBL', model: 'SRX' }],
       } as Json,
     });
 
     const visible = applyPublishedSnapshot(draft);
     assert.equal(visible.title, 'Rider publicado');
     assert.deepEqual(visible.sections, publishedRow.sections);
-    const meta = visible.metadata as { season?: string; shareConfirms?: unknown };
+    const meta = visible.metadata as {
+      season?: string;
+      shareConfirms?: unknown;
+      absoluteExclusions?: unknown;
+    };
     assert.equal(meta.season, '2026');
     assert.deepEqual(meta.shareConfirms, { ana: { name: 'Ana', answers: {} } });
+    assert.deepEqual(meta.absoluteExclusions, [{ id: 'ex-live', brand: 'JBL', model: 'SRX' }]);
   });
 });

@@ -6,7 +6,8 @@ import { SectionCommentItem } from '@/lib/share/comments';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 import { EditorBridge, RiderDocumentSurface } from './editor/RiderDocumentSurface';
 import type { SectionDocumentPatch } from '@/core/editor/content-doc';
-import type { RiderType, RiderDocumentTheme } from '@/core/types/rider.types';
+import type { AbsoluteExclusion, RiderType, RiderDocumentTheme } from '@/core/types/rider.types';
+import { AbsoluteExclusionsPanel } from '@/components/rider/AbsoluteExclusionsPanel';
 
 interface DocumentEditorPanelProps {
   riderTitle: string;
@@ -61,6 +62,9 @@ interface DocumentEditorPanelProps {
   onToggleSectionComments?: (sectionId: string) => void;
   commentAuthorName?: string;
   onSubmitSectionComment?: (sectionId: string, authorName: string, body: string) => Promise<void>;
+  absoluteExclusions?: AbsoluteExclusion[];
+  onAddAbsoluteExclusion?: (brand: string, model?: string) => void;
+  onRemoveAbsoluteExclusion?: (id: string) => void;
 }
 
 export function DocumentEditorPanel({
@@ -86,9 +90,18 @@ export function DocumentEditorPanel({
   onDraftWithSelection,
   onOpenImportModal,
   readOnly = false,
+  absoluteExclusions = [],
+  onAddAbsoluteExclusion,
+  onRemoveAbsoluteExclusion,
 }: DocumentEditorPanelProps) {
   return (
     <main className="flex-1 h-full min-h-0 min-w-0 overflow-hidden flex flex-col">
+      <AbsoluteExclusionsPanel
+        exclusions={absoluteExclusions}
+        readOnly={readOnly}
+        onAdd={onAddAbsoluteExclusion}
+        onRemove={onRemoveAbsoluteExclusion}
+      />
       <RiderDocumentSurface
         riderTitle={riderTitle}
         artistName={artistName}

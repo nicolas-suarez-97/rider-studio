@@ -50,6 +50,7 @@ function riderEditSnapshot(current: Rider) {
     media: current.media,
     documentTheme: current.documentTheme,
     completedSectionIds: current.completedSectionIds,
+    absoluteExclusions: current.absoluteExclusions,
   });
 }
 
@@ -537,6 +538,26 @@ export function WorkspaceClient({
 
   const handleThemeChange = (documentTheme: RiderDocumentTheme) => {
     setRider(prev => new Rider({ ...prev, documentTheme }));
+  };
+
+  const handleAddAbsoluteExclusion = (brand: string, model?: string) => {
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `ex-${Date.now()}`;
+    setRider((prev) => new Rider({
+      ...prev,
+      absoluteExclusions: [
+        ...prev.absoluteExclusions,
+        model ? { id, brand, model } : { id, brand },
+      ],
+    }));
+  };
+
+  const handleRemoveAbsoluteExclusion = (id: string) => {
+    setRider((prev) => new Rider({
+      ...prev,
+      absoluteExclusions: prev.absoluteExclusions.filter((item) => item.id !== id),
+    }));
   };
 
   // Toggle completado de sección
@@ -1294,6 +1315,9 @@ export function WorkspaceClient({
             documentTheme={rider.documentTheme}
             version={rider.version}
             onThemeChange={handleThemeChange}
+            absoluteExclusions={rider.absoluteExclusions}
+            onAddAbsoluteExclusion={handleAddAbsoluteExclusion}
+            onRemoveAbsoluteExclusion={handleRemoveAbsoluteExclusion}
             sections={visibleSections}
             channels={rider.channels}
             completedSectionIds={rider.completedSectionIds}

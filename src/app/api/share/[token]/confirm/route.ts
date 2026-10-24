@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Rider } from '@/core/models/Rider';
 import { buildContraLines, lineHasPedido } from '@/lib/promotor/contra-rider';
 import { readGuestAnswers, readShareConfirms, validateGuestName, validateShareConfirm } from '@/lib/share/confirm';
+import { absoluteExclusionConflict, readAbsoluteExclusions } from '@/lib/share/exclusions';
 import { isShareToken } from '@/lib/share/token';
 import { getRiderByShareToken, saveShareConfirm } from '@/lib/services/rider-storage';
 
@@ -82,6 +83,17 @@ export async function POST(
     });
     if (checked.error || !checked.answer) {
       return NextResponse.json({ error: checked.error }, { status: 400 });
+    }
+
+    const line = lines.find((item) => item.id === parsed.data.lineId);
+    const exclusionError = absoluteExclusionConflict({
+      exclusions: readAbsoluteExclusions(row.metadata),
+      pedido: line?.pedido ?? '',
+      response: checked.answer.response,
+      offer: checked.answer.offer,
+    });
+    if (exclusionError) {
+      return NextResponse.json({ error: exclusionError }, { status: 400 });
     }
 
     const saved = await saveShareConfirm(token, parsed.data.guestName.trim(), parsed.data.lineId, checked.answer);

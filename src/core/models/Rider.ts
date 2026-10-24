@@ -8,8 +8,10 @@ import {
   StagePlotConfig,
   StageElement,
   RiderModuleData,
-  RiderMediaItem
+  RiderMediaItem,
+  AbsoluteExclusion
 } from '../types/rider.types';
+import { readAbsoluteExclusions } from '@/lib/share/exclusions';
 import { defaultDocumentTheme, isRiderDocumentTheme } from '../constants/document-themes';
 import { RIDER_TYPE_ORDER } from '../constants/rider-type-tokens';
 import { flattenTypedSections, sectionType } from '../utils/type-view';
@@ -38,6 +40,7 @@ export class Rider {
   public modules: Partial<Record<RiderType, RiderModuleData>>;
   public stagePlot: StagePlotConfig;
   public media: RiderMediaItem[];
+  public absoluteExclusions: AbsoluteExclusion[];
 
   constructor(params: {
     id?: string;
@@ -57,6 +60,7 @@ export class Rider {
     modules?: Partial<Record<RiderType, RiderModuleData>>;
     stagePlot?: StagePlotConfig;
     media?: RiderMediaItem[];
+    absoluteExclusions?: AbsoluteExclusion[];
   }) {
     this.type = params.type || 'tecnico';
     const template = RIDER_DATA[this.type];
@@ -83,6 +87,15 @@ export class Rider {
     this.updatedAt = params.updatedAt || '';
     this.modules = params.modules || {};
     this.media = parseRiderMedia(params.media);
+    this.absoluteExclusions = Array.isArray(params.absoluteExclusions)
+      ? params.absoluteExclusions
+          .map((item) => ({
+            id: item.id,
+            brand: (item.brand || '').trim(),
+            ...(item.model?.trim() ? { model: item.model.trim() } : {}),
+          }))
+          .filter((item) => item.id && item.brand)
+      : [];
 
     this.stagePlot = params.stagePlot
       ? JSON.parse(JSON.stringify(params.stagePlot))
@@ -189,6 +202,7 @@ export class Rider {
       stagePlot?: StagePlotConfig;
       media?: unknown;
       documentTheme?: unknown;
+      absoluteExclusions?: AbsoluteExclusion[];
     } | undefined;
 
     const columnMedia = parseRiderMedia(row.media);
@@ -218,6 +232,7 @@ export class Rider {
         elements: []
       },
       media,
+      absoluteExclusions: readAbsoluteExclusions(row.metadata as Parameters<typeof readAbsoluteExclusions>[0]),
       updatedAt: row.updated_at || row.created_at || ''
     });
   }
@@ -784,6 +799,7 @@ export class Rider {
         modules: this.modules,
         stagePlot: this.stagePlot,
         media: this.media,
+        absoluteExclusions: this.absoluteExclusions,
       },
       media: this.media,
     };
