@@ -43,6 +43,7 @@ interface SectionsNavPanelProps {
   onSelectRiderType?: (type: RiderType) => void;
   readOnly?: boolean;
   commentCounts?: Record<string, number>;
+  filterHint?: string;
 }
 
 function IndexActionButton({
@@ -376,7 +377,8 @@ export function SectionsNavPanel({
   dbSyncStatus = 'idle',
   riderType = 'tecnico',
   readOnly = false,
-  commentCounts
+  commentCounts,
+  filterHint,
 }: SectionsNavPanelProps) {
   const handleOnly = useCoarsePointer();
   const [sortable, setSortable] = useState(false);
@@ -401,6 +403,9 @@ export function SectionsNavPanel({
           </span>
           )}
         </div>
+        {filterHint ? (
+          <p className="mt-2 text-[11px] font-semibold text-slate-500">{filterHint}</p>
+        ) : null}
       </div>
 
       {/* Lista de Secciones Reordenables */}

@@ -17,8 +17,7 @@ import { riderService } from '@/core/services/rider.service';
 import { chatService } from '@/core/services/chat.service';
 import { RiderType, RiderDocumentTheme, SectionItem, ChannelData, ExportScope, StagePlotConfig } from '@/core/types/rider.types';
 import { isRiderType, type TypeView } from '@/core/constants/rider-type-tokens';
-import { countByType, filterSections } from '@/core/utils/type-view';
-import { useTypeView } from '@/hooks/useTypeView';
+import { countByType, filterSections, mergeVisibleReorder } from '@/core/utils/type-view';
 import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { SectionCommentItem } from '@/lib/share/comments';
@@ -68,7 +67,7 @@ export function WorkspaceClient({
   initialType = 'tecnico'
 }: WorkspaceClientProps) {
   const router = useRouter();
-  const { typeView, setTypeView } = useTypeView();
+  const [typeView, setTypeView] = useState<TypeView>('all');
   const typeViewRef = useRef(typeView);
   typeViewRef.current = typeView;
   const [pendingSectionType, setPendingSectionType] = useState<TypeView>('all');
@@ -325,9 +324,6 @@ export function WorkspaceClient({
 
   const handleSelectTypeView = (next: TypeView) => {
     setTypeView(next);
-    if (next === 'hospitality') setActiveAgent('hospitality');
-    else if (next === 'seguridad') setActiveAgent('security');
-    else if (next === 'tecnico') setActiveAgent('audio_foh');
   };
 
   // Crear un nuevo rider en blanco sin secciones prellenadas
@@ -774,7 +770,12 @@ export function WorkspaceClient({
     setRider((prev) => {
       const updated = new Rider({ ...prev });
       const byId = new Map(prev.sections.map((section) => [section.id, section]));
-      updated.reorderSections(newSections.map((section) => byId.get(section.id) || section));
+      const visibleOrdered = newSections.map((section) => byId.get(section.id) || section);
+      updated.reorderSections(
+        typeViewRef.current === 'all'
+          ? visibleOrdered
+          : mergeVisibleReorder(prev.sections, visibleOrdered),
+      );
       return updated;
     });
   };
@@ -1220,10 +1221,6 @@ export function WorkspaceClient({
 
       <Header
         pageType="workspace"
-        typeView={typeView}
-        typeViewCounts={typeViewCounts}
-        onSelectTypeView={handleSelectTypeView}
-        onAddSectionOfType={handleStartAddSection}
         onSaveRider={handleSaveRider}
         isSaving={isSaving}
         dbSyncStatus={dbSyncStatus}
@@ -1272,6 +1269,7 @@ export function WorkspaceClient({
             isSaving={isSaving}
             dbSyncStatus={dbSyncStatus}
             riderType={isRiderType(typeView) ? typeView : rider.type}
+            filterHint={typeView === 'all' ? undefined : `Mostrando ${typeViewCounts[typeView].sections} de ${typeViewCounts.all.sections} secciones`}
             commentCounts={sectionComments.reduce<Record<string, number>>((counts, comment) => {
               counts[comment.sectionId] = (counts[comment.sectionId] || 0) + 1;
               return counts;
@@ -1303,6 +1301,9 @@ export function WorkspaceClient({
             onAskAssistant={handleAskFromDocument}
             onDraftWithSelection={handleDraftWithSelection}
             onOpenImportModal={() => setShowImportModal(true)}
+            typeView={typeView}
+            typeViewCounts={typeViewCounts}
+            onSelectTypeView={handleSelectTypeView}
             onDocumentChange={handleDocumentChange}
             onSelectionChange={(sectionId, text) => {
               selectionRef.current = { sectionId, text };
