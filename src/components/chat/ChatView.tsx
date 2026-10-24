@@ -27,6 +27,7 @@ interface ChatViewProps {
   availableRiders?: Array<{ id: string; title: string; artist: string; type: string }>;
   onLinkRider?: (sessionId: string, riderId: string | null) => void;
   onCreateRider?: (artistName: string, type: RiderType) => Promise<string | null>;
+  contextSlot?: React.ReactNode;
 }
 
 export function ChatView({
@@ -42,7 +43,8 @@ export function ChatView({
   onSendMessage,
   availableRiders,
   onLinkRider,
-  onCreateRider
+  onCreateRider,
+  contextSlot
 }: ChatViewProps) {
   const [inputVal, setInputVal] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -628,6 +630,8 @@ export function ChatView({
               </span>
             </div>
           )}
+
+          {contextSlot}
         </div>
 
         {/* Input Bar con safe-area inferior */}
