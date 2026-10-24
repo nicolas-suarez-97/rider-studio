@@ -30,6 +30,7 @@ interface HeaderProps {
   onOpenStagePlot?: () => void;
   onShare?: () => void;
   isSharing?: boolean;
+  onStartConfirm?: () => void;
   contraRiderHref?: string;
   chatSessionId?: string | null;
   riderId?: string | null;
@@ -92,6 +93,7 @@ export function Header({
   onOpenExportModal,
   onShare,
   isSharing = false,
+  onStartConfirm,
   contraRiderHref,
   documentTitle,
   onDocumentTitleChange,
@@ -159,7 +161,17 @@ export function Header({
               <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-200 px-3 py-1 rounded-full">
                 Vista compartida
               </span>
-              {contraRiderHref ? (
+              {onStartConfirm ? (
+                <button
+                  type="button"
+                  onClick={onStartConfirm}
+                  className="bg-violet-600 hover:bg-violet-700 text-white h-7 sm:h-8 px-2.5 sm:px-4 rounded-full text-xs font-bold transition-all shadow-xs shadow-violet-500/25 flex items-center gap-1.5 active:scale-95 shrink-0"
+                >
+                  <Icon name="fileCheck" className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Empezar a confirmar</span>
+                  <span className="sm:hidden">Confirmar</span>
+                </button>
+              ) : contraRiderHref ? (
                 <Link
                   href={contraRiderHref}
                   prefetch={false}

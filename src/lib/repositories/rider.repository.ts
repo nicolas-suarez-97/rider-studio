@@ -1,6 +1,9 @@
 import { createServerSupabaseClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
 import { Database, Json } from '@/lib/supabase/database.types';
 import { createShareToken } from '@/lib/share/token';
+import { applyPublishedSnapshot, capturePublishedSnapshot } from '@/lib/share/published-snapshot';
+import { confirmsToJson, guestKey, mergeShareConfirms, readShareConfirms, type ShareGuestRecord } from '@/lib/share/confirm';
+import type { ContraAnswer } from '@/core/types/contra-rider.types';
 import { deleteStoredImages } from '@/lib/media/image-store';
 import { mediaPathnames } from '@/lib/media/rider-media';
 
@@ -44,6 +47,7 @@ export interface IRiderRepository {
   getByShareToken(token: string): Promise<DbRider | null>;
   publishShare(id: string): Promise<ShareLink | null>;
   saveContraRider(id: string, contraRider: Json): Promise<DbRider | null>;
+  saveShareConfirm(token: string, guestName: string, lineId: string, answer: ContraAnswer): Promise<ShareGuestRecord | null>;
   save(rider: SaveRiderInput): Promise<DbRider>;
   delete(id: string): Promise<boolean>;
 }
@@ -85,6 +89,17 @@ function metadataWithShare(metadata: Json, share: ShareLink): Json {
       enabled: share.enabled,
       sharedAt: share.sharedAt,
     },
+  };
+}
+
+function preserveServerMetadata(incoming: Json, previous: Record<string, Json | undefined> | null): Json {
+  const next = asMetadataRecord(incoming) ?? {};
+  if (!previous) return incoming;
+  return {
+    ...next,
+    ...(previous.contraRider ? { contraRider: previous.contraRider } : {}),
+    ...(previous.published ? { published: previous.published } : {}),
+    ...(previous.shareConfirms ? { shareConfirms: previous.shareConfirms } : {}),
   };
 }
 
@@ -160,7 +175,7 @@ export class RiderRepository implements IRiderRepository {
           .maybeSingle();
 
         if (!error && data && readShareLink(data)?.enabled) {
-          return data;
+          return applyPublishedSnapshot(data);
         }
 
         const { data: rows, error: scanError } = await supabase
@@ -172,15 +187,16 @@ export class RiderRepository implements IRiderRepository {
             const share = readShareLink(row);
             return share?.token === token && share.enabled;
           });
-          if (found) return found;
+          if (found) return applyPublishedSnapshot(found);
         }
       }
     }
 
-    return memoryRiders.find((row) => {
+    const memory = memoryRiders.find((row) => {
       const share = readShareLink(row);
       return share?.token === token && share.enabled;
-    }) ?? null;
+    });
+    return memory ? applyPublishedSnapshot(memory) : null;
   }
 
   public async publishShare(id: string): Promise<ShareLink | null> {
@@ -193,7 +209,13 @@ export class RiderRepository implements IRiderRepository {
       ? current
       : { token: createShareToken(), enabled: true, sharedAt: now };
     const enabledShare: ShareLink = { ...share, enabled: true, sharedAt: share.sharedAt || now };
-    const metadata = metadataWithShare(rider.metadata, enabledShare);
+    const metadata = metadataWithShare(
+      {
+        ...(asMetadataRecord(rider.metadata) ?? {}),
+        published: capturePublishedSnapshot(rider, now),
+      },
+      enabledShare
+    );
 
     if (isSupabaseServerConfigured()) {
       const supabase = await createServerSupabaseClient();
@@ -299,6 +321,65 @@ export class RiderRepository implements IRiderRepository {
     return next;
   }
 
+  public async saveShareConfirm(
+    token: string,
+    guestName: string,
+    lineId: string,
+    answer: ContraAnswer
+  ): Promise<ShareGuestRecord | null> {
+    const rider = await this.getLiveByShareToken(token);
+    if (!rider) return null;
+
+    const now = new Date().toISOString();
+    const base = asMetadataRecord(rider.metadata) ?? {};
+    const confirms = mergeShareConfirms(readShareConfirms(rider.metadata), guestName, lineId, answer);
+    const metadata: Json = { ...base, shareConfirms: confirmsToJson(confirms) };
+    const next: DbRider = { ...rider, metadata, updated_at: now };
+
+    if (isSupabaseServerConfigured()) {
+      const supabase = await createServerSupabaseClient();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('riders')
+          .update({ metadata, updated_at: now })
+          .eq('id', rider.id)
+          .select('*')
+          .maybeSingle();
+
+        if (!error && data) {
+          const existingIdx = memoryRiders.findIndex((row) => row.id === rider.id);
+          if (existingIdx >= 0) memoryRiders[existingIdx] = data;
+          return confirms[guestKey(guestName)] ?? null;
+        }
+        if (error) console.warn('[Supabase saveShareConfirm]', error);
+      }
+    }
+
+    const existingIdx = memoryRiders.findIndex((row) => row.id === rider.id);
+    if (existingIdx < 0) return null;
+    memoryRiders[existingIdx] = next;
+    return confirms[guestKey(guestName)] ?? null;
+  }
+
+  private async getLiveByShareToken(token: string): Promise<DbRider | null> {
+    if (isSupabaseServerConfigured()) {
+      const supabase = await createServerSupabaseClient();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('riders')
+          .select('*')
+          .eq('share_token', token)
+          .eq('share_enabled', true)
+          .maybeSingle();
+        if (!error && data && readShareLink(data)?.enabled) return data;
+      }
+    }
+    return memoryRiders.find((row) => {
+      const share = readShareLink(row);
+      return share?.token === token && share.enabled;
+    }) ?? null;
+  }
+
   public async save(rider: SaveRiderInput): Promise<DbRider> {
     const now = new Date().toISOString();
     const id = rider.id || crypto.randomUUID();
@@ -306,9 +387,7 @@ export class RiderRepository implements IRiderRepository {
     const existingShare = existing ? readShareLink(existing) : null;
     const previousMeta = asMetadataRecord(existing?.metadata);
     const incomingMeta = asMetadataRecord(rider.metadata ?? {}) ?? {};
-    const metadataBase: Json = previousMeta?.contraRider
-      ? { ...incomingMeta, contraRider: previousMeta.contraRider }
-      : (rider.metadata ?? {});
+    const metadataBase: Json = preserveServerMetadata(incomingMeta, previousMeta);
     const metadata = existingShare
       ? metadataWithShare(metadataBase, existingShare)
       : metadataBase;

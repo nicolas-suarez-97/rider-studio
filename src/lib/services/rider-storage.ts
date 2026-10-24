@@ -5,6 +5,7 @@ import {
   SaveRiderInput
 } from '@/lib/repositories/rider.repository';
 import { Json } from '@/lib/supabase/database.types';
+import type { ContraAnswer } from '@/core/types/contra-rider.types';
 import {
   chatRepository,
   DbChatSession,
@@ -39,6 +40,15 @@ export async function getRiderByShareToken(token: string): Promise<DbRider | nul
 
 export async function publishRiderShare(id: string) {
   return riderRepository.publishShare(id);
+}
+
+export async function saveShareConfirm(
+  token: string,
+  guestName: string,
+  lineId: string,
+  answer: ContraAnswer
+) {
+  return riderRepository.saveShareConfirm(token, guestName, lineId, answer);
 }
 
 export async function saveContraRider(id: string, contraRider: Json) {
