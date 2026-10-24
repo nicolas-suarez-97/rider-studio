@@ -131,7 +131,7 @@ describe('acciones del artista sobre shareConfirms', () => {
     assert.equal(summary.needsActionCount, 0);
     assert.equal(
       formatShowReadyLine(summary, 'artist'),
-      '3 de 3 resueltos · 1 aprobado · 1 alternativa aceptada · 0 pendientes de tu lado'
+      '3 de 3 resueltos · 1 aprobado · 1 alternativa aceptada · 1 respuesta a rechazo/pregunta · 0 pendientes de tu lado'
     );
     assert.match(formatShowReadyLine(summary, 'organizer'), /0 pendientes del artista/);
     assert.equal(withShowReady({ season: '2026' }, {
@@ -142,6 +142,80 @@ describe('acciones del artista sobre shareConfirms', () => {
         },
       },
     }).showReady, true);
+  });
+
+  it('desglosa todos los resueltos en Listo, incluida la respuesta a rechazo/pregunta', () => {
+    const items = listArtistShareItems({
+      ana: {
+        name: 'Ana',
+        answers: {
+          'tecnico:tech-foh': { response: 'cubro', offer: '', note: '' },
+          'tecnico:tech-mon': { response: 'cubro', offer: '', note: '' },
+          'tecnico:tech-pa': {
+            response: 'alternativa',
+            offer: 'Q1',
+            note: '',
+            acceptedAlternative: true,
+          },
+          'tecnico:tech-rf': {
+            response: 'no_puedo',
+            offer: '',
+            note: 'No hay K2',
+            artistResponse: 'Usamos Kara',
+          },
+        },
+      },
+    });
+    const summary = summarizeArtistShareItems(items);
+    const line = formatShowReadyLine(summary, 'artist');
+
+    assert.equal(summary.showReady, true);
+    assert.equal(summary.resolvedCount, 4);
+    assert.equal(summary.approvedCount, 2);
+    assert.equal(summary.acceptedAlternativeCount, 1);
+    assert.equal(
+      line,
+      '4 de 4 resueltos · 2 aprobados · 1 alternativa aceptada · 1 respuesta a rechazo/pregunta · 0 pendientes de tu lado'
+    );
+    assert.match(line, /2 aprobados/);
+    assert.match(line, /1 alternativa aceptada/);
+    assert.match(line, /1 respuesta a rechazo\/pregunta/);
+    assert.equal(summary.approvedCount + summary.acceptedAlternativeCount + 1, summary.resolvedCount);
+  });
+
+  it('un pedido reabierto cuenta como pendiente del artista y apaga Listo', () => {
+    const ready = {
+      ana: {
+        name: 'Ana',
+        answers: {
+          'tecnico:tech-foh': { response: 'cubro' as const, offer: '', note: '' },
+          'tecnico:tech-pa': {
+            response: 'alternativa' as const,
+            offer: 'Q1',
+            note: '',
+            acceptedAlternative: true,
+          },
+        },
+      },
+    };
+    const readySummary = summarizeArtistShareItems(listArtistShareItems(ready));
+    assert.equal(readySummary.showReady, true);
+    assert.equal(readySummary.needsActionCount, 0);
+
+    const reopened = applyArtistShareAction(ready, 'ana', 'tecnico:tech-foh', 'reopen', 'Cambia el recinto', {
+      author: 'artista-ana',
+    });
+    const items = listArtistShareItems(reopened.confirms);
+    const summary = summarizeArtistShareItems(items);
+    const line = formatShowReadyLine(summary, 'artist');
+
+    assert.equal(isShowReady(items), false);
+    assert.equal(summary.showReady, false);
+    assert.equal(summary.needsActionCount, 1);
+    assert.equal(items.find((item) => item.lineId === 'tecnico:tech-foh')?.needsAction, false);
+    assert.match(line, /1 pendiente de tu lado/);
+    assert.doesNotMatch(line, /0 pendientes de tu lado/);
+    assert.equal(withShowReady({ showReady: true }, reopened.confirms).showReady, false);
   });
 
   it('deja de estar listo si hay pendiente del artista o un pedido reabierto', () => {
