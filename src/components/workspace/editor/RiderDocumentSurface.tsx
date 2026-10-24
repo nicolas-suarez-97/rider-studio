@@ -18,6 +18,7 @@ import { EmptyDocumentComposer } from '@/components/workspace/editor/EmptyDocume
 import { imageFilesFromDataTransfer, insertDocumentImages } from '@/components/workspace/editor/document-images';
 import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountFromEditor } from '@/components/workspace/editor/pagination';
 import { SectionChips } from '@/components/workspace/editor/section-chips';
+import { SectionNegotiability } from '@/components/workspace/editor/section-negotiability';
 import { InputList } from '@/components/workspace/editor/input-list-node';
 import { cloneInputListRows } from '@/core/constants/input-list';
 import { TextAlignExtension, FontSizeExtension, TextColorExtension, HighlightMark } from '@/components/workspace/editor/editor-formatting';
@@ -156,6 +157,22 @@ const SectionHeading = Heading.extend({
         default: false,
         parseHTML: (element) => element.getAttribute('data-page-break') === 'before',
         renderHTML: (attributes) => (attributes.pageBreakBefore ? { 'data-page-break': 'before' } : {}),
+      },
+      negotiability: {
+        default: 'sin_definir',
+        parseHTML: (element) => element.getAttribute('data-negotiability') || 'sin_definir',
+        renderHTML: (attributes) => ({
+          'data-negotiability': attributes.negotiability || 'sin_definir',
+        }),
+      },
+      negotiabilityNote: {
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-negotiability-note') || '',
+        renderHTML: (attributes) => (
+          attributes.negotiabilityNote
+            ? { 'data-negotiability-note': attributes.negotiabilityNote }
+            : {}
+        ),
       },
     };
   },
@@ -506,6 +523,7 @@ export function RiderDocumentSurface({
         enabled: () => !readOnly && Boolean(askRef.current),
         onAsk: (prompt, sectionId) => askRef.current?.(prompt, sectionId),
       }),
+      SectionNegotiability,
     ],
     content: initialContent,
     editorProps: {
@@ -721,7 +739,7 @@ export function RiderDocumentSurface({
     const nodes: any[] = [
       {
         type: 'heading',
-        attrs: { level: 2, id, pageBreakBefore: false },
+        attrs: { level: 2, id, pageBreakBefore: false, negotiability: 'sin_definir', negotiabilityNote: '' },
         content: [{ type: 'text', text: trimmed }],
       },
     ];

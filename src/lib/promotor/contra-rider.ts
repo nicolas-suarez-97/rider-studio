@@ -14,6 +14,12 @@ import {
 } from '@/core/types/contra-rider.types';
 import { RiderModuleData, RiderType, SectionItem } from '@/core/types/rider.types';
 import { Json } from '@/lib/supabase/database.types';
+import {
+  effectiveNegotiability,
+  extractRequirementNegotiability,
+  mergeContraAnswer,
+  readExceptionDecision,
+} from '@/core/negociabilidad/negociabilidad';
 
 const MODULE_LABEL: Record<RiderType, string> = {
   tecnico: 'Técnico',
@@ -88,6 +94,7 @@ export function readStoredContra(metadata: Json | null | undefined): ContraRider
         response: readResponse(answer.response),
         offer: typeof answer.offer === 'string' ? answer.offer : '',
         note: typeof answer.note === 'string' ? answer.note : '',
+        exceptionDecision: readExceptionDecision(answer.exceptionDecision),
       };
     }
   }
@@ -250,6 +257,7 @@ export function buildContraLines(rider: Rider, answers: Record<string, ContraAns
     return (data.sections || []).map((section) => {
       const id = `${module}:${section.id}`;
       const saved = answers[id];
+      const effective = effectiveNegotiability(section);
       return {
         id,
         module,
@@ -257,9 +265,13 @@ export function buildContraLines(rider: Rider, answers: Record<string, ContraAns
         sectionId: section.id,
         sectionTitle: section.title,
         pedido: sectionPedido(rider, module, section),
+        negotiability: effective.negotiability,
+        negotiabilityNote: effective.note,
+        requirements: extractRequirementNegotiability(section.contentDoc),
         response: saved?.response || '',
         offer: saved?.offer || '',
         note: saved?.note || '',
+        exceptionDecision: saved?.exceptionDecision ?? null,
       };
     });
   });
@@ -286,6 +298,7 @@ export function answersFromLines(lines: ContraLine[]): Record<string, ContraAnsw
       response: line.response,
       offer: line.offer,
       note: line.note,
+      exceptionDecision: line.exceptionDecision ?? null,
     };
   }
   return answers;
@@ -306,8 +319,25 @@ export function sanitizeAnswers(
     const response = readResponse(answer.response);
     const offer = typeof answer.offer === 'string' ? answer.offer.slice(0, 500) : '';
     const note = typeof answer.note === 'string' ? answer.note.slice(0, 1000) : '';
-    if (!response && !offer.trim() && !note.trim()) continue;
-    answers[id] = { response, offer, note };
+    const exceptionDecision = readExceptionDecision(answer.exceptionDecision);
+    if (!response && !offer.trim() && !note.trim() && !exceptionDecision) continue;
+    answers[id] = { response, offer, note, exceptionDecision };
   }
   return answers;
+}
+
+export function applyAnswerExceptions(
+  answers: Record<string, ContraAnswer>,
+  previous: Record<string, ContraAnswer>,
+  negotiabilityById: Record<string, ReturnType<typeof effectiveNegotiability>['negotiability']>
+): Record<string, ContraAnswer> {
+  const next: Record<string, ContraAnswer> = {};
+  for (const [id, answer] of Object.entries(answers)) {
+    next[id] = mergeContraAnswer({
+      negotiability: negotiabilityById[id] || 'sin_definir',
+      previous: previous[id],
+      next: answer,
+    });
+  }
+  return next;
 }

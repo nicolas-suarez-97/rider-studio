@@ -6,6 +6,8 @@ import { Icon } from '@/components/common/Icon';
 import { PAGE_INNER } from '@/components/workspace/editor/pagination';
 import { assertRiderImage } from '@/lib/media/rider-media';
 import { emptyContact, normalizePeople, type ContactPerson, type NoticeTone } from '@/components/workspace/editor/rider-block-model';
+import { NegotiabilityControl } from '@/components/common/NegotiabilityBadge';
+import { readNegotiability, readNegotiabilityNote } from '@/core/negociabilidad/negociabilidad';
 
 const TONE_LABEL: Record<NoticeTone, string> = {
   note: 'Nota',
@@ -225,6 +227,17 @@ export function RequirementBlock({ node, updateAttributes, deleteNode, editor, s
         )}
       </div>
       <NodeViewContent className="docs-requirement-body" />
+      <div className="docs-requirement-meta" contentEditable={false}>
+        <NegotiabilityControl
+          negotiability={readNegotiability(node.attrs.negotiability)}
+          note={readNegotiabilityNote(node.attrs.negotiabilityNote)}
+          readOnly={readOnly}
+          onChange={({ negotiability, note }) => updateAttributes({
+            negotiability,
+            negotiabilityNote: note,
+          })}
+        />
+      </div>
     </NodeViewWrapper>
   );
 }

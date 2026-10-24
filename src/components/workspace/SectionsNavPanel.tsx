@@ -5,6 +5,8 @@ import { Reorder, useDragControls } from 'motion/react';
 import { Icon } from '../common/Icon';
 import { SectionItem, RiderType } from '@/core/types/rider.types';
 import { RIDER_DATA } from '@/core/constants/rider-templates';
+import { NegotiabilityBadge } from '@/components/common/NegotiabilityBadge';
+import { effectiveNegotiability } from '@/core/negociabilidad/negociabilidad';
 
 function useCoarsePointer() {
   const [coarse, setCoarse] = useState(false);
@@ -296,6 +298,7 @@ function SortableSection({
   onToggleComplete: (id: string, e?: React.MouseEvent) => void;
 }) {
   const dragControls = useDragControls();
+  const negotiability = effectiveNegotiability(section);
 
   return (
     <Reorder.Item
@@ -330,6 +333,9 @@ function SortableSection({
           <h4 className="text-xs sm:text-xs font-bold text-slate-800 truncate">
             {section.title}
           </h4>
+          {negotiability.negotiability !== 'sin_definir' || negotiability.note ? (
+            <NegotiabilityBadge negotiability={negotiability.negotiability} note={negotiability.note} />
+          ) : null}
           {commentCount > 0 && (
             <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCount}</span>
           )}
@@ -410,6 +416,7 @@ export function SectionsNavPanel({
             {sections.map((section) => {
               const isActive = activeSectionId === section.id;
               const isRead = completedSectionIds.includes(section.id);
+              const negotiability = effectiveNegotiability(section);
               return (
                 <div
                   key={section.id}
@@ -429,6 +436,9 @@ export function SectionsNavPanel({
                         <span className="text-[10px] font-black text-slate-400 shrink-0">{section.num}</span>
                       ) : null}
                       <span className="text-xs font-bold text-slate-800 truncate">{section.title}</span>
+                      {negotiability.negotiability !== 'sin_definir' || negotiability.note ? (
+                        <NegotiabilityBadge negotiability={negotiability.negotiability} note={negotiability.note} />
+                      ) : null}
                       {(commentCounts?.[section.id] ?? 0) > 0 && (
                         <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCounts?.[section.id]}</span>
                       )}
