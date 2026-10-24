@@ -889,6 +889,7 @@ export function RiderDocumentSurface({
         .docs-chip-chat:hover { background: #6d28d9; }
         .docs-chip-topic { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
         .docs-chip-topic:hover { background: #ede9fe; border-color: #c4b5fd; }
+        .docs-chip-topic.docs-chip-active { background: #6d28d9; color: #fff; border-color: #5b21b6; }
         .docs-editor[data-chips-disabled="true"] .docs-section-chips button { opacity: 0.45; pointer-events: none; }
       `}</style>
       {!readOnly && (
