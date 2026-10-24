@@ -1,3 +1,6 @@
+import { normalizeEscapedNewlines } from './rider-markup';
+import { looksLikeAgentJsonEnvelope, parseSuggestionJson } from './suggestions';
+
 export interface ChatSuggestionDraft {
   kind: 'insert' | 'replace' | 'delete' | 'add_channel' | 'switch_type' | 'add_section' | 'switch_theme';
   sectionId?: string;
@@ -121,18 +124,26 @@ export function extractTransferableRiderText(raw: string): string {
   const text = (raw || '').trim();
   if (!text || isNonTransferableAssistantNotice(text)) return '';
 
-  const withoutFooter = text
+  let source = text;
+  if (looksLikeAgentJsonEnvelope(source)) {
+    const parsed = parseSuggestionJson(source);
+    if (parsed?.message?.trim()) source = parsed.message.trim();
+  }
+
+  source = normalizeEscapedNewlines(source);
+
+  const withoutFooter = source
     .replace(/(?:^|\n)\s*💡[\s\S]*$/u, '')
     .replace(/(?:^|\n)\s*\*Si deseas[\s\S]*$/i, '')
     .replace(/(?:^|\n)\s*Si deseas que[\s\S]*$/i, '')
     .trim();
 
-  const source = withoutFooter || text;
+  source = withoutFooter || source;
   const fence = source.match(/```(?:markdown|md|text)?\s*([\s\S]*?)```/i);
-  if (fence?.[1]?.trim()) return fence[1].trim();
+  if (fence?.[1]?.trim()) return normalizeEscapedNewlines(fence[1]).trim();
 
   const dash = source.match(/---\s*([\s\S]*?)\s*---/);
-  if (dash?.[1] && dash[1].trim().length > 10) return dash[1].trim();
+  if (dash?.[1] && dash[1].trim().length > 10) return normalizeEscapedNewlines(dash[1]).trim();
 
   return source;
 }

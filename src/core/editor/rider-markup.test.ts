@@ -25,6 +25,17 @@ describe('riderMarkupToContent tables', () => {
     assert.doesNotMatch(serialized, /\| DiGiCo/);
   });
 
+  it('normaliza saltos escapados y convierte la tabla a nodos TipTap', () => {
+    const escaped = '**Monitores**\\n\\n| Monitor | Modelo |\\n| --- | --- |\\n| IEM | Shure PSM1000 |';
+    const blocks = riderMarkupToContent(escaped);
+    assert.ok(blocks);
+    const table = blocks.find((block) => block.type === 'table');
+    assert.ok(table, 'debe emitir un nodo table aunque el texto traiga \\\\n');
+    const serialized = JSON.stringify(table);
+    assert.match(serialized, /Shure PSM1000/);
+    assert.doesNotMatch(serialized, /\| IEM/);
+  });
+
   it('convierte tablas sin pipes laterales (formato catálogo)', () => {
     const blocks = markdownLinesToBlocks([
       'Modelo | Uso',

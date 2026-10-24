@@ -4,6 +4,7 @@ import type { SectionItem } from '../types/rider.types.ts';
 import {
   applyChatSuggestionsToRiderSections,
   persistChatTransferToRider,
+  shouldPersistChatTransferOnServer,
 } from './persist-chat-transfer.ts';
 
 function section(partial: Partial<SectionItem> & Pick<SectionItem, 'id' | 'title'>): SectionItem {
@@ -17,6 +18,25 @@ function section(partial: Partial<SectionItem> & Pick<SectionItem, 'id' | 'title
     ...partial,
   };
 }
+
+describe('shouldPersistChatTransferOnServer', () => {
+  it('persiste en servidor solo en /artista/chat sin editorContext', () => {
+    assert.equal(shouldPersistChatTransferOnServer(undefined), true);
+  });
+
+  it('no persiste si hay editorContext aunque el rider esté vacío o disperso', () => {
+    assert.equal(shouldPersistChatTransferOnServer({
+      sectionId: '',
+      sectionText: '',
+      allSections: [],
+    }), false);
+    assert.equal(shouldPersistChatTransferOnServer({
+      sectionId: 'tech-audio',
+      sectionText: 'DiGiCo SD12',
+      allSections: [{ id: 'tech-audio' }],
+    }), false);
+  });
+});
 
 describe('applyChatSuggestionsToRiderSections', () => {
   it('inserta en la sección existente usando el id estable', () => {

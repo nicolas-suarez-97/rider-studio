@@ -3,7 +3,6 @@ import {
   type ChatSuggestionDraft,
   type RiderBlockRef,
   planChatDocumentApply,
-  shouldUseDocumentJsonMode,
 } from './chat-document-sync';
 import { riderMarkupToContent } from './rider-markup';
 
@@ -118,7 +117,7 @@ export function shouldPersistChatTransferOnServer(editorContext?: {
   sectionText?: string;
   allSections?: unknown[];
 }): boolean {
-  return !shouldUseDocumentJsonMode(editorContext);
+  return editorContext == null;
 }
 
 export function applyChatSuggestionsToRiderSections(input: {

@@ -372,10 +372,19 @@ function markdownToParagraphs(raw: string): JSONContent[] {
  * handles markdown headings, bullet/numbered lists, inline bold/italic,
  * and custom rider blocks [[requisito]], [[aviso]], [[tiers]], [[contactos]], [[columnas]].
  */
-export function riderMarkupToContent(text: string): JSONContent[] | null {
-  if (!text || !text.trim()) return null;
+export function normalizeEscapedNewlines(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n');
+}
 
-  const lines = text.split('\n');
+export function riderMarkupToContent(text: string): JSONContent[] | null {
+  const normalized = normalizeEscapedNewlines(text || '');
+  if (!normalized.trim()) return null;
+
+  const lines = normalized.split('\n');
   const blocks: JSONContent[] = [];
   let pendingLines: string[] = [];
   let sawTag = false;
@@ -449,7 +458,7 @@ export function riderMarkupToContent(text: string): JSONContent[] | null {
   if (sawTag && blocks.length > 0) return blocks;
 
   // If no [[ tags were present, check if text contains block-level markdown:
-  const trimmed = text.trim();
+  const trimmed = normalized.trim();
   const hasMarkdown =
     /(?:^|\n)\s*#{1,6}\s+/.test(trimmed) ||
     /(?:^|\n)\s*[-*+]\s+/.test(trimmed) ||

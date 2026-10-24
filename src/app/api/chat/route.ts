@@ -11,7 +11,7 @@ import {
   saveChatMessage
 } from '@/lib/services/rider-storage';
 import { SendChatMessageSchema } from '@/lib/validations/chat.schema';
-import { parseSuggestionJson, collectSuggestionDrafts } from '@/core/editor/suggestions';
+import { parseSuggestionJson, collectSuggestionDrafts, looksLikeAgentJsonEnvelope } from '@/core/editor/suggestions';
 import {
   ensureChatDocumentSuggestions,
   isExplicitRiderTransferIntent,
@@ -424,6 +424,10 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
         if (parsed) {
           if (parsed.message) replyText = parsed.message;
           suggestions = parsed.suggestions;
+        }
+        if (looksLikeAgentJsonEnvelope(replyText)) {
+          const unwrapped = parseSuggestionJson(replyText);
+          if (unwrapped?.message) replyText = unwrapped.message;
         }
 
         // Caso A: Si el LLM devolvió sugerencias pero dejó proposedText vacío y volcó el texto en replyText

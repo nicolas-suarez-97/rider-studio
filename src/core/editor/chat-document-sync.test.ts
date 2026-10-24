@@ -49,6 +49,33 @@ describe('extractTransferableRiderText', () => {
       assert.equal(extractTransferableRiderText(notice), '');
     }
   });
+
+  it('extrae el message de un sobre JSON del agente y prefiere el markdown cercado', () => {
+    const prior = `{
+  "message": "Te dejo la tabla:
+
+\`\`\`markdown
+| Monitor | Modelo |
+| --- | --- |
+| IEM | Shure PSM1000 |
+\`\`\`",
+  "suggestions": []
+}`;
+
+    const extracted = extractTransferableRiderText(prior);
+    assert.match(extracted, /\| Monitor \| Modelo \|/);
+    assert.match(extracted, /Shure PSM1000/);
+    assert.doesNotMatch(extracted, /"suggestions"/);
+    assert.doesNotMatch(extracted, /```/);
+  });
+
+  it('normaliza escapes \\\\n a saltos reales antes de devolver la tabla', () => {
+    const prior = '{"message":"```markdown\\n| Monitor | Modelo |\\n| --- | --- |\\n| IEM | Shure PSM1000 |\\n```","suggestions":[]}';
+    const extracted = extractTransferableRiderText(prior);
+    assert.match(extracted, /\| Monitor \| Modelo \|/);
+    assert.ok(extracted.includes('\n'));
+    assert.doesNotMatch(extracted, /\\n\|/);
+  });
 });
 
 describe('resolveStableBlock', () => {
