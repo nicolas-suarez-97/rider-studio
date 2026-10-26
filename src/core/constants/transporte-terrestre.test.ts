@@ -7,12 +7,15 @@ import {
   emptyTransportCard,
   emptyTransportOffer,
   formatTransportCardPlain,
+  indexTransportAnswersByCardId,
   isCargoCategory,
   isPassengerCategory,
   isSprinterBlackRequirement,
   normalizeTransportCard,
   sprinterBlackBlocksOffer,
   substitutionIsCompliant,
+  transportCardIdFromLineId,
+  transportLineId,
   transportSendBlockReason,
   validateTransportCard,
 } from './transporte-terrestre.ts';
@@ -153,5 +156,20 @@ describe('transporte terrestre · contrarider', () => {
       history: [],
     }, 'aprobada');
     assert.equal(decided.status, 'aprobada');
+  });
+
+  it('indexa answers de contra-rider por card.id (hospitality:hosp-transporte:tt-…)', () => {
+    const cardId = 'tt-527a5677';
+    const lineId = transportLineId('hosp-transporte', cardId);
+    assert.equal(lineId, `hospitality:hosp-transporte:${cardId}`);
+    assert.equal(transportCardIdFromLineId(lineId), cardId);
+
+    const mapped = indexTransportAnswersByCardId({
+      [lineId]: { transportOffer: { makeModel: 'Tahoe' }, transportStatus: 'pendiente_de_revision' },
+      'hospitality:hosp-catering:x': { transportStatus: 'sin_respuesta' },
+    });
+    assert.deepEqual(Object.keys(mapped), [cardId]);
+    assert.equal(mapped[cardId].transportStatus, 'pendiente_de_revision');
+    assert.equal(mapped[cardId].transportOffer.makeModel, 'Tahoe');
   });
 });

@@ -7,7 +7,7 @@ import { Toast } from '@/components/common/Toast';
 import { Icon } from '@/components/common/Icon';
 import { SectionsNavPanel } from '@/components/workspace/SectionsNavPanel';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
-import { isTransportLineId } from '@/core/constants/transporte-terrestre';
+import { indexTransportAnswersByCardId } from '@/core/constants/transporte-terrestre';
 import { transportStateFromAnswer, readStoredContra } from '@/lib/promotor/contra-rider';
 import type { TransportContraState } from '@/lib/promotor/transport-contra';
 import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
@@ -124,11 +124,10 @@ export function WorkspaceClient({
     const response = await fetch(`/api/riders?id=${encodeURIComponent(riderId)}`);
     const data = await response.json().catch(() => ({}));
     const stored = readStoredContra(data.rider?.metadata);
+    const byCard = indexTransportAnswersByCardId(stored.answers);
     const next: Record<string, TransportContraState> = {};
-    for (const [id, answer] of Object.entries(stored.answers)) {
-      if (!isTransportLineId(id)) continue;
-      const cardId = id.split(':').slice(2).join(':');
-      if (cardId) next[cardId] = transportStateFromAnswer(answer);
+    for (const [cardId, answer] of Object.entries(byCard)) {
+      next[cardId] = transportStateFromAnswer(answer);
     }
     setTransportReviews(next);
   }, []);

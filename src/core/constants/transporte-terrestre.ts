@@ -468,6 +468,20 @@ export function isTransportLineId(id: string): boolean {
   return id.includes(`:${TRANSPORT_SECTION_ID}:`);
 }
 
+export function transportCardIdFromLineId(id: string): string {
+  if (!isTransportLineId(id)) return '';
+  return id.split(':').slice(2).join(':');
+}
+
+export function indexTransportAnswersByCardId<T>(answers: Record<string, T>): Record<string, T> {
+  const next: Record<string, T> = {};
+  for (const [id, value] of Object.entries(answers)) {
+    const cardId = transportCardIdFromLineId(id);
+    if (cardId) next[cardId] = value;
+  }
+  return next;
+}
+
 type ContraResponse = '' | 'cubro' | 'alternativa' | 'no_puedo' | 'pregunta';
 
 export interface TransportContraState {

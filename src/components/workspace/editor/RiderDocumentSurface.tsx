@@ -20,6 +20,7 @@ import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountF
 import { SectionChips } from '@/components/workspace/editor/section-chips';
 import { InputList } from '@/components/workspace/editor/input-list-node';
 import { TransportFleet } from '@/components/workspace/editor/transport-fleet-node';
+import { TransportReviewsContext } from '@/components/workspace/editor/transport-reviews-context';
 import { cloneInputListRows } from '@/core/constants/input-list';
 import { TRANSPORT_SECTION_ID } from '@/core/constants/transporte-terrestre';
 import type { TransportContraState } from '@/lib/promotor/transport-contra';
@@ -254,6 +255,10 @@ export function RiderDocumentSurface({
     return '';
   }, [sections]);
   const footerLabel = [artistName.trim() || coverArtist, version.trim()].filter(Boolean).join(' · ');
+  const transportReviewsValue = useMemo(
+    () => ({ reviews: transportReviews || {}, onTmDecision }),
+    [transportReviews, onTmDecision],
+  );
   const sectionIds = useMemo(() => sections.map((section) => section.id).join('|'), [sections]);
   const activeProposed = useMemo(
     () => suggestions.filter((item) => item.source !== 'gap' && item.status === 'applied'),
@@ -1000,7 +1005,9 @@ export function RiderDocumentSurface({
               </div>
             ))}
             {editor ? (
-              <EditorContent editor={editor} className="relative z-10" />
+              <TransportReviewsContext.Provider value={transportReviewsValue}>
+                <EditorContent editor={editor} className="relative z-10" />
+              </TransportReviewsContext.Provider>
             ) : (
               <div className="relative z-10 px-24 py-24 text-slate-400">Cargando documento…</div>
             )}

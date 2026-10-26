@@ -16,9 +16,9 @@ import {
 } from '@/core/constants/transporte-terrestre';
 import {
   TRANSPORT_STATUS_LABEL,
-  type TransportContraState,
 } from '@/lib/promotor/transport-contra';
 import { offerHasPhotos } from '@/core/constants/transporte-terrestre';
+import { useTransportReviews } from '@/components/workspace/editor/transport-reviews-context';
 
 function fieldClass() {
   return 'docs-tt-field';
@@ -27,10 +27,7 @@ function fieldClass() {
 export function TransportFleetBlock({ node, updateAttributes, deleteNode, editor, selected }: NodeViewProps) {
   const cards = normalizeTransportCards(node.attrs.cards);
   const readOnly = !editor.isEditable;
-  const reviews = (editor.storage.riderDocumentMeta?.transportReviews || {}) as Record<string, TransportContraState>;
-  const onTmDecision = editor.storage.riderDocumentMeta?.onTmDecision as
-    | ((cardId: string, decision: 'aprobada' | 'rechazada' | 'requiere_ajustes' | 'reabrir') => void)
-    | undefined;
+  const { reviews, onTmDecision } = useTransportReviews();
 
   const save = (next: TransportVehicleCard[]) => {
     updateAttributes({ cards: next });
