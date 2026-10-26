@@ -32,6 +32,18 @@ export function outlinePromptsForSection(
     prompt: `Ayúdame a redactar e incorporar en el documento la sección «${title}» de este rider ${kind}. Está vacía. Inserta el contenido profesional típico con placeholders claros donde falte un dato.`,
   };
 
+  if (section.id === 'hosp-transporte') {
+    return [
+      chat,
+      {
+        id: 'fichas',
+        kind: 'topic',
+        label: 'Fichas de vehículo',
+        prompt: `Ayúdame a completar fichas de transporte terrestre en «${title}». No inventes marcas, cantidades ni jornadas de 24 horas. Pregunta Party, categoría, cantidad, modalidad (por trayectos / 12 horas / disponibilidad completa a solicitud) y si aplica pasajeros por vehículo.`,
+      },
+    ];
+  }
+
   const config = findSectionConfig(section.id, section.title);
   const fields = config?.fields.slice(0, 4) || [];
   const topics: SectionOutlinePrompt[] = fields.map((field) => ({

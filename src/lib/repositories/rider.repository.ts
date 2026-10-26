@@ -43,7 +43,7 @@ export interface IRiderRepository {
   getById(id: string): Promise<DbRiderWithSessions | null>;
   getByShareToken(token: string): Promise<DbRider | null>;
   publishShare(id: string): Promise<ShareLink | null>;
-  saveContraRider(id: string, contraRider: Json): Promise<DbRider | null>;
+  saveContraRider(id: string, contraRider: Json, options?: { requireShare?: boolean }): Promise<DbRider | null>;
   save(rider: SaveRiderInput): Promise<DbRider>;
   delete(id: string): Promise<boolean>;
 }
@@ -263,9 +263,10 @@ export class RiderRepository implements IRiderRepository {
     };
   }
 
-  public async saveContraRider(id: string, contraRider: Json): Promise<DbRider | null> {
+  public async saveContraRider(id: string, contraRider: Json, options?: { requireShare?: boolean }): Promise<DbRider | null> {
     const rider = await this.getById(id);
-    if (!rider || !readShareLink(rider)?.enabled) return null;
+    const requireShare = options?.requireShare !== false;
+    if (!rider || (requireShare && !readShareLink(rider)?.enabled)) return null;
 
     const now = new Date().toISOString();
     const base = asMetadataRecord(rider.metadata) ?? {};

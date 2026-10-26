@@ -15,6 +15,7 @@ import { RIDER_TYPE_ORDER } from '../constants/rider-type-tokens';
 import { flattenTypedSections, sectionType } from '../utils/type-view';
 import { coverMedia, parseRiderMedia, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { inputListDoc } from '../constants/input-list';
+import { transportFleetDoc } from '../constants/transporte-terrestre';
 import { isDocumentIntro, isDocumentCover, DOCUMENT_COVER_ID, buildCoverContentDoc } from '../editor/content-doc';
 import { RIDER_DATA } from '../constants/rider-templates';
 import { DEFAULT_STAGE_PLOT } from '../constants/stage-plot';
@@ -619,7 +620,11 @@ export class Rider {
       .map((section, index) => ({
         ...section,
         content: '',
-        contentDoc: section.id === 'tech-inputlist' ? inputListDoc() : undefined,
+        contentDoc: section.id === 'tech-inputlist'
+          ? inputListDoc()
+          : section.id === 'hosp-transporte'
+            ? transportFleetDoc()
+            : undefined,
         pageBreakBefore: index > 0,
         type: this.type,
       }));

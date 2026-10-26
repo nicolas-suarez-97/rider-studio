@@ -63,7 +63,7 @@ export const BLANK_RIDER_PROMPTS: Record<RiderType, BlankRiderPrompt[]> = {
       id: 'hotel',
       label: 'Hotel y transporte',
       icon: 'hotel',
-      prompt: 'Define requisitos de hotel, late checkout, ground transportation y runners para el rider de hospitality.',
+      prompt: 'Define requisitos de hotel y late checkout. Para transporte terrestre, pide fichas por Party (categoría, cantidad, modalidad por trayectos / 12 horas / disponibilidad completa a solicitud) sin inventar marcas ni jornadas de 24 horas.',
     },
     {
       id: 'voice',

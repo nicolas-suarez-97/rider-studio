@@ -7,6 +7,7 @@ import { DocumentSuggestion } from '@/core/types/suggestion.types';
 import { EditorBridge, RiderDocumentSurface } from './editor/RiderDocumentSurface';
 import type { SectionDocumentPatch } from '@/core/editor/content-doc';
 import type { RiderType, RiderDocumentTheme } from '@/core/types/rider.types';
+import type { TransportContraState } from '@/lib/promotor/transport-contra';
 
 interface DocumentEditorPanelProps {
   riderTitle: string;
@@ -61,6 +62,8 @@ interface DocumentEditorPanelProps {
   onToggleSectionComments?: (sectionId: string) => void;
   commentAuthorName?: string;
   onSubmitSectionComment?: (sectionId: string, authorName: string, body: string) => Promise<void>;
+  transportReviews?: Record<string, TransportContraState>;
+  onTmDecision?: (cardId: string, decision: 'aprobada' | 'rechazada' | 'requiere_ajustes' | 'reabrir') => void;
 }
 
 export function DocumentEditorPanel({
@@ -86,6 +89,8 @@ export function DocumentEditorPanel({
   onDraftWithSelection,
   onOpenImportModal,
   readOnly = false,
+  transportReviews,
+  onTmDecision,
 }: DocumentEditorPanelProps) {
   return (
     <main className="flex-1 h-full min-h-0 min-w-0 overflow-hidden flex flex-col">
@@ -112,6 +117,8 @@ export function DocumentEditorPanel({
         onAskAssistant={onAskAssistant}
         onDraftWithSelection={onDraftWithSelection}
         onOpenImportModal={onOpenImportModal}
+        transportReviews={transportReviews}
+        onTmDecision={onTmDecision}
       />
     </main>
   );

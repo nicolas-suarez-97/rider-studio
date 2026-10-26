@@ -178,12 +178,12 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
       {
         id: 'hosp-transporte',
         num: '06',
-        title: 'Transporte Local & Logística de Carga',
-        subtitle: 'Vans ejecutivas, chofer y transporte de equipaje',
+        title: 'Transporte terrestre',
+        subtitle: 'Fichas por Party, con conductor/piloto',
         tag: 'Logística',
         tagColor: 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
         iconName: 'truck',
-        content: '• Flota vehicular: Camionetas ejecutivas tipo Van (ej. Mercedes Sprinter) con aire acondicionado y chofer exclusivo.\n• Camioneta de carga auxiliar: Vehículo cerrado para traslado de equipajes personales e instrumentos de mano.\n• Itinerario completo: Aeropuerto ↔ Hotel ↔ Recinto (prueba de sonido y show) ↔ Retorno al aeropuerto.'
+        content: ''
       }
     ]
   },

@@ -1,4 +1,5 @@
 import { formatInputListPlainText, type InputListColumn, type InputListRow } from '@/core/constants/input-list';
+import { formatTransportFleetPlain, normalizeTransportCards } from '@/core/constants/transporte-terrestre';
 import { SECTION_FIELD_CONFIGS, findSectionConfig } from '@/core/constants/section-fields';
 import { formatRiderDate, riderKicker } from '@/core/constants/document-themes';
 import { RiderContentDoc, RiderContentNode, RiderType, SectionItem } from '@/core/types/rider.types';
@@ -144,6 +145,11 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
       const rows = Array.isArray(node.attrs?.rows) ? (node.attrs.rows as InputListRow[]) : [];
       const columns = Array.isArray(node.attrs?.columns) ? (node.attrs.columns as InputListColumn[]) : undefined;
       const text = formatInputListPlainText(rows, columns);
+      if (text) lines.push(text);
+      return;
+    }
+    if (node.type === 'transportFleet') {
+      const text = formatTransportFleetPlain(normalizeTransportCards(node.attrs?.cards));
       if (text) lines.push(text);
       return;
     }

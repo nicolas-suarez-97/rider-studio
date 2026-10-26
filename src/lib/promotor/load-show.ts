@@ -4,6 +4,7 @@ import { Json } from '@/lib/supabase/database.types';
 import {
   answersFromLines,
   buildContraLines,
+  mergeTransportAnswers,
   readContraReview,
   readStoredContra,
   sanitizeAnswers,
@@ -79,7 +80,11 @@ export async function persistContraRider(
   const rider = Rider.fromDatabase(row);
   const previous = readStoredContra(row.metadata);
   const allowedIds = new Set(buildContraLines(rider, {}).map((line) => line.id));
-  const answers = sanitizeAnswers(answersInput, allowedIds);
+  const answers = mergeTransportAnswers(
+    sanitizeAnswers(answersInput, allowedIds),
+    previous.answers,
+    intent === 'send',
+  );
   const lines = buildContraLines(rider, answers);
 
   if (intent === 'send') {

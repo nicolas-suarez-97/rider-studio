@@ -19,6 +19,8 @@ import {
   PromotorFileView,
 } from '@/core/types/contra-rider.types';
 import { answersFromLines, sendBlockReason } from '@/lib/promotor/contra-rider';
+import { TransportContraFields, transportChoices } from '@/components/promotor/TransportContraFields';
+import { emptyTransportOffer } from '@/core/constants/transporte-terrestre';
 import { countByContraLines, filterSections } from '@/core/utils/type-view';
 import { useTypeView } from '@/hooks/useTypeView';
 
@@ -57,7 +59,15 @@ const RESPONSE_CHOICES: { value: Exclude<ContraResponse, ''>; label: string; act
   { value: 'pregunta', label: 'Pregunta', activeClass: 'bg-amber-500 text-white border-amber-500' },
 ];
 
-function lineGap(line: Pick<ContraLine, 'response' | 'offer' | 'note'>): 'oferta' | 'nota' | null {
+function lineGap(line: ContraLine): 'oferta' | 'nota' | 'fotos' | null {
+  if (line.kind === 'transport_card') {
+    if (line.response === 'no_puedo' && !line.note.trim()) return 'nota';
+    if (line.response === 'pregunta' && !line.note.trim()) return 'nota';
+    if ((line.response === 'cubro' || line.response === 'alternativa') && !line.transportOffer?.photos?.length) {
+      return 'fotos';
+    }
+    return null;
+  }
   if (line.response === 'alternativa' && !line.offer.trim()) return 'oferta';
   if (line.response === 'no_puedo' && !line.note.trim()) return 'nota';
   return null;
@@ -718,29 +728,46 @@ export function ContraRiderClient({
                       Documento
                     </button>
                   </div>
-                  <p className="mt-3 sm:ml-8 text-[13px] leading-relaxed text-slate-600 whitespace-pre-wrap line-clamp-3">
-                    {line.pedido}
-                  </p>
+                  {line.kind === 'transport_card' ? null : (
+                    <p className="mt-3 sm:ml-8 text-[13px] leading-relaxed text-slate-600 whitespace-pre-wrap line-clamp-3">
+                      {line.pedido}
+                    </p>
+                  )}
                   <div className="mt-4 sm:ml-8 flex flex-wrap gap-1.5">
-                    {RESPONSE_CHOICES.map((choice) => {
+                    {RESPONSE_CHOICES.filter((choice) => transportChoices(line).includes(choice.value)).map((choice) => {
                       const selected = line.response === choice.value;
+                      const label = line.kind === 'transport_card' && choice.value === 'cubro'
+                        ? 'Puedo cubrir'
+                        : line.kind === 'transport_card' && choice.value === 'no_puedo'
+                          ? 'No puedo cumplir'
+                          : choice.label;
                       return (
                         <button
                           key={choice.value}
                           type="button"
-                          onClick={() => updateLine(line.id, { response: selected ? '' : choice.value })}
+                          onClick={() => updateLine(line.id, {
+                            response: selected ? '' : choice.value,
+                            transportOffer: line.transportOffer || emptyTransportOffer(),
+                          })}
                           className={`h-8 px-3 rounded-full border text-xs font-bold cursor-pointer active:scale-95 transition-colors ${
                             selected
                               ? choice.activeClass
                               : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-800'
                           }`}
                         >
-                          {choice.label}
+                          {label}
                         </button>
                       );
                     })}
                   </div>
-                  {line.response && line.response !== 'cubro' ? (
+                  {line.kind === 'transport_card' && line.card ? (
+                    <TransportContraFields
+                      line={line}
+                      card={line.card}
+                      onOffer={(transportOffer) => updateLine(line.id, { transportOffer })}
+                    />
+                  ) : null}
+                  {line.response && line.response !== 'cubro' && !(line.kind === 'transport_card' && line.response === 'alternativa') ? (
                     <label className="mt-3 sm:ml-8 block">
                       <span className={`text-[10px] font-bold uppercase tracking-wider ${gap ? 'text-rose-600' : 'text-slate-400'}`}>{detailLabel}</span>
                       <textarea

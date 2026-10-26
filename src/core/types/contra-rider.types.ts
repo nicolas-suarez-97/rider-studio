@@ -1,4 +1,12 @@
 import { RiderType } from './rider.types';
+import type {
+  Negotiability,
+  TransportContraOffer,
+  TransportHistoryEntry,
+  TransportProposalStatus,
+  TransportTmDecision,
+  TransportVehicleCard,
+} from '@/core/constants/transporte-terrestre';
 
 export type ContraResponse = '' | 'cubro' | 'alternativa' | 'no_puedo' | 'pregunta';
 
@@ -6,6 +14,10 @@ export interface ContraAnswer {
   response: ContraResponse;
   offer: string;
   note: string;
+  transportOffer?: TransportContraOffer;
+  transportStatus?: TransportProposalStatus;
+  tmDecision?: TransportTmDecision | null;
+  transportHistory?: TransportHistoryEntry[];
 }
 
 export interface ContraLine extends ContraAnswer {
@@ -15,6 +27,9 @@ export interface ContraLine extends ContraAnswer {
   sectionId: string;
   sectionTitle: string;
   pedido: string;
+  kind?: 'section' | 'transport_card';
+  card?: TransportVehicleCard;
+  negotiability?: Negotiability;
 }
 
 export type FindingVerdict = 'cumple' | 'parcial' | 'no_aparece' | 'contradice';
