@@ -5,20 +5,15 @@ import { RIDER_GENERATOR_SYSTEM_PROMPT } from '@/lib/agents/prompts/rider-llm-pr
  * Reglas de calidad que ya estaban en el producto.
  * Se inyectan siempre; el catálogo de familias las complementa, no las sustituye.
  */
-export function renderExistingQualityRules(): string {
+export function renderExistingQualityRules(options?: { includeHardwareCatalog?: boolean }): string {
   const flags = Object.values(RIDER_RED_FLAG_RULES)
     .map((rule) => `- ${rule.type} (−${rule.penaltyPoints}, ${rule.severity}): ${rule.description}`)
     .join('\n');
 
+  const includeHardware = options?.includeHardwareCatalog !== false;
   const { paSystems, fohConsoles, microphonesAndDI, inEarSystems } = APPROVED_HARDWARE_CATALOG;
-
-  return `=== REGLAS DE CALIDAD VIGENTES (se mantienen) ===
-Estas reglas siguen aplicando en chat, redacción y auditoría. El catálogo de familias las complementa; no las anula.
-
-${RIDER_GENERATOR_SYSTEM_PROMPT}
-
-RED FLAGS:
-${flags}
+  const hardware = includeHardware
+    ? `
 
 HARDWARE APROBADO (tier vigente):
 - PA Tier 1: ${paSystems.tier1.join('; ')}
@@ -29,5 +24,14 @@ HARDWARE APROBADO (tier vigente):
 - FOH no aceptado: ${fohConsoles.banned.join('; ')}
 - Microfonía: ${microphonesAndDI.preferredBrands.join(', ')}
 - DIs: ${microphonesAndDI.directBoxes.join('; ')}
-- IEM: ${inEarSystems.preferred.join('; ')}`;
+- IEM: ${inEarSystems.preferred.join('; ')}`
+    : '';
+
+  return `=== REGLAS DE CALIDAD VIGENTES (se mantienen) ===
+Estas reglas siguen aplicando en chat, redacción y auditoría. El catálogo de familias las complementa; no las anula.
+
+${RIDER_GENERATOR_SYSTEM_PROMPT}
+
+RED FLAGS:
+${flags}${hardware}`;
 }

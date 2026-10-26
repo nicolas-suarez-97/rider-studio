@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import catalogJson from '../../../docs/standards/catalogo_json.json';
-import { STANDARDS_OPERATING_PROTOCOL } from './protocol';
+import { HOSPITALITY_TERRESTRE_PROTOCOL, STANDARDS_OPERATING_PROTOCOL } from './protocol';
 import { renderExistingQualityRules } from './quality-rules';
 import { selectStandardFamilies } from './select-families';
 import type {
@@ -9,6 +11,16 @@ import type {
   StandardFamily,
   StandardsFamilyId,
 } from './types';
+
+const TRANSPORT_PART_MD = 'docs/standards/parte-4-transporte-terrestre-contexto-ia.md';
+
+function loadTransportPartMarkdown(): string {
+  try {
+    return readFileSync(join(process.cwd(), TRANSPORT_PART_MD), 'utf8').trim();
+  } catch {
+    return '';
+  }
+}
 
 const catalog = catalogJson as RiderStandardsCatalog;
 
@@ -133,15 +145,30 @@ export function buildStandardsContext(input: BuildStandardsContextInput): string
     .map((id) => findStandardFamily(id))
     .filter((family): family is StandardFamily => Boolean(family));
 
-  const header = [
-    `=== ESTÁNDAR TÉCNICO RIDER STUDIO (${catalog.documento}, ${catalog.version}) ===`,
-    'Usa este estándar para sugerencias, redacción y auditoría. No contradigas las reglas aprobadas ni las de calidad vigentes.',
-    renderExistingQualityRules(),
-    STANDARDS_OPERATING_PROTOCOL,
-    renderValues(),
-  ];
+  const transportOnly = familyIds.length === 1 && familyIds[0] === 'transporte_terrestre';
 
-  const body = families.map((family) => renderFamily(family, haystack, input.mode));
+  const header = transportOnly
+    ? [
+      `=== ESTÁNDAR HOSPITALIDAD LOGÍSTICA TERRESTRE (${catalog.documento}, ${catalog.version}) ===`,
+      'Usa este estándar para sugerencias y redacción de transporte terrestre. No contradigas las reglas confirmadas. No mezcles con el catálogo de audio.',
+      HOSPITALITY_TERRESTRE_PROTOCOL,
+    ]
+    : [
+      `=== ESTÁNDAR TÉCNICO RIDER STUDIO (${catalog.documento}, ${catalog.version}) ===`,
+      'Usa este estándar para sugerencias, redacción y auditoría. No contradigas las reglas aprobadas ni las de calidad vigentes.',
+      renderExistingQualityRules(),
+      STANDARDS_OPERATING_PROTOCOL,
+      renderValues(),
+    ];
+
+  const transportMarkdown = transportOnly ? loadTransportPartMarkdown() : '';
+  const body = transportOnly
+    ? [
+      transportMarkdown
+        ? `=== PARTE 4 (fuente) ===\n${transportMarkdown}`
+        : families.map((family) => renderFamily(family, haystack, input.mode)).join('\n\n'),
+    ]
+    : families.map((family) => renderFamily(family, haystack, input.mode));
   const parts = [...header, ...body].filter(Boolean);
   let context = parts.join('\n\n');
 
