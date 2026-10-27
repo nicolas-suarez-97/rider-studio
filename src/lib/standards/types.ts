@@ -5,7 +5,8 @@ export type StandardsFamilyId =
   | 'consola_foh'
   | 'perifericos_foh'
   | 'consola_monitores'
-  | 'personal_audio';
+  | 'personal_audio'
+  | 'transporte_terrestre';
 
 export type StandardsMode = 'chat' | 'review';
 

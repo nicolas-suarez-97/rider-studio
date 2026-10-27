@@ -10,6 +10,10 @@ export const ALL_STANDARD_FAMILIES: StandardsFamilyId[] = [
   'personal_audio',
 ];
 
+export const HOSPITALITY_STANDARD_FAMILIES: StandardsFamilyId[] = [
+  'transporte_terrestre',
+];
+
 const FAMILY_KEYWORDS: Record<StandardsFamilyId, string[]> = {
   sistema_pa: [
     'pa', 'p.a', 'line array', 'linearray', 'subwoofer', 'subwoofers', 'subs',
@@ -49,7 +53,45 @@ const FAMILY_KEYWORDS: Record<StandardsFamilyId, string[]> = {
     'traductor', 'horario', 'montaje', 'modo de producción', 'modo de produccion',
     'contactos',
   ],
+  transporte_terrestre: [
+    'transporte', 'transporte terrestre', 'van', 'vans', 'suv', 'sprinter',
+    'runner', 'transfer', 'transfers', 'trayecto', 'trayectos', 'chofer',
+    'luggage', 'luggage van', 'cargo van', 'aeropuerto', 'hospitality transporte',
+    'hosp-transporte', 'hosp transporte', 'vehículo', 'vehiculo', 'vehículos',
+    'vehiculos', 'conductor', 'party',
+  ],
 };
+
+const TRANSPORT_STRONG_KEYWORDS = [
+  'transporte',
+  'transporte terrestre',
+  'hosp-transporte',
+  'hosp transporte',
+  'hospitality transporte',
+  'sprinter',
+  'runner',
+  'transfer',
+  'transfers',
+  'trayecto',
+  'trayectos',
+  'chofer',
+  'cargo van',
+  'luggage van',
+  'luggage',
+  'suv',
+  'van',
+  'vans',
+  'vehiculo',
+  'vehículo',
+  'vehiculos',
+  'vehículos',
+];
+
+const TRANSPORT_HOSPITALITY_SUPPORTING = [
+  'party',
+  'conductor',
+  'aeropuerto',
+];
 
 function normalize(text: string): string {
   return text
@@ -58,10 +100,54 @@ function normalize(text: string): string {
     .toLowerCase();
 }
 
+function keywordMatches(haystack: string, keyword: string): boolean {
+  const needle = normalize(keyword);
+  if (needle.length <= 4 || needle === 'party' || needle === 'vans') {
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).test(haystack);
+  }
+  return haystack.includes(needle);
+}
+
 function scoreFamily(haystack: string, familyId: StandardsFamilyId): number {
   return FAMILY_KEYWORDS[familyId].reduce((score, keyword) => {
-    return haystack.includes(normalize(keyword)) ? score + 1 : score;
+    return keywordMatches(haystack, keyword) ? score + 1 : score;
   }, 0);
+}
+
+function hasAnyKeyword(haystack: string, keywords: string[]): boolean {
+  return keywords.some((keyword) => keywordMatches(haystack, keyword));
+}
+
+export function isGroundTransportFocus(input: {
+  query?: string;
+  sectionTitle?: string;
+  sectionText?: string;
+  selection?: string;
+  sectionTitles?: string[];
+  riderType?: string;
+}): boolean {
+  const haystack = normalize(
+    [
+      input.query,
+      input.sectionTitle,
+      input.selection,
+      input.sectionText?.slice(0, 500),
+      ...(input.sectionTitles || []),
+    ]
+      .filter(Boolean)
+      .join(' \n '),
+  );
+
+  if (hasAnyKeyword(haystack, TRANSPORT_STRONG_KEYWORDS)) {
+    return true;
+  }
+
+  if (input.riderType === 'hospitality' && hasAnyKeyword(haystack, TRANSPORT_HOSPITALITY_SUPPORTING)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function selectStandardFamilies(input: {
@@ -85,6 +171,11 @@ export function selectStandardFamilies(input: {
       .filter(Boolean)
       .join(' \n '),
   );
+
+  const transportFocus = isGroundTransportFocus(input);
+  if (transportFocus && (input.mode !== 'review' || input.riderType === 'hospitality')) {
+    return ['transporte_terrestre'];
+  }
 
   const ranked = ALL_STANDARD_FAMILIES
     .map((id) => ({ id, score: scoreFamily(haystack, id) }))

@@ -7194,6 +7194,311 @@
      }
     }
    ]
+  },
+  {
+   "titulo": "Parte 4: Transporte terrestre",
+   "archivo_contexto": "parte-4-transporte-terrestre-contexto-ia.md",
+   "familias": [
+    {
+     "id": "transporte_terrestre",
+     "nombre": "Transporte terrestre",
+     "prefijo_datos": "tt",
+     "prefijo_reglas": "TT",
+     "introduccion": [
+      "Hospitalidad logística terrestre. Familia aparte del catálogo de audio. Fuente: Santiago Módulo 02 v1.0.",
+      "La IA sugiere; el TM aprueba. Todos los vehículos con conductor/piloto. Fotos obligatorias en el contrarider.",
+      "Las referencias ilustrativas no son equivalencias automáticas. Capacidades ~8–10 y ~15–16 están sujetas a capacidad/configuración real; nunca son defaults de un rider nuevo."
+     ],
+     "datos_que_se_piden": [
+      {
+       "id": "tt.party_name",
+       "dato": "Party",
+       "que_debe_decir": "Texto libre o Party existente; identificador visible del grupo.",
+       "ejemplo_o_error": "Nombre libre; no imponer un listado cerrado."
+      },
+      {
+       "id": "tt.vehicle_category",
+       "dato": "Categoría de vehículo",
+       "que_debe_decir": "Una categoría del catálogo: suv_full_size, suv_compact_crossover, van_medium, van_large, van_executive, cargo_van, luggage_van, runner_vehicle.",
+       "ejemplo_o_error": ""
+      },
+      {
+       "id": "tt.vehicle_reference",
+       "dato": "Marca/modelo de referencia",
+       "que_debe_decir": "Opcional; búsqueda o entrada libre. Sprinter Black no equivale a Sprinter convencional.",
+       "ejemplo_o_error": "No inventar marcas de riders de ejemplo."
+      },
+      {
+       "id": "tt.quantity",
+       "dato": "Cantidad de vehículos",
+       "que_debe_decir": "Entero ≥ 1.",
+       "ejemplo_o_error": ""
+      },
+      {
+       "id": "tt.passengers_per_vehicle",
+       "dato": "Pasajeros por vehículo",
+       "que_debe_decir": "Sí para transporte de pasajeros; no aplica a carga. Entero ≥ 0; plazas utilizables sin contar al conductor. No usar ~8–10 ni ~15–16 como default.",
+       "ejemplo_o_error": "Sujeto a capacidad/configuración real."
+      },
+      {
+       "id": "tt.service_mode",
+       "dato": "Modalidad de servicio",
+       "que_debe_decir": "Solo transfers | twelve_hours | full_on_request. No presentar 24 horas como estándar.",
+       "ejemplo_o_error": ""
+      },
+      {
+       "id": "tt.routes",
+       "dato": "Rutas",
+       "que_debe_decir": "Condicional. Selección múltiple: airport_pickup, airport_dropoff, hotel_to_venue, venue_to_hotel, custom_route. Puede quedar vacío si el modo no las exige.",
+       "ejemplo_o_error": "No bloquear la creación del rider si faltan horarios o lugares."
+      },
+      {
+       "id": "tt.color",
+       "dato": "Color",
+       "que_debe_decir": "Opcional. Uno de los tres únicos campos de características (junto con año mínimo y blindaje).",
+       "ejemplo_o_error": ""
+      },
+      {
+       "id": "tt.minimum_year",
+       "dato": "Año mínimo",
+       "que_debe_decir": "Opcional.",
+       "ejemplo_o_error": ""
+      },
+      {
+       "id": "tt.armored_required",
+       "dato": "Blindaje",
+       "que_debe_decir": "Opcional: sí / no / sin especificar.",
+       "ejemplo_o_error": "No crear campos de Wi-Fi, polarizado ni A/C."
+      },
+      {
+       "id": "tt.negotiability",
+       "dato": "Negociabilidad",
+       "que_debe_decir": "negociable | no_negociable.",
+       "ejemplo_o_error": ""
+      },
+      {
+       "id": "tt.notes",
+       "dato": "Observaciones",
+       "que_debe_decir": "Opcional. Amenidades excepcionales van aquí.",
+       "ejemplo_o_error": ""
+      },
+      {
+       "id": "tt.approval_owner",
+       "dato": "Quién aprueba",
+       "que_debe_decir": "TM por defecto.",
+       "ejemplo_o_error": ""
+      }
+     ],
+     "reglas": [
+      {
+       "codigo": "TT-1",
+       "estado": "confirmado",
+       "texto": "La solicitud se arma por vehículos (tipo, cantidad y requerimientos). No calcular una flota solo a partir del número de pasajeros."
+      },
+      {
+       "codigo": "TT-2",
+       "estado": "confirmado",
+       "texto": "Todos los vehículos se solicitan con conductor/piloto, incluida la moto de runner. No hay selector con/sin conductor."
+      },
+      {
+       "codigo": "TT-3",
+       "estado": "confirmado",
+       "texto": "Cada ficha se agrupa por Party de nombre libre."
+      },
+      {
+       "codigo": "TT-4",
+       "estado": "confirmado",
+       "texto": "Cada solicitud o condición relevante lleva negociable o no_negociable."
+      },
+      {
+       "codigo": "TT-5",
+       "estado": "confirmado",
+       "texto": "La IA sugiere; el TM aprueba. Nunca pases una propuesta a aprobada."
+      },
+      {
+       "codigo": "TT-6",
+       "estado": "confirmado",
+       "texto": "Sin fotografías de cada vehículo propuesto (también alternativas) o sin OK del TM, el estado no es aprobada."
+      },
+      {
+       "codigo": "TT-7",
+       "estado": "confirmado",
+       "texto": "Rutas, fechas y horarios pueden quedar por definir; no bloquees la creación del rider."
+      },
+      {
+       "codigo": "TT-8",
+       "estado": "confirmado",
+       "texto": "Referencias de riders reales son evidencia, no reglas universales. No copies cantidades ni marcas a un rider nuevo."
+      },
+      {
+       "codigo": "TT-9",
+       "estado": "confirmado",
+       "texto": "Las referencias ilustrativas del catálogo no son equivalencias automáticas. Sprinter Black no equivale a Sprinter convencional. Vito no equivale a V-Class."
+      },
+      {
+       "codigo": "TT-10",
+       "estado": "confirmado",
+       "texto": "passengers_per_vehicle es obligatorio en transporte de pasajeros y no aplica a carga. Son plazas utilizables, sin contar al conductor. No uses ~8–10 ni ~15–16 como default."
+      },
+      {
+       "codigo": "TT-11",
+       "estado": "confirmado",
+       "texto": "Únicos campos de características: color, minimum_year, armored_required. El resto de amenidades, si hace falta, va en notas."
+      },
+      {
+       "codigo": "TT-12",
+       "estado": "confirmado",
+       "texto": "Modalidades solo transfers | twelve_hours | full_on_request. No presentes 24 horas como estándar. Horas extra de un bloque de 12 h se consultan al TM, sin aprobar ni asignar costo."
+      },
+      {
+       "codigo": "TT-13",
+       "estado": "confirmado",
+       "texto": "Rutas: airport_pickup, airport_dropoff, hotel_to_venue, venue_to_hotel, custom_route. Múltiple y opcional si el modo no las exige."
+      },
+      {
+       "codigo": "TT-14",
+       "estado": "confirmado",
+       "texto": "Runner tiene ficha propia. Siempre con conductor/piloto. No es Cargo Van. No forzar twelve_hours."
+      },
+      {
+       "codigo": "TT-15",
+       "estado": "confirmado",
+       "texto": "Negociable: alternativa en pendiente_de_aprobacion. No negociable: no marcar sustitución conforme; permitir no_puedo_cumplir."
+      },
+      {
+       "codigo": "TT-16",
+       "estado": "confirmado",
+       "texto": "Conservar solicitud original y propuesta. Cambio sobre una aprobada exige nueva aprobación. Flujo: sin_respuesta → propuesta_recibida → pendiente_de_revision → aprobada | rechazada | requiere_ajustes."
+      }
+     ],
+     "catalogo": [
+      {
+       "titulo": "Categorías de vehículo (referencias ilustrativas, no equivalencias)",
+       "notas": [
+        "Los ejemplos no establecen equivalencias automáticas. La equivalencia depende del requerimiento y de la aprobación del TM.",
+        "Capacidades ~8–10 y ~15–16: sujeto a capacidad/configuración real. Nunca defaults de un rider nuevo.",
+        "Sprinter Black es un requisito ejecutivo específico, no una Sprinter convencional."
+       ],
+       "columnas": [
+        "Codigo",
+        "Categoria",
+        "Referencias_ilustrativas",
+        "Funcion_habitual"
+       ],
+       "filas": [
+        {
+         "Codigo": "suv_full_size",
+         "Categoria": "SUV grande / Full-size SUV",
+         "Referencias_ilustrativas": "GMC Yukon, Chevrolet Tahoe, Chevrolet Suburban, Cadillac Escalade, Ford Expedition",
+         "Funcion_habitual": "Artista o management"
+        },
+        {
+         "Codigo": "suv_compact_crossover",
+         "Categoria": "SUV compacta / crossover",
+         "Referencias_ilustrativas": "Renault Duster, Suzuki Vitara, Renault Arkana, Hyundai Tucson, Hyundai Kona",
+         "Funcion_habitual": "Grupos pequeños, avanzada o producción"
+        },
+        {
+         "Codigo": "van_medium",
+         "Categoria": "Van mediana / tipo H1",
+         "Referencias_ilustrativas": "Hyundai H1; modelos equivalentes de Kia, Renault, Chevrolet u otras marcas",
+         "Funcion_habitual": "Aproximadamente 8–10 pasajeros, sujeto a capacidad real"
+        },
+        {
+         "Codigo": "van_large",
+         "Categoria": "Van grande / tipo Sprinter",
+         "Referencias_ilustrativas": "Mercedes-Benz Sprinter; otras vans de Renault, Citroën, etc.",
+         "Funcion_habitual": "Habitualmente grupos de 15–16 pasajeros, sujeto a configuración real"
+        },
+        {
+         "Codigo": "van_executive",
+         "Categoria": "Van ejecutiva / lujo",
+         "Referencias_ilustrativas": "Mercedes-Benz Sprinter Black/Executive; Mercedes-Benz Vito; Mercedes-Benz V-Class",
+         "Funcion_habitual": "Transporte ejecutivo de artista y/o management"
+        },
+        {
+         "Codigo": "cargo_van",
+         "Categoria": "Cargo Van",
+         "Referencias_ilustrativas": "Vehículo de carga adecuado para cases Pelican/Nanuk, racks, instrumentos y equipos pesados",
+         "Funcion_habitual": "Carga de producción"
+        },
+        {
+         "Codigo": "luggage_van",
+         "Categoria": "Luggage Van",
+         "Referencias_ilustrativas": "Vehículo de carga menor destinado a maletas",
+         "Funcion_habitual": "Maletas personales; no asumir aptitud para racks/carga pesada"
+        },
+        {
+         "Codigo": "runner_vehicle",
+         "Categoria": "Vehículo de runner",
+         "Referencias_ilustrativas": "Automóvil, SUV, van pequeña o motocicleta, según solicitud",
+         "Funcion_habitual": "Mensajería, diligencias y apoyo operativo durante el show"
+        }
+       ]
+      },
+      {
+       "titulo": "Modalidades de servicio",
+       "notas": [
+        "No presentar 24 horas como opción estándar independiente."
+       ],
+       "columnas": [
+        "Codigo",
+        "Significado"
+       ],
+       "filas": [
+        {
+         "Codigo": "transfers",
+         "Significado": "Por trayectos, definidos o pendientes de definir"
+        },
+        {
+         "Codigo": "twelve_hours",
+         "Significado": "Disponibilidad por 12 horas, con conductor"
+        },
+        {
+         "Codigo": "full_on_request",
+         "Significado": "Disponibilidad completa a solicitud del artista. No traducir a 24 horas ni a un número de horas predefinido"
+        }
+       ]
+      },
+      {
+       "titulo": "Rutas y trayectos",
+       "notas": [
+        "Selección múltiple. Horarios y lugares pueden quedar por confirmar."
+       ],
+       "columnas": [
+        "Codigo",
+        "Trayecto"
+       ],
+       "filas": [
+        {
+         "Codigo": "airport_pickup",
+         "Trayecto": "Aeropuerto → Hotel (Airport Pick-up)"
+        },
+        {
+         "Codigo": "airport_dropoff",
+         "Trayecto": "Hotel → Aeropuerto (Airport Drop-off)"
+        },
+        {
+         "Codigo": "hotel_to_venue",
+         "Trayecto": "Hotel → Venue"
+        },
+        {
+         "Codigo": "venue_to_hotel",
+         "Trayecto": "Venue → Hotel"
+        },
+        {
+         "Codigo": "custom_route",
+         "Trayecto": "Trayecto personalizado; origen/destino de texto libre"
+        }
+       ]
+      }
+     ],
+     "texto_modelo": {
+      "es": "**Transporte terrestre — [nombre de la Party]**\n\n- Vehículo: [cantidad] × [categoría] ([marca/modelo de referencia, si aplica]).\n- Pasajeros por vehículo: [número / no aplica — carga].\n- Modalidad: [por trayectos / 12 horas con conductor / disponibilidad completa a solicitud del artista].\n- Trayectos: [aeropuerto→hotel / hotel→aeropuerto / hotel→venue / venue→hotel / trayecto personalizado / por definir].\n- Características (si se piden): color [ ], año mínimo [ ], blindaje [sí/no/sin especificar].\n- Condición: [negociable / no negociable].\n- Observaciones: [ ].\n- Aprobación: Tour Manager. El contrarider debe incluir fotografías de cada vehículo propuesto (también alternativas). Sin fotos y sin OK del TM no hay aprobación.\n\n[**Runner del día del show:** [cantidad] × [automóvil / SUV / van / motocicleta / otro], Party o área [ ], modalidad [ ], siempre con conductor/piloto.]\n\nCualquier alternativa queda pendiente de aprobación del TM. Una Sprinter convencional no sustituye una Sprinter Black salvo que el TM lo apruebe.",
+      "en": "**Ground transportation — [Party name]**\n\n- Vehicle: [quantity] × [category] ([reference make/model, if any]).\n- Passengers per vehicle: [number / not applicable — cargo].\n- Service mode: [transfers / 12 hours with driver / full availability on the artist's request].\n- Routes: [airport→hotel / hotel→airport / hotel→venue / venue→hotel / custom route / to be confirmed].\n- Specs (if requested): color [ ], minimum year [ ], armored [yes/no/unspecified].\n- Condition: [negotiable / non-negotiable].\n- Notes: [ ].\n- Approval: Tour Manager. The counter-rider must include photographs of every proposed vehicle (alternatives included). No photos and no TM OK means not approved.\n\n[**Show-day runner:** [quantity] × [car / SUV / van / motorcycle / other], Party or desk [ ], service mode [ ], always with driver/rider.]\n\nAny alternative stays pending TM approval. A standard Sprinter does not replace a Sprinter Black unless the TM approves it."
+     }
+    }
+   ]
   }
  ],
  "valores": {
