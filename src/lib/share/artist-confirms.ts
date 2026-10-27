@@ -141,12 +141,20 @@ export function formatShowReadyLine(
 ): string {
   const pendingSide = audience === 'organizer' ? 'del artista' : 'de tu lado';
   const noun = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-  return [
+  const repliedCount = Math.max(
+    0,
+    summary.resolvedCount - summary.approvedCount - summary.acceptedAlternativeCount
+  );
+  const parts = [
     `${summary.resolvedCount} de ${summary.answeredCount} resueltos`,
     noun(summary.approvedCount, 'aprobado', 'aprobados'),
     noun(summary.acceptedAlternativeCount, 'alternativa aceptada', 'alternativas aceptadas'),
-    `${summary.needsActionCount} pendientes ${pendingSide}`,
-  ].join(' · ');
+  ];
+  if (repliedCount > 0) {
+    parts.push(noun(repliedCount, 'respuesta a rechazo/pregunta', 'respuestas a rechazo/pregunta'));
+  }
+  parts.push(`${noun(summary.needsActionCount, 'pendiente', 'pendientes')} ${pendingSide}`);
+  return parts.join(' · ');
 }
 
 export function listArtistShareItems(
@@ -188,7 +196,7 @@ export function summarizeArtistShareItems(items: ArtistShareItem[]): ArtistShare
   let acceptedAlternativeCount = 0;
   for (const item of items) {
     if (item.guestName.trim()) names.add(item.guestName.trim());
-    if (item.needsAction) needsActionCount += 1;
+    if (item.needsAction || item.reopened) needsActionCount += 1;
     if (!item.needsAction && !item.reopened) resolvedCount += 1;
     if (item.approvalInForce && item.response === 'cubro') approvedCount += 1;
     if (item.approvalInForce && item.acceptedAlternative) acceptedAlternativeCount += 1;
