@@ -65,6 +65,7 @@ interface DocumentEditorPanelProps {
   absoluteExclusions?: AbsoluteExclusion[];
   onAddAbsoluteExclusion?: (brand: string, model?: string) => void;
   onRemoveAbsoluteExclusion?: (id: string) => void;
+  pageAlign?: 'center' | 'end';
 }
 
 export function DocumentEditorPanel({
@@ -93,6 +94,7 @@ export function DocumentEditorPanel({
   absoluteExclusions = [],
   onAddAbsoluteExclusion,
   onRemoveAbsoluteExclusion,
+  pageAlign = 'center',
 }: DocumentEditorPanelProps) {
   return (
     <main className="flex-1 h-full min-h-0 min-w-0 overflow-hidden flex flex-col">
@@ -126,6 +128,7 @@ export function DocumentEditorPanel({
         onDraftWithSelection={onDraftWithSelection}
         onOpenImportModal={onOpenImportModal}
         absoluteExclusions={absoluteExclusions}
+        pageAlign={pageAlign}
       />
     </main>
   );

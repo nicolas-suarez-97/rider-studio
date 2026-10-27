@@ -1417,6 +1417,7 @@ export function WorkspaceClient({
             absoluteExclusions={rider.absoluteExclusions}
             onAddAbsoluteExclusion={handleAddAbsoluteExclusion}
             onRemoveAbsoluteExclusion={handleRemoveAbsoluteExclusion}
+            pageAlign="end"
             sections={visibleSections}
             channels={rider.channels}
             completedSectionIds={rider.completedSectionIds}
