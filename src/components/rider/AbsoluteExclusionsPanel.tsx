@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import type { AbsoluteExclusion } from '@/core/types/rider.types';
+import { appendUniqueBrandModel } from '@/lib/equipment/brand-model';
 import { formatExclusionLabel } from '@/lib/share/exclusions';
 import { BrandModelFields } from '@/components/rider/BrandModelFields';
 
@@ -20,6 +21,7 @@ export function AbsoluteExclusionsPanel({
 }: AbsoluteExclusionsPanelProps) {
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
+  const [alreadyListed, setAlreadyListed] = useState(false);
 
   if (readOnly && exclusions.length === 0) return null;
 
@@ -28,6 +30,18 @@ export function AbsoluteExclusionsPanel({
     const nextBrand = brand.trim();
     if (!nextBrand || !onAdd) return;
     const nextModel = model.trim();
+    const next = appendUniqueBrandModel(exclusions, {
+      id: 'pending',
+      brand: nextBrand,
+      model: nextModel || undefined,
+    });
+    if (next.existing) {
+      setBrand(next.existing.brand);
+      setModel(next.existing.model || '');
+      setAlreadyListed(true);
+      return;
+    }
+    setAlreadyListed(false);
     onAdd(nextBrand, nextModel || undefined);
     setBrand('');
     setModel('');
@@ -76,7 +90,10 @@ export function AbsoluteExclusionsPanel({
               brand={brand}
               model={model}
               modelOptional
+              knownBrands={exclusions.map((item) => item.brand)}
+              knownModels={exclusions.map((item) => item.model || '')}
               onChange={(next) => {
+                setAlreadyListed(false);
                 setBrand(next.brand);
                 setModel(next.model);
               }}
@@ -89,6 +106,11 @@ export function AbsoluteExclusionsPanel({
           >
             Añadir
           </button>
+          {alreadyListed ? (
+            <p role="status" aria-live="polite" className="w-full text-[11px] font-medium text-rose-800">
+              Ya está en la lista
+            </p>
+          ) : null}
         </form>
       ) : null}
     </section>

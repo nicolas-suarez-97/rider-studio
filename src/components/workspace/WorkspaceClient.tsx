@@ -44,6 +44,7 @@ import { RIDER_DATA } from '@/core/constants/rider-templates';
 import { WORK_AREAS_SECTION_ID, workAreasDoc } from '@/core/constants/work-areas';
 import { isPersistedRiderId, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { deleteRiderImage, uploadRiderImage } from '@/lib/media/upload-client';
+import { appendUniqueBrandModel } from '@/lib/equipment/brand-model';
 
 type MobileTab = 'sections' | 'document' | 'assistant';
 
@@ -627,13 +628,17 @@ export function WorkspaceClient({
     const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : `ex-${Date.now()}`;
-    setRider((prev) => new Rider({
-      ...prev,
-      absoluteExclusions: [
-        ...prev.absoluteExclusions,
+    setRider((prev) => {
+      const next = appendUniqueBrandModel(
+        prev.absoluteExclusions,
         model ? { id, brand, model } : { id, brand },
-      ],
-    }));
+      );
+      if (next.existing) return prev;
+      return new Rider({
+        ...prev,
+        absoluteExclusions: next.items,
+      });
+    });
   };
 
   const handleRemoveAbsoluteExclusion = (id: string) => {
