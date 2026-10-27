@@ -3,6 +3,14 @@ import type { ExceptionDecision, Negotiability, RequirementNegotiability } from 
 
 export type ContraResponse = '' | 'cubro' | 'alternativa' | 'no_puedo' | 'pregunta';
 
+export interface SharePreviousDecision {
+  response: ContraResponse;
+  offer: string;
+  note: string;
+  artistResponse?: string;
+  acceptedAlternative?: boolean;
+}
+
 export interface ContraAnswer {
   response: ContraResponse;
   offer: string;
@@ -10,6 +18,11 @@ export interface ContraAnswer {
   exceptionDecision?: ExceptionDecision | null;
   artistResponse?: string;
   acceptedAlternative?: boolean;
+  reopened?: boolean;
+  reopenReason?: string;
+  reopenAuthor?: string;
+  reopenedAt?: string;
+  previousDecision?: SharePreviousDecision;
 }
 
 export interface ContraLine extends ContraAnswer {

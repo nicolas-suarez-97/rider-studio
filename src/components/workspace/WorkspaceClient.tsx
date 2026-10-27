@@ -562,7 +562,7 @@ export function WorkspaceClient({
 
   const handleShareConfirmAction = async (
     item: ArtistShareItem,
-    action: 'accept_alternative' | 'reply' | 'propose',
+    action: 'accept_alternative' | 'reply' | 'propose' | 'reopen',
     text: string
   ) => {
     if (!isPersistedRiderId(rider.id)) {

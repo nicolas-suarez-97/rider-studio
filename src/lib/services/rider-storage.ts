@@ -6,7 +6,7 @@ import {
 } from '@/lib/repositories/rider.repository';
 import { Json } from '@/lib/supabase/database.types';
 import type { ContraAnswer } from '@/core/types/contra-rider.types';
-import type { ArtistShareActionType } from '@/lib/share/artist-confirms';
+import type { ArtistShareActionContext, ArtistShareActionType } from '@/lib/share/artist-confirms';
 import {
   chatRepository,
   DbChatSession,
@@ -57,9 +57,10 @@ export async function saveArtistShareAction(
   guestKey: string,
   lineId: string,
   action: ArtistShareActionType,
-  text: string
+  text: string,
+  context?: ArtistShareActionContext
 ) {
-  return riderRepository.saveArtistShareAction(id, guestKey, lineId, action, text);
+  return riderRepository.saveArtistShareAction(id, guestKey, lineId, action, text, context);
 }
 
 export async function saveContraRider(id: string, contraRider: Json) {

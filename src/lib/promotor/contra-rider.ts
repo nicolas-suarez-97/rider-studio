@@ -272,6 +272,9 @@ export function buildContraLines(rider: Rider, answers: Record<string, ContraAns
         offer: saved?.offer || '',
         note: saved?.note || '',
         exceptionDecision: saved?.exceptionDecision ?? null,
+        ...(saved?.reopened ? { reopened: true } : {}),
+        ...(saved?.reopenReason ? { reopenReason: saved.reopenReason } : {}),
+        ...(saved?.previousDecision ? { previousDecision: saved.previousDecision } : {}),
       };
     });
   });

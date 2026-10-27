@@ -122,6 +122,7 @@ export function applyPublishedSnapshot<T extends SnapshotRider & { metadata: Jso
       contraRider: liveMeta.contraRider ?? null,
       published: liveMeta.published ?? null,
       absoluteExclusions: liveMeta.absoluteExclusions ?? publishedMeta.absoluteExclusions ?? [],
+      ...(liveMeta.showReady !== undefined ? { showReady: liveMeta.showReady } : {}),
     }),
   };
 }

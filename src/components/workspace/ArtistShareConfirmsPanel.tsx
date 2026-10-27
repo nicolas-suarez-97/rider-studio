@@ -2,8 +2,11 @@
 
 import React, { useState } from 'react';
 import {
+  REOPEN_BADGE,
+  REOPEN_LABEL,
   SHARE_RESPONSE_BADGE,
   SHARE_RESPONSE_LABEL,
+  type ArtistShareActionType,
   type ArtistShareItem,
   type ArtistShareSummary,
 } from '@/lib/share/artist-confirms';
@@ -16,7 +19,7 @@ interface ArtistShareConfirmsPanelProps {
   onClose: () => void;
   onAction: (
     item: ArtistShareItem,
-    action: 'accept_alternative' | 'reply' | 'propose',
+    action: ArtistShareActionType,
     text: string
   ) => Promise<void>;
 }
@@ -30,7 +33,7 @@ export function ArtistShareConfirmsPanel({
   onAction,
 }: ArtistShareConfirmsPanelProps) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [openForm, setOpenForm] = useState<Record<string, 'reply' | 'propose' | 'accept' | undefined>>({});
+  const [openForm, setOpenForm] = useState<Record<string, 'reply' | 'propose' | 'accept' | 'reopen' | undefined>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -39,7 +42,7 @@ export function ArtistShareConfirmsPanel({
 
   const run = async (
     item: ArtistShareItem,
-    action: 'accept_alternative' | 'reply' | 'propose',
+    action: ArtistShareActionType,
     text: string
   ) => {
     const key = itemKey(item);
@@ -106,6 +109,13 @@ export function ArtistShareConfirmsPanel({
               const key = itemKey(item);
               const form = openForm[key];
               const draft = drafts[key] ?? item.artistResponse;
+              const previousDecision = item.previousDecision;
+              const previousText = previousDecision
+                ? (previousDecision.response === 'alternativa'
+                    ? previousDecision.offer
+                    : previousDecision.note
+                  ).trim()
+                : '';
               return (
                 <article key={key} className="py-4">
                   <div className="flex items-start justify-between gap-3">
@@ -116,9 +126,11 @@ export function ArtistShareConfirmsPanel({
                       </p>
                     </div>
                     <span
-                      className={`shrink-0 text-[10px] font-bold uppercase tracking-wider border px-2 py-1 rounded-full ${SHARE_RESPONSE_BADGE[item.response]}`}
+                      className={`shrink-0 text-[10px] font-bold uppercase tracking-wider border px-2 py-1 rounded-full ${
+                        item.reopened ? REOPEN_BADGE : SHARE_RESPONSE_BADGE[item.response]
+                      }`}
                     >
-                      {SHARE_RESPONSE_LABEL[item.response]}
+                      {item.reopened ? `${REOPEN_LABEL} · En revisión` : SHARE_RESPONSE_LABEL[item.response]}
                     </span>
                   </div>
                   {item.organizerText ? (
@@ -128,10 +140,33 @@ export function ArtistShareConfirmsPanel({
                   ) : (
                     <p className="mt-2 text-[13px] text-slate-400">Sin texto del organizador.</p>
                   )}
-                  {item.acceptedAlternative ? (
+                  {item.acceptedAlternative && !item.reopened ? (
                     <p className="mt-2 text-xs font-semibold text-emerald-700">
                       Aceptaste la alternativa: {item.organizerText || 'oferta del organizador'}
                     </p>
+                  ) : null}
+                  {item.reopened ? (
+                    <p className="mt-2 text-xs text-orange-800 whitespace-pre-wrap">
+                      Reabierto{item.reopenAuthor ? ` por ${item.reopenAuthor}` : ''}
+                      {item.reopenedAt ? ` · ${item.reopenedAt}` : ''}
+                      {item.reopenReason ? `: ${item.reopenReason}` : ''}
+                    </p>
+                  ) : null}
+                  {item.reopened && previousDecision ? (
+                    <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Decisión anterior
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-700">
+                        {previousDecision.response
+                          ? SHARE_RESPONSE_LABEL[previousDecision.response]
+                          : 'Sin estado'}
+                        {previousDecision.acceptedAlternative ? ' · alternativa aceptada' : ''}
+                      </p>
+                      {previousText ? (
+                        <p className="mt-1 text-xs text-slate-600 whitespace-pre-wrap">{previousText}</p>
+                      ) : null}
+                    </div>
                   ) : null}
                   {item.artistResponse ? (
                     <p className="mt-2 text-xs text-slate-600 whitespace-pre-wrap">
@@ -196,6 +231,51 @@ export function ArtistShareConfirmsPanel({
                     >
                       Proponer otra opción
                     </button>
+                  ) : null}
+
+                  {item.canReopen && form !== 'reopen' ? (
+                    <button
+                      type="button"
+                      onClick={() => setOpenForm((current) => ({ ...current, [key]: 'reopen' }))}
+                      className="mt-3 bg-white border border-orange-200 text-orange-800 px-3 py-2 rounded-2xl text-xs font-bold hover:bg-orange-50"
+                      aria-label={`Reabrir / Revisar ${item.pedido}`}
+                    >
+                      Reabrir / Revisar
+                    </button>
+                  ) : null}
+
+                  {form === 'reopen' ? (
+                    <div className="mt-3">
+                      <label className="sr-only" htmlFor={`reopen-reason-${key}`}>
+                        Motivo para reabrir {item.pedido}
+                      </label>
+                      <textarea
+                        id={`reopen-reason-${key}`}
+                        value={drafts[key] ?? ''}
+                        onChange={(event) => setDrafts((current) => ({ ...current, [key]: event.target.value }))}
+                        rows={3}
+                        required
+                        placeholder="Motivo obligatorio para reabrir este pedido"
+                        className="w-full resize-none rounded-2xl border border-orange-200 bg-orange-50/40 px-3.5 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-500/10"
+                      />
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={savingKey === key}
+                          onClick={() => void run(item, 'reopen', drafts[key] ?? '')}
+                          className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-2xl text-xs font-bold disabled:opacity-60"
+                        >
+                          {savingKey === key ? 'Guardando…' : 'Confirmar reapertura'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOpenForm((current) => ({ ...current, [key]: undefined }))}
+                          className="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-2xl text-xs font-bold"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
                   ) : null}
 
                   {form === 'reply' || form === 'propose' ? (
