@@ -1,7 +1,9 @@
 import { formatInputListPlainText, type InputListColumn, type InputListRow } from '@/core/constants/input-list';
 import { SECTION_FIELD_CONFIGS, findSectionConfig } from '@/core/constants/section-fields';
 import { formatRiderDate, riderKicker } from '@/core/constants/document-themes';
+import { readNegotiability, readNegotiabilityNote } from '@/core/negociabilidad/negociabilidad';
 import { RiderContentDoc, RiderContentNode, RiderType, SectionItem } from '@/core/types/rider.types';
+import type { Negotiability } from '@/core/types/negociabilidad.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 
 interface JsonNode {
@@ -101,7 +103,11 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
     if (node.type === 'requirement') {
       const label = typeof node.attrs?.label === 'string' ? node.attrs.label.trim() : 'Requisito';
       const body = inlineText(node).trim();
-      lines.push(body ? `${label}: ${body}` : label);
+      const state = readNegotiability(node.attrs?.negotiability);
+      const note = readNegotiabilityNote(node.attrs?.negotiabilityNote);
+      const mark = state === 'sin_definir' ? '' : ` [${state === 'negociable' ? 'Negociable' : 'No negociable'}]`;
+      const extra = note ? ` — ${note}` : '';
+      lines.push(`${body ? `${label}: ${body}` : label}${mark}${extra}`);
       return;
     }
     if (node.type === 'notice') {
@@ -324,6 +330,8 @@ export function riderDocumentFromSections(
         level: 2,
         id: section.id,
         pageBreakBefore: previousBreaksPage ? false : sectionStartsOnNewPage(section, headedIndex),
+        negotiability: section.negotiability || 'sin_definir',
+        negotiabilityNote: section.negotiabilityNote || '',
       },
       content:
         existingHeading?.content && existingHeading.content.length > 0
@@ -345,6 +353,8 @@ export interface SectionDocumentPatch {
   contentDoc: RiderContentDoc;
   content: string;
   pageBreakBefore?: boolean;
+  negotiability?: Negotiability;
+  negotiabilityNote?: string;
 }
 
 export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: string[]): SectionDocumentPatch[] {
@@ -355,6 +365,8 @@ export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: stri
     headingNode?: RiderContentNode;
     nodes: RiderContentNode[];
     pageBreakBefore?: boolean;
+    negotiability?: Negotiability;
+    negotiabilityNote?: string;
   } | null = null;
 
   const flush = () => {
@@ -384,6 +396,8 @@ export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: stri
       contentDoc,
       content: docToPlainText(bodyDoc) || current.title,
       pageBreakBefore: current.pageBreakBefore,
+      negotiability: current.negotiability,
+      negotiabilityNote: current.negotiabilityNote,
     });
     current = null;
   };
@@ -414,6 +428,8 @@ export function splitDocumentToSections(doc: RiderContentDoc, _sectionIds?: stri
         headingNode: node,
         nodes: [],
         pageBreakBefore: node.attrs?.pageBreakBefore === true,
+        negotiability: readNegotiability(node.attrs?.negotiability),
+        negotiabilityNote: readNegotiabilityNote(node.attrs?.negotiabilityNote),
       };
       continue;
     }

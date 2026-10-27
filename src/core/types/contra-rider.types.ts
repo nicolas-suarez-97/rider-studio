@@ -1,4 +1,5 @@
 import { RiderType } from './rider.types';
+import type { ExceptionDecision, Negotiability, RequirementNegotiability } from './negociabilidad.types';
 
 export type ContraResponse = '' | 'cubro' | 'alternativa' | 'no_puedo' | 'pregunta';
 
@@ -6,6 +7,7 @@ export interface ContraAnswer {
   response: ContraResponse;
   offer: string;
   note: string;
+  exceptionDecision?: ExceptionDecision | null;
 }
 
 export interface ContraLine extends ContraAnswer {
@@ -15,6 +17,9 @@ export interface ContraLine extends ContraAnswer {
   sectionId: string;
   sectionTitle: string;
   pedido: string;
+  negotiability: Negotiability;
+  negotiabilityNote: string;
+  requirements: RequirementNegotiability[];
 }
 
 export type FindingVerdict = 'cumple' | 'parcial' | 'no_aparece' | 'contradice';

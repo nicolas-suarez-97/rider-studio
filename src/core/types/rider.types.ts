@@ -1,3 +1,5 @@
+import type { Negotiability } from './negociabilidad.types';
+
 export type RiderType = 'tecnico' | 'hospitality' | 'seguridad';
 
 export type RiderDocumentTheme =
@@ -39,6 +41,9 @@ export interface SectionItem {
   type?: RiderType;
   /** Apply/replace uses this so a correction updates the same block instead of adding another copy. */
   revision?: 'proposed' | 'confirmed';
+  /** REQ-001: negociable / no negociable / sin definir. */
+  negotiability?: Negotiability;
+  negotiabilityNote?: string;
 }
 
 export interface RiderDefinition {

@@ -201,6 +201,14 @@ export const Requirement = Node.create({
   addAttributes() {
     return {
       label: stringField('label', 'data-label', 'Requisito'),
+      negotiability: {
+        default: 'sin_definir',
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-negotiability') || 'sin_definir',
+        renderHTML: (attributes: { negotiability?: string }) => ({
+          'data-negotiability': attributes.negotiability || 'sin_definir',
+        }),
+      },
+      negotiabilityNote: stringField('negotiabilityNote', 'data-negotiability-note'),
     };
   },
   parseHTML() {
@@ -216,7 +224,7 @@ export const Requirement = Node.create({
     return {
       insertRequirement: (label) => ({ commands }) => commands.insertContent({
         type: this.name,
-        attrs: { label: label || 'Requisito' },
+        attrs: { label: label || 'Requisito', negotiability: 'sin_definir', negotiabilityNote: '' },
         content: [paragraphBlock()],
       }),
     };

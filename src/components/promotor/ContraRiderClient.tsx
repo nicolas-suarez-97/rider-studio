@@ -19,6 +19,12 @@ import {
   PromotorFileView,
 } from '@/core/types/contra-rider.types';
 import { answersFromLines, sendBlockReason } from '@/lib/promotor/contra-rider';
+import { NegotiabilityBadge } from '@/components/common/NegotiabilityBadge';
+import {
+  ALTERNATIVA_NO_NEGOCIABLE_COPY,
+  isFinalAgreement,
+  mergeContraAnswer,
+} from '@/core/negociabilidad/negociabilidad';
 import { countByContraLines, filterSections } from '@/core/utils/type-view';
 import { useTypeView } from '@/hooks/useTypeView';
 
@@ -185,12 +191,16 @@ export function ContraRiderClient({
       const finding = byId.get(line.id);
       if (!finding) return line;
       const response = finding.suggestedResponse;
-      return {
-        ...line,
-        response,
-        offer: response === 'alternativa' ? finding.suggestedText : '',
-        note: response === 'no_puedo' || response === 'pregunta' ? finding.suggestedText : '',
-      };
+      const merged = mergeContraAnswer({
+        negotiability: line.negotiability,
+        previous: line,
+        next: {
+          response,
+          offer: response === 'alternativa' ? finding.suggestedText : '',
+          note: response === 'no_puedo' || response === 'pregunta' ? finding.suggestedText : '',
+        },
+      });
+      return { ...line, ...merged };
     });
     setLines(next);
     setContraStatus('draft');
@@ -201,7 +211,19 @@ export function ContraRiderClient({
 
   const updateLine = (id: string, patch: Partial<ContraLine>) => {
     setLines((current) => {
-      const next = current.map((line) => (line.id === id ? { ...line, ...patch } : line));
+      const next = current.map((line) => {
+        if (line.id !== id) return line;
+        const merged = mergeContraAnswer({
+          negotiability: line.negotiability,
+          previous: line,
+          next: {
+            response: patch.response ?? line.response,
+            offer: patch.offer ?? line.offer,
+            note: patch.note ?? line.note,
+          },
+        });
+        return { ...line, ...patch, ...merged };
+      });
       setContraStatus('draft');
       scheduleSave(next);
       return next;
@@ -721,6 +743,20 @@ export function ContraRiderClient({
                   <p className="mt-3 sm:ml-8 text-[13px] leading-relaxed text-slate-600 whitespace-pre-wrap line-clamp-3">
                     {line.pedido}
                   </p>
+                  <div className="mt-2 sm:ml-8 flex flex-col gap-1.5">
+                    <NegotiabilityBadge negotiability={line.negotiability} note={line.negotiabilityNote} />
+                    {line.requirements.length > 1 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {line.requirements.map((item) => (
+                          <NegotiabilityBadge
+                            key={`${line.id}-${item.label}`}
+                            negotiability={item.negotiability}
+                            note={item.note ? `${item.label}: ${item.note}` : item.label}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="mt-4 sm:ml-8 flex flex-wrap gap-1.5">
                     {RESPONSE_CHOICES.map((choice) => {
                       const selected = line.response === choice.value;
@@ -740,6 +776,12 @@ export function ContraRiderClient({
                       );
                     })}
                   </div>
+                  {line.response === 'alternativa' && line.negotiability === 'no_negociable' ? (
+                    <p className="mt-3 sm:ml-8 text-[12px] leading-relaxed text-rose-800 bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-2.5">
+                      {ALTERNATIVA_NO_NEGOCIABLE_COPY}
+                      {!isFinalAgreement(line) ? ' Estado: pendiente de decisión del aprobador.' : ''}
+                    </p>
+                  ) : null}
                   {line.response && line.response !== 'cubro' ? (
                     <label className="mt-3 sm:ml-8 block">
                       <span className={`text-[10px] font-bold uppercase tracking-wider ${gap ? 'text-rose-600' : 'text-slate-400'}`}>{detailLabel}</span>

@@ -3,6 +3,7 @@ import { PromotorChatMessage } from '@/core/types/contra-rider.types';
 import { Json } from '@/lib/supabase/database.types';
 import {
   answersFromLines,
+  applyAnswerExceptions,
   buildContraLines,
   readContraReview,
   readStoredContra,
@@ -79,7 +80,11 @@ export async function persistContraRider(
   const rider = Rider.fromDatabase(row);
   const previous = readStoredContra(row.metadata);
   const allowedIds = new Set(buildContraLines(rider, {}).map((line) => line.id));
-  const answers = sanitizeAnswers(answersInput, allowedIds);
+  const answers = applyAnswerExceptions(
+    sanitizeAnswers(answersInput, allowedIds),
+    previous.answers,
+    Object.fromEntries(buildContraLines(rider, {}).map((line) => [line.id, line.negotiability]))
+  );
   const lines = buildContraLines(rider, answers);
 
   if (intent === 'send') {

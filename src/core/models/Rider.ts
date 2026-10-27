@@ -535,7 +535,15 @@ export class Rider {
    * Conserva metadatos de ids que siguen existiendo y elimina los que ya no están.
    */
   public syncSectionsFromDocument(
-    patches: Array<{ id: string; title: string; content: string; contentDoc?: SectionItem['contentDoc']; pageBreakBefore?: boolean }>,
+    patches: Array<{
+      id: string;
+      title: string;
+      content: string;
+      contentDoc?: SectionItem['contentDoc'];
+      pageBreakBefore?: boolean;
+      negotiability?: SectionItem['negotiability'];
+      negotiabilityNote?: string;
+    }>,
     options?: { retainIds?: string[]; defaultType?: RiderType }
   ): void {
     const byId = new Map(this.sections.map((sec) => [sec.id, sec]));
@@ -559,6 +567,8 @@ export class Rider {
         content: patch.content,
         contentDoc: patch.contentDoc,
         pageBreakBefore: patch.pageBreakBefore ?? current?.pageBreakBefore ?? false,
+        negotiability: patch.negotiability ?? current?.negotiability,
+        negotiabilityNote: patch.negotiabilityNote ?? current?.negotiabilityNote,
         type: current?.type || options?.defaultType || this.type,
       };
     });
