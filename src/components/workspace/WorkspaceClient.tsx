@@ -11,6 +11,7 @@ import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { MasterExportModal } from '@/components/modals/MasterExportModal';
 import { StagePlotModal } from '@/components/modals/StagePlotModal';
 import { ShareLinkModal } from '@/components/modals/ShareLinkModal';
+import { writeToClipboard } from '@/lib/share/copy-link';
 import { ImportRiderModal } from '@/components/modals/ImportRiderModal';
 import { Rider } from '@/core/models/Rider';
 import { riderService } from '@/core/services/rider.service';
@@ -122,6 +123,7 @@ export function WorkspaceClient({
   const [showStagePlotModal, setShowStagePlotModal] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
   const [sectionComments, setSectionComments] = useState<SectionCommentItem[]>([]);
   const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
   const [agentSuggestions, setAgentSuggestions] = useState<DocumentSuggestion[]>([]);
@@ -512,7 +514,10 @@ export function WorkspaceClient({
       if (!response.ok || typeof data.url !== 'string') {
         throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo generar el enlace');
       }
+      const copied = await writeToClipboard(data.url);
+      setShareCopied(copied);
       setShareUrl(data.url);
+      showToast(copied ? '¡Copiado!' : 'Enlace listo. Cópialo desde el modal.');
     } catch (err) {
       console.error(err);
       showToast(err instanceof Error ? err.message : 'No se pudo generar el enlace');
@@ -1453,8 +1458,13 @@ export function WorkspaceClient({
       />
 
       <ShareLinkModal
+        key={shareUrl ?? 'closed'}
         url={shareUrl}
-        onClose={() => setShareUrl(null)}
+        copied={shareCopied}
+        onClose={() => {
+          setShareUrl(null);
+          setShareCopied(false);
+        }}
         onNotify={showToast}
       />
 

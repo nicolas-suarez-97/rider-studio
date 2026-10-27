@@ -1,6 +1,9 @@
-import { createServerSupabaseClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
+import { createAdminSupabaseClient, createServerSupabaseClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
 import { Database, Json } from '@/lib/supabase/database.types';
 import { createShareToken } from '@/lib/share/token';
+import { applyPublishedSnapshot, capturePublishedSnapshot } from '@/lib/share/published-snapshot';
+import { confirmsToJson, guestKey, mergeShareConfirms, readShareConfirms, type ShareGuestRecord } from '@/lib/share/confirm';
+import type { ContraAnswer } from '@/core/types/contra-rider.types';
 import { deleteStoredImages } from '@/lib/media/image-store';
 import { mediaPathnames } from '@/lib/media/rider-media';
 
@@ -44,6 +47,7 @@ export interface IRiderRepository {
   getByShareToken(token: string): Promise<DbRider | null>;
   publishShare(id: string): Promise<ShareLink | null>;
   saveContraRider(id: string, contraRider: Json): Promise<DbRider | null>;
+  saveShareConfirm(token: string, guestName: string, lineId: string, answer: ContraAnswer): Promise<ShareGuestRecord | null>;
   save(rider: SaveRiderInput): Promise<DbRider>;
   delete(id: string): Promise<boolean>;
 }
@@ -88,9 +92,25 @@ function metadataWithShare(metadata: Json, share: ShareLink): Json {
   };
 }
 
+function preserveServerMetadata(incoming: Json, previous: Record<string, Json | undefined> | null): Json {
+  const next = asMetadataRecord(incoming) ?? {};
+  if (!previous) return incoming;
+  return {
+    ...next,
+    ...(previous.contraRider ? { contraRider: previous.contraRider } : {}),
+    ...(previous.published ? { published: previous.published } : {}),
+    ...(previous.shareConfirms ? { shareConfirms: previous.shareConfirms } : {}),
+  };
+}
+
 function isMissingMediaColumn(error: { code?: string; message?: string }) {
   const message = `${error.code ?? ''} ${error.message ?? ''}`;
   return /PGRST204|42703/.test(message) || /Could not find the 'media' column/i.test(message);
+}
+
+function isMissingShareColumn(error: { code?: string; message?: string }) {
+  const message = `${error.code ?? ''} ${error.message ?? ''}`;
+  return /PGRST204|42703/.test(message) || /share_token|share_enabled|shared_at/i.test(message);
 }
 
 function isOwnerSession(session: LinkedSessionItem): boolean {
@@ -150,7 +170,9 @@ export class RiderRepository implements IRiderRepository {
 
   public async getByShareToken(token: string): Promise<DbRider | null> {
     if (isSupabaseServerConfigured()) {
-      const supabase = await createServerSupabaseClient();
+      // Prefer admin so public share reads do not depend on the viewer session/RLS.
+      const admin = createAdminSupabaseClient();
+      const supabase = admin ?? (await createServerSupabaseClient());
       if (supabase) {
         const { data, error } = await supabase
           .from('riders')
@@ -160,9 +182,10 @@ export class RiderRepository implements IRiderRepository {
           .maybeSingle();
 
         if (!error && data && readShareLink(data)?.enabled) {
-          return data;
+          return applyPublishedSnapshot(data);
         }
 
+        // Fallback: older rows may only store the token in metadata.share
         const { data: rows, error: scanError } = await supabase
           .from('riders')
           .select('*');
@@ -172,15 +195,16 @@ export class RiderRepository implements IRiderRepository {
             const share = readShareLink(row);
             return share?.token === token && share.enabled;
           });
-          if (found) return found;
+          if (found) return applyPublishedSnapshot(found);
         }
       }
     }
 
-    return memoryRiders.find((row) => {
+    const memory = memoryRiders.find((row) => {
       const share = readShareLink(row);
       return share?.token === token && share.enabled;
-    }) ?? null;
+    });
+    return memory ? applyPublishedSnapshot(memory) : null;
   }
 
   public async publishShare(id: string): Promise<ShareLink | null> {
@@ -193,10 +217,18 @@ export class RiderRepository implements IRiderRepository {
       ? current
       : { token: createShareToken(), enabled: true, sharedAt: now };
     const enabledShare: ShareLink = { ...share, enabled: true, sharedAt: share.sharedAt || now };
-    const metadata = metadataWithShare(rider.metadata, enabledShare);
+    const metadata = metadataWithShare(
+      {
+        ...(asMetadataRecord(rider.metadata) ?? {}),
+        published: capturePublishedSnapshot(rider, now),
+      },
+      enabledShare
+    );
 
     if (isSupabaseServerConfigured()) {
-      const supabase = await createServerSupabaseClient();
+      // Owner session can publish; admin covers missing RLS/column edge cases for metadata.published.
+      const admin = createAdminSupabaseClient();
+      const supabase = admin ?? (await createServerSupabaseClient());
       if (supabase) {
         const columnWrite = await supabase
           .from('riders')
@@ -216,7 +248,7 @@ export class RiderRepository implements IRiderRepository {
           return enabledShare;
         }
 
-        if (columnWrite.error) {
+        if (columnWrite.error && !isMissingShareColumn(columnWrite.error)) {
           console.warn('[Supabase publishShare columns]', columnWrite.error);
         }
 
@@ -299,6 +331,85 @@ export class RiderRepository implements IRiderRepository {
     return next;
   }
 
+  public async saveShareConfirm(
+    token: string,
+    guestName: string,
+    lineId: string,
+    answer: ContraAnswer
+  ): Promise<ShareGuestRecord | null> {
+    const rider = await this.getLiveByShareToken(token);
+    if (!rider) return null;
+
+    const now = new Date().toISOString();
+    const base = asMetadataRecord(rider.metadata) ?? {};
+    const confirms = mergeShareConfirms(readShareConfirms(rider.metadata), guestName, lineId, answer);
+    const metadata: Json = { ...base, shareConfirms: confirmsToJson(confirms) };
+    const next: DbRider = { ...rider, metadata, updated_at: now };
+    const guest = confirms[guestKey(guestName)] ?? null;
+
+    // Guest share has no owner session; UPDATE must bypass RLS (same pattern as section comments).
+    if (isSupabaseServerConfigured()) {
+      const admin = createAdminSupabaseClient();
+      const supabase = admin ?? (await createServerSupabaseClient());
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('riders')
+          .update({ metadata, updated_at: now })
+          .eq('id', rider.id)
+          .select('*')
+          .maybeSingle();
+
+        if (!error && data) {
+          const existingIdx = memoryRiders.findIndex((row) => row.id === rider.id);
+          if (existingIdx >= 0) memoryRiders[existingIdx] = data as DbRider;
+          else memoryRiders.unshift(data as DbRider);
+          return guest;
+        }
+        if (error) console.warn('[Supabase saveShareConfirm]', error);
+      }
+    }
+
+    const existingIdx = memoryRiders.findIndex((row) => row.id === rider.id);
+    if (existingIdx >= 0) {
+      memoryRiders[existingIdx] = next;
+      return guest;
+    }
+    // Persist in memory when the live row was only visible via Supabase read
+    memoryRiders.unshift(next);
+    return guest;
+  }
+
+  private async getLiveByShareToken(token: string): Promise<DbRider | null> {
+    if (isSupabaseServerConfigured()) {
+      const admin = createAdminSupabaseClient();
+      const supabase = admin ?? (await createServerSupabaseClient());
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('riders')
+          .select('*')
+          .eq('share_token', token)
+          .eq('share_enabled', true)
+          .maybeSingle();
+        if (!error && data && readShareLink(data)?.enabled) return data;
+
+        const { data: rows, error: scanError } = await supabase
+          .from('riders')
+          .select('*');
+        if (!scanError && rows) {
+          const found = rows.find((row) => {
+            const share = readShareLink(row);
+            return share?.token === token && share.enabled;
+          });
+          if (found) return found;
+        }
+      }
+    }
+    return memoryRiders.find((row) => {
+      const share = readShareLink(row);
+      return share?.token === token && share.enabled;
+    }) ?? null;
+  }
+
   public async save(rider: SaveRiderInput): Promise<DbRider> {
     const now = new Date().toISOString();
     const id = rider.id || crypto.randomUUID();
@@ -306,9 +417,7 @@ export class RiderRepository implements IRiderRepository {
     const existingShare = existing ? readShareLink(existing) : null;
     const previousMeta = asMetadataRecord(existing?.metadata);
     const incomingMeta = asMetadataRecord(rider.metadata ?? {}) ?? {};
-    const metadataBase: Json = previousMeta?.contraRider
-      ? { ...incomingMeta, contraRider: previousMeta.contraRider }
-      : (rider.metadata ?? {});
+    const metadataBase: Json = preserveServerMetadata(incomingMeta, previousMeta);
     const metadata = existingShare
       ? metadataWithShare(metadataBase, existingShare)
       : metadataBase;

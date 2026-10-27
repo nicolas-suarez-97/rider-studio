@@ -2,59 +2,23 @@
 
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { writeToClipboard } from '@/lib/share/copy-link';
 
 interface ShareLinkModalProps {
   url: string | null;
+  copied?: boolean;
   onClose: () => void;
   onNotify?: (message: string) => void;
 }
 
-function copyWithCommand(text: string) {
-  const field = document.createElement('textarea');
-  field.value = text;
-  field.setAttribute('readonly', '');
-  field.style.position = 'fixed';
-  field.style.top = '0';
-  field.style.left = '0';
-  field.style.opacity = '0';
-  document.body.appendChild(field);
-  field.focus();
-  field.select();
-  let copied = false;
-  try {
-    copied = document.execCommand('copy');
-  } catch {
-    copied = false;
-  }
-  field.remove();
-  return copied;
-}
-
-async function writeToClipboard(text: string) {
-  if (copyWithCommand(text)) return true;
-
-  try {
-    if (!navigator.clipboard?.writeText) return false;
-    await Promise.race([
-      navigator.clipboard.writeText(text),
-      new Promise((_, reject) => {
-        window.setTimeout(() => reject(new Error('clipboard-timeout')), 700);
-      }),
-    ]);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function ShareLinkModal({ url, onClose, onNotify }: ShareLinkModalProps) {
-  const [status, setStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+export function ShareLinkModal({ url, copied = false, onClose, onNotify }: ShareLinkModalProps) {
+  const [status, setStatus] = useState<'idle' | 'copied' | 'error'>(copied ? 'copied' : 'idle');
 
   const copyLink = async () => {
     if (!url) return;
-    const copied = await writeToClipboard(url);
-    setStatus(copied ? 'copied' : 'error');
-    onNotify?.(copied ? 'Enlace copiado' : 'No se pudo copiar el enlace');
+    const ok = await writeToClipboard(url);
+    setStatus(ok ? 'copied' : 'error');
+    onNotify?.(ok ? '¡Copiado!' : 'No se pudo copiar el enlace');
   };
 
   return (
@@ -78,7 +42,7 @@ export function ShareLinkModal({ url, onClose, onNotify }: ShareLinkModalProps) 
               <div>
                 <h3 className="font-extrabold text-base text-slate-900">Enlace de visualización</h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Quien lo abra puede ver el rider y consultar por chat. No puede editarlo.
+                  Quien lo abra ve la última versión publicada y puede confirmar pedidos. No puede editar el rider.
                 </p>
               </div>
               <button
@@ -116,7 +80,7 @@ export function ShareLinkModal({ url, onClose, onNotify }: ShareLinkModalProps) 
               </div>
             </div>
             {status === 'copied' && (
-              <p className="mt-3 text-xs font-semibold text-emerald-600">Enlace copiado</p>
+              <p className="mt-3 text-xs font-semibold text-emerald-600">¡Copiado!</p>
             )}
             {status === 'error' && (
               <p className="mt-3 text-xs font-semibold text-rose-600">No se pudo copiar el enlace</p>

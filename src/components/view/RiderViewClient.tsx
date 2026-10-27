@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Header } from '@/components/common/Header';
 import { Toast } from '@/components/common/Toast';
 import { Icon } from '@/components/common/Icon';
@@ -14,8 +14,12 @@ import { AgentRole } from '@/core/types/agent.types';
 import { ChatMessageItem } from '@/core/types/chat.types';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 import { SectionCommentItem } from '@/lib/share/comments';
+import { guestStorageKey } from '@/lib/share/confirm';
 import { countByType, filterSections } from '@/core/utils/type-view';
 import { useTypeView } from '@/hooks/useTypeView';
+import type { ContraLine, ContraResponse } from '@/core/types/contra-rider.types';
+import { GuestNameDialog } from '@/components/view/GuestNameDialog';
+import { ConfirmRequestsPanel } from '@/components/view/ConfirmRequestsPanel';
 
 type MobileTab = 'sections' | 'document' | 'assistant';
 
@@ -41,6 +45,21 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
   const [sectionComments, setSectionComments] = useState<SectionCommentItem[]>([]);
   const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
   const [commentAuthorName, setCommentAuthorName] = useState('');
+  const [enteredName, setEnteredName] = useState('');
+  const storedName = useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        return window.localStorage.getItem(guestStorageKey(shareToken))?.trim() || '';
+      } catch {
+        return '';
+      }
+    },
+    () => ''
+  );
+  const guestName = enteredName || storedName || null;
+  const [confirming, setConfirming] = useState(false);
+  const [confirmLines, setConfirmLines] = useState<ContraLine[]>([]);
 
   const typeViewCounts = countByType(rider.sections, rider.type);
   const visibleSections = filterSections(rider.sections, typeView, rider.type);
@@ -54,6 +73,51 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
     setReadSectionIds((current) => (
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     ));
+  };
+
+  const persistGuestName = (name: string) => {
+    try {
+      window.localStorage.setItem(guestStorageKey(shareToken), name);
+    } catch {
+      // si no hay localStorage, el nombre vive solo en esta visita
+    }
+    setEnteredName(name);
+    setCommentAuthorName(name);
+  };
+
+  const loadConfirmLines = async (name: string) => {
+    const response = await fetch(`/api/share/${shareToken}/confirm?guest=${encodeURIComponent(name)}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(typeof data.error === 'string' ? data.error : 'No se pudieron leer los pedidos');
+    }
+    if (Array.isArray(data.lines)) setConfirmLines(data.lines);
+  };
+
+  const enterAsGuest = (name: string) => {
+    persistGuestName(name);
+    void loadConfirmLines(name).catch(() => setConfirmLines([]));
+  };
+
+  const startConfirm = () => {
+    if (guestName) void loadConfirmLines(guestName).catch(() => setConfirmLines([]));
+    setConfirming(true);
+  };
+
+  const saveConfirm = async (lineId: string, response: Exclude<ContraResponse, ''>, text: string) => {
+    if (!guestName) throw new Error('Escribe tu nombre para entrar');
+    const result = await fetch(`/api/share/${shareToken}/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guestName, lineId, response, text }),
+    });
+    const data = await result.json().catch(() => ({}));
+    if (!result.ok) {
+      throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo guardar la respuesta');
+    }
+    if (Array.isArray(data.lines)) setConfirmLines(data.lines);
+    setToastMessage('Respuesta guardada');
+    window.setTimeout(() => setToastMessage(null), 2500);
   };
 
   useEffect(() => {
@@ -171,9 +235,24 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
         completedCount={readCount}
         totalCount={outlineSections.length}
         progressPercent={readPercent}
-        contraRiderHref={rider.id ? `/promotor/shows/${rider.id}/contra-rider` : undefined}
+        onStartConfirm={guestName ? startConfirm : undefined}
         documentTitle={rider.title}
       />
+
+      {guestName ? (
+        <div className="shrink-0 px-3 sm:px-6 py-2 bg-violet-50 border-b border-violet-100 flex items-center justify-between gap-3">
+          <p className="text-xs text-violet-900 font-medium min-w-0 truncate">
+            Hola, {guestName}. El rider está en solo lectura.
+          </p>
+          <button
+            type="button"
+            onClick={startConfirm}
+            className="shrink-0 bg-violet-600 hover:bg-violet-700 text-white h-8 px-3 rounded-full text-xs font-bold"
+          >
+            Empezar a confirmar
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex-1 flex overflow-hidden relative">
         <div className={`h-full ${mobileTab === 'sections' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:w-auto shrink-0`}>
@@ -215,7 +294,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
             sectionComments={sectionComments}
             openCommentSectionId={openCommentSectionId}
             onToggleSectionComments={toggleSectionComments}
-            commentAuthorName={commentAuthorName}
+            commentAuthorName={commentAuthorName || guestName || ''}
             onSubmitSectionComment={submitSectionComment}
           />
         </div>
@@ -234,6 +313,16 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
           />
         </div>
       </div>
+
+      {!guestName ? <GuestNameDialog onEnter={enterAsGuest} /> : null}
+      {guestName && confirming ? (
+        <ConfirmRequestsPanel
+          guestName={guestName}
+          lines={confirmLines}
+          onClose={() => setConfirming(false)}
+          onSave={saveConfirm}
+        />
+      ) : null}
 
       <nav
         aria-label="Navegación de la vista compartida"
