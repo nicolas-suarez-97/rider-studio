@@ -6,6 +6,7 @@ export interface SectionOutlinePrompt {
   kind: 'chat' | 'topic';
   label: string;
   prompt: string;
+  prefix?: string;
 }
 
 function typeLabel(riderType: RiderType) {
@@ -38,7 +39,8 @@ export function outlinePromptsForSection(
     id: field.key,
     kind: 'topic',
     label: topicLabel(field.prefix, field.label),
-    prompt: `Redacta e inserta en el documento el apartado «${field.label}» de la sección «${title}» para un rider ${kind}. Usa un estilo de rider profesional con viñetas y deja placeholders si falta un dato concreto.`,
+    prefix: field.prefix,
+    prompt: `Redacta e inserta en el documento el apartado «${field.label}» de la sección «${title}» para un rider ${kind}. Usa un estilo de rider profesional con viñetas y deja placeholders si falta un dato concreto. Conserva el resto de apartados ya redactados; no reinicies la sección ni pidas empezar de cero.`,
   }));
 
   if (!topics.length) {
