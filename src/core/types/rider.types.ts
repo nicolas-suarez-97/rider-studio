@@ -78,6 +78,12 @@ export interface RiderMediaItem {
   cover: boolean;
 }
 
+export interface AbsoluteExclusion {
+  id: string;
+  brand: string;
+  model?: string;
+}
+
 export interface SavedRiderSummary {
   id: string;
   title: string;

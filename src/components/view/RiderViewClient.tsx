@@ -280,6 +280,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
             riderType={rider.type}
             documentTheme={rider.documentTheme}
             version={rider.version}
+            absoluteExclusions={rider.absoluteExclusions}
             sections={visibleSections}
             channels={rider.channels}
             completedSectionIds={readSectionIds}
