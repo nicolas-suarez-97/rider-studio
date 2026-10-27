@@ -41,6 +41,7 @@ import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/ed
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 import { RIDER_DATA } from '@/core/constants/rider-templates';
 import { WORK_AREAS_SECTION_ID, workAreasDoc } from '@/core/constants/work-areas';
+import { canShowSaveSuccessToast, planLeavePersist } from '@/core/editor/persist-on-leave';
 import { isPersistedRiderId, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { deleteRiderImage, uploadRiderImage } from '@/lib/media/upload-client';
 import { appendUniqueBrandModel } from '@/lib/equipment/brand-model';
@@ -157,6 +158,8 @@ export function WorkspaceClient({
   const selectionRef = useRef({ sectionId: '', text: '' });
   const savedSnap = useRef<string | null>(null);
   const saveEpoch = useRef(0);
+  const savingRef = useRef(false);
+  const pendingFlushRef = useRef(false);
 
   // Chat & Sesión Asociada
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(initialSessionId);
@@ -376,6 +379,7 @@ export function WorkspaceClient({
     }
 
     setIsSaving(true);
+    savingRef.current = true;
     setDbSyncStatus('saving');
     try {
       const saved = await riderService.save(targetRider);
@@ -396,8 +400,9 @@ export function WorkspaceClient({
       riderRef.current = saved;
       setRider(saved);
       savedSnap.current = riderEditSnapshot(saved);
+      pendingFlushRef.current = false;
       setDbSyncStatus('saved');
-      if (!options?.silent) {
+      if (!options?.silent && canShowSaveSuccessToast(true)) {
         showToast('✅ Rider sincronizado y guardado en Supabase');
       }
 
@@ -417,6 +422,7 @@ export function WorkspaceClient({
       setDbSyncStatus('error');
       showToast('⚠️ Error al guardar el rider');
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   };
@@ -425,16 +431,52 @@ export function WorkspaceClient({
     const snap = riderEditSnapshot(rider);
     if (savedSnap.current === null) {
       savedSnap.current = snap;
+      pendingFlushRef.current = false;
       return;
     }
-    if (snap === savedSnap.current) return;
+    if (snap === savedSnap.current) {
+      pendingFlushRef.current = false;
+      return;
+    }
+    pendingFlushRef.current = true;
     saveEpoch.current += 1;
     const epoch = saveEpoch.current;
     const timer = window.setTimeout(() => {
+      pendingFlushRef.current = false;
       void handleSaveRider(undefined, { silent: true, epoch });
     }, 800);
     return () => window.clearTimeout(timer);
   }, [rider]);
+
+  useEffect(() => {
+    const persistOnLeave = () => {
+      const current = riderRef.current;
+      const dirty = savedSnap.current !== null && riderEditSnapshot(current) !== savedSnap.current;
+      const body = JSON.stringify(current.toDatabasePayload());
+      const plan = planLeavePersist(
+        { dirty, saving: savingRef.current, pendingFlush: pendingFlushRef.current },
+        body,
+      );
+      if (plan.action !== 'keepalive') return plan;
+      void fetch('/api/riders', plan.init);
+      return plan;
+    };
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      const plan = persistOnLeave();
+      if (plan.action === 'block') {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+
+    window.addEventListener('pagehide', persistOnLeave);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('pagehide', persistOnLeave);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+    };
+  }, []);
 
   const riderWithId = async (): Promise<Rider | null> => {
     const current = riderRef.current;
