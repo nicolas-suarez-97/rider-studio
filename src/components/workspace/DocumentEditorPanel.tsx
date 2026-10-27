@@ -8,6 +8,7 @@ import { EditorBridge, RiderDocumentSurface } from './editor/RiderDocumentSurfac
 import type { SectionDocumentPatch } from '@/core/editor/content-doc';
 import type { AbsoluteExclusion, RiderType, RiderDocumentTheme } from '@/core/types/rider.types';
 import { AbsoluteExclusionsPanel } from '@/components/rider/AbsoluteExclusionsPanel';
+import type { TypeView, TypeViewCounts } from '@/core/constants/rider-type-tokens';
 
 interface DocumentEditorPanelProps {
   riderTitle: string;
@@ -66,6 +67,9 @@ interface DocumentEditorPanelProps {
   onAddAbsoluteExclusion?: (brand: string, model?: string) => void;
   onRemoveAbsoluteExclusion?: (id: string) => void;
   pageAlign?: 'center' | 'end';
+  typeView?: TypeView;
+  typeViewCounts?: TypeViewCounts;
+  onSelectTypeView?: (value: TypeView) => void;
 }
 
 export function DocumentEditorPanel({
@@ -95,6 +99,9 @@ export function DocumentEditorPanel({
   onAddAbsoluteExclusion,
   onRemoveAbsoluteExclusion,
   pageAlign = 'center',
+  typeView,
+  typeViewCounts,
+  onSelectTypeView,
 }: DocumentEditorPanelProps) {
   return (
     <main className="flex-1 h-full min-h-0 min-w-0 overflow-hidden flex flex-col">
@@ -129,6 +136,9 @@ export function DocumentEditorPanel({
         onOpenImportModal={onOpenImportModal}
         absoluteExclusions={absoluteExclusions}
         pageAlign={pageAlign}
+        typeView={typeView}
+        typeViewCounts={typeViewCounts}
+        onSelectTypeView={onSelectTypeView}
       />
     </main>
   );

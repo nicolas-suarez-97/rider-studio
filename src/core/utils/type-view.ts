@@ -59,6 +59,20 @@ export function filterSections(
   ));
 }
 
+export function mergeVisibleReorder(
+  all: SectionItem[],
+  visibleOrdered: SectionItem[],
+): SectionItem[] {
+  const order = new Map(visibleOrdered.map((section, index) => [section.id, index]));
+  if (order.size === 0) return all;
+  const queue = all
+    .filter((section) => order.has(section.id))
+    .sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
+  return all.map((section) => (
+    order.has(section.id) ? queue.shift() || section : section
+  ));
+}
+
 export function countByContraLines(lines: Array<Pick<ContraLine, 'module' | 'response'>>): TypeViewCounts {
   const result = emptyTypeViewCounts();
   for (const line of lines) {

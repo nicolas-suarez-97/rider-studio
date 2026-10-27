@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
@@ -53,6 +53,7 @@ interface EditorToolbarProps {
   onOpenLinkDialog?: () => void;
   onFind: (query: string, direction?: 'first' | 'next' | 'prev') => { current: number; total: number };
   onInsertImages: (files: File[]) => void;
+  leading?: ReactNode;
 }
 
 export function EditorToolbar({
@@ -64,6 +65,7 @@ export function EditorToolbar({
   onOpenLinkDialog,
   onFind,
   onInsertImages,
+  leading,
 }: EditorToolbarProps) {
   const findRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -149,6 +151,12 @@ export function EditorToolbar({
 
   return (
     <div className="docs-toolbar-scroll sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1 overflow-x-auto">
+      {leading ? (
+        <>
+          {leading}
+          <ToolbarDivider />
+        </>
+      ) : null}
       <ThemeDropdown theme={theme} onThemeChange={onThemeChange} />
 
       <ToolbarButton label="Deshacer" disabled={!editor} onClick={() => run((current) => current.chain().focus().undo().run())}>

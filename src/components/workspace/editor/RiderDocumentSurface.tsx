@@ -71,6 +71,8 @@ import {
 import { overlayProposedOnSections } from '@/core/editor/proposed-confirmed';
 import { AbsoluteExclusion, SectionItem, RiderType } from '@/core/types/rider.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
+import { EditorTypeViewMenu } from '@/components/workspace/editor/EditorTypeViewMenu';
+import { emptyTypeViewCounts, type TypeView, type TypeViewCounts } from '@/core/constants/rider-type-tokens';
 
 export interface EditorBridge {
   apply: (suggestion: DocumentSuggestion) => ApplySuggestionResult;
@@ -234,6 +236,9 @@ interface RiderDocumentSurfaceProps {
   absoluteExclusions?: AbsoluteExclusion[];
   /** En el workspace con chat a la derecha, pega la hoja al asistente (sin columna muerta). */
   pageAlign?: 'center' | 'end';
+  typeView?: TypeView;
+  typeViewCounts?: TypeViewCounts;
+  onSelectTypeView?: (value: TypeView) => void;
 }
 
 export function RiderDocumentSurface({
@@ -260,6 +265,9 @@ export function RiderDocumentSurface({
   onOpenImportModal,
   absoluteExclusions = [],
   pageAlign = 'center',
+  typeView,
+  typeViewCounts,
+  onSelectTypeView,
 }: RiderDocumentSurfaceProps) {
   const theme = documentTheme || defaultDocumentTheme();
   const coverArtist = useMemo(() => {
@@ -930,6 +938,13 @@ export function RiderDocumentSurface({
           onOpenLinkDialog={openLinkDialog}
           onFind={findInDocument}
           onInsertImages={insertImages}
+          leading={onSelectTypeView && typeView ? (
+            <EditorTypeViewMenu
+              value={typeView}
+              counts={typeViewCounts || emptyTypeViewCounts()}
+              onChange={onSelectTypeView}
+            />
+          ) : null}
         />
       )}
       <div
