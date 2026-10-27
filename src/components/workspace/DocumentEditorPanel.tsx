@@ -9,6 +9,7 @@ import type { SectionDocumentPatch } from '@/core/editor/content-doc';
 import type { AbsoluteExclusion, RiderType, RiderDocumentTheme } from '@/core/types/rider.types';
 import { AbsoluteExclusionsPanel } from '@/components/rider/AbsoluteExclusionsPanel';
 import type { TypeView, TypeViewCounts } from '@/core/constants/rider-type-tokens';
+import type { TransportContraState } from '@/lib/promotor/transport-contra';
 
 interface DocumentEditorPanelProps {
   riderTitle: string;
@@ -70,6 +71,8 @@ interface DocumentEditorPanelProps {
   typeView?: TypeView;
   typeViewCounts?: TypeViewCounts;
   onSelectTypeView?: (value: TypeView) => void;
+  transportReviews?: Record<string, TransportContraState>;
+  onTmDecision?: (cardId: string, decision: 'aprobada' | 'rechazada' | 'requiere_ajustes' | 'reabrir') => void;
 }
 
 export function DocumentEditorPanel({
@@ -102,6 +105,8 @@ export function DocumentEditorPanel({
   typeView,
   typeViewCounts,
   onSelectTypeView,
+  transportReviews,
+  onTmDecision,
 }: DocumentEditorPanelProps) {
   return (
     <main className="flex-1 h-full min-h-0 min-w-0 overflow-hidden flex flex-col">
@@ -139,6 +144,8 @@ export function DocumentEditorPanel({
         typeView={typeView}
         typeViewCounts={typeViewCounts}
         onSelectTypeView={onSelectTypeView}
+        transportReviews={transportReviews}
+        onTmDecision={onTmDecision}
       />
     </main>
   );

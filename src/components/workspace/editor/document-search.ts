@@ -11,6 +11,7 @@ import {
   type InputListRow,
 } from '@/core/constants/input-list';
 import { formatWorkAreasPlainText, normalizeWorkAreas } from '@/core/constants/work-areas';
+import { formatTransportFleetPlain, normalizeTransportCards } from '@/core/constants/transporte-terrestre';
 
 export type SearchDirection = 'first' | 'next' | 'prev';
 
@@ -67,6 +68,14 @@ export function findAllDocumentMatches(doc: PMNode, query: string): SearchMatch[
         ? (node.attrs.columns as InputListColumn[])
         : DEFAULT_INPUT_LIST_COLUMNS;
       if (haystack(formatInputListPlainText(rows, columns)).includes(needle)) {
+        matches.push({ from: pos, to: pos + node.nodeSize, atom: true });
+      }
+      return false;
+    }
+
+    if (node.type.name === 'transportFleet') {
+      const text = formatTransportFleetPlain(normalizeTransportCards(node.attrs.cards));
+      if (haystack(text).includes(needle)) {
         matches.push({ from: pos, to: pos + node.nodeSize, atom: true });
       }
       return false;

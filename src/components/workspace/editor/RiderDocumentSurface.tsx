@@ -21,8 +21,12 @@ import { SectionChips } from '@/components/workspace/editor/section-chips';
 import { SectionNegotiability } from '@/components/workspace/editor/section-negotiability';
 import { InputList } from '@/components/workspace/editor/input-list-node';
 import { WorkAreas } from '@/components/workspace/editor/work-areas-node';
+import { TransportFleet } from '@/components/workspace/editor/transport-fleet-node';
+import { TransportReviewsContext } from '@/components/workspace/editor/transport-reviews-context';
 import { cloneInputListRows } from '@/core/constants/input-list';
 import { isWorkAreasTitle, workAreasNode } from '@/core/constants/work-areas';
+import { TRANSPORT_SECTION_ID } from '@/core/constants/transporte-terrestre';
+import type { TransportContraState } from '@/lib/promotor/transport-contra';
 import { TextAlignExtension, FontSizeExtension, TextColorExtension, HighlightMark } from '@/components/workspace/editor/editor-formatting';
 import {
   Columns,
@@ -239,6 +243,8 @@ interface RiderDocumentSurfaceProps {
   typeView?: TypeView;
   typeViewCounts?: TypeViewCounts;
   onSelectTypeView?: (value: TypeView) => void;
+  transportReviews?: Record<string, TransportContraState>;
+  onTmDecision?: (cardId: string, decision: 'aprobada' | 'rechazada' | 'requiere_ajustes' | 'reabrir') => void;
 }
 
 export function RiderDocumentSurface({
@@ -268,6 +274,8 @@ export function RiderDocumentSurface({
   typeView,
   typeViewCounts,
   onSelectTypeView,
+  transportReviews,
+  onTmDecision,
 }: RiderDocumentSurfaceProps) {
   const theme = documentTheme || defaultDocumentTheme();
   const coverArtist = useMemo(() => {
@@ -279,6 +287,10 @@ export function RiderDocumentSurface({
     return '';
   }, [sections]);
   const footerLabel = [artistName.trim() || coverArtist, version.trim()].filter(Boolean).join(' · ');
+  const transportReviewsValue = useMemo(
+    () => ({ reviews: transportReviews || {}, onTmDecision }),
+    [transportReviews, onTmDecision],
+  );
   const sectionIds = useMemo(() => sections.map((section) => section.id).join('|'), [sections]);
   const activeProposed = useMemo(
     () => suggestions.filter((item) => item.source !== 'gap' && item.status === 'applied'),
@@ -505,6 +517,7 @@ export function RiderDocumentSurface({
       }),
       InputList,
       WorkAreas,
+      TransportFleet,
       RiderCover,
       Requirement,
       Notice,
@@ -626,7 +639,9 @@ export function RiderDocumentSurface({
     storage.riderType = riderType;
     storage.uploadImage = onUploadDocumentImage || null;
     storage.absoluteExclusions = absoluteExclusions;
-  }, [editor, artistName, riderTitle, version, riderType, onUploadDocumentImage, absoluteExclusions]);
+    storage.transportReviews = transportReviews || {};
+    storage.onTmDecision = onTmDecision;
+  }, [editor, artistName, riderTitle, version, riderType, onUploadDocumentImage, absoluteExclusions, transportReviews, onTmDecision]);
 
   const insertImages = useCallback((files: File[]) => {
     if (!editor || readOnly || files.length === 0) return;
@@ -744,12 +759,18 @@ export function RiderDocumentSurface({
 
     const isInputList = trimmed.toLowerCase().includes('input list');
     const isWorkAreas = suggestedId === 'tech-areas-trabajo' || isWorkAreasTitle(trimmed);
+    const isTransport = suggestedId === TRANSPORT_SECTION_ID
+      || /transporte terrestre|hosp-transporte/.test(trimmed.toLowerCase());
     let hasExistingInputList = false;
     let hasExistingWorkAreas = false;
-    editor.state.doc.descendants((node) => {
-      if (node.type.name === 'inputList') hasExistingInputList = true;
-      if (node.type.name === 'workAreas') hasExistingWorkAreas = true;
-    });
+    let hasExistingTransport = false;
+    if (isInputList || isWorkAreas || isTransport) {
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'inputList') hasExistingInputList = true;
+        if (node.type.name === 'workAreas') hasExistingWorkAreas = true;
+        if (node.type.name === 'transportFleet') hasExistingTransport = true;
+      });
+    }
 
     const nodes: any[] = [
       {
@@ -766,6 +787,11 @@ export function RiderDocumentSurface({
       });
     } else if (isWorkAreas && !hasExistingWorkAreas) {
       nodes.push(workAreasNode());
+    } else if (isTransport && !hasExistingTransport) {
+      nodes.push({
+        type: 'transportFleet',
+        attrs: { cards: [] },
+      });
     } else {
       nodes.push({
         type: 'paragraph',
@@ -913,6 +939,36 @@ export function RiderDocumentSurface({
         .docs-input-list-node.docs-search-hit .docs-input-list-card { box-shadow: 0 0 0 2px #fbbf24; }
         .docs-input-list.docs-search-hit.is-current .docs-input-list-card,
         .docs-input-list-node.docs-search-hit.is-current .docs-input-list-card { box-shadow: 0 0 0 2px #d97706; }
+        .docs-transport-fleet-node, .docs-transport-fleet { margin: 0.4em 0 0.9em; }
+        .docs-tt-card { border: 1px solid #dadce0; border-radius: 10px; overflow: hidden; background: #fff; font-family: Arial, Helvetica, sans-serif; }
+        .docs-tt-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 10px; background: #f8f9fa; border-bottom: 1px solid #dadce0; }
+        .docs-tt-title { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #334155; }
+        .docs-tt-count { font-size: 9px; font-weight: 800; color: #6d28d9; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 999px; padding: 1px 7px; }
+        .docs-tt-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .docs-tt-add { height: 22px; padding: 0 8px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; font-size: 10px; font-weight: 700; color: #334155; cursor: pointer; }
+        .docs-tt-empty { padding: 16px 12px; color: #94a3b8; font-size: 12px; }
+        .docs-tt-list { display: flex; flex-direction: column; gap: 10px; padding: 10px; }
+        .docs-tt-ficha { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; background: #fff; }
+        .docs-tt-ficha-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 11px; }
+        .docs-tt-ficha-head span { margin-left: auto; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #047857; background: #ecfdf5; border-radius: 999px; padding: 2px 7px; }
+        .docs-tt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+        .docs-tt-grid label, .docs-tt-notes { display: flex; flex-direction: column; gap: 4px; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #94a3b8; }
+        .docs-tt-field { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 600; color: #1e293b; background: #f8fafc; }
+        .docs-tt-routes { margin-top: 10px; border: 0; display: flex; flex-direction: column; gap: 4px; }
+        .docs-tt-routes legend { font-size: 9px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #94a3b8; }
+        .docs-tt-routes label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #334155; text-transform: none; letter-spacing: 0; }
+        .docs-tt-hint { margin: 6px 0 0; font-size: 11px; color: #64748b; }
+        .docs-tt-notes { margin-top: 8px; }
+        .docs-tt-review { margin-top: 10px; padding: 8px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 12px; }
+        .docs-tt-review-kicker { font-size: 9px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #6d28d9; }
+        .docs-tt-warn { color: #be123c; font-weight: 700; }
+        .docs-tt-photos { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+        .docs-tt-photos img { width: 72px; height: 54px; object-fit: cover; border-radius: 6px; }
+        .docs-tt-history { margin: 6px 0 0; padding-left: 16px; color: #64748b; font-size: 11px; }
+        .docs-tt-tm { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .docs-tt-tm button { height: 24px; padding: 0 8px; border-radius: 8px; border: 1px solid #ddd6fe; background: #fff; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .docs-tt-tm button:disabled { opacity: 0.45; cursor: not-allowed; }
+        .docs-transport-fleet.is-selected .docs-tt-card { outline: 2px solid #7c3aed; outline-offset: 3px; }
         .docs-toolbar-scroll { scrollbar-width: none; }
         .docs-toolbar-scroll::-webkit-scrollbar { display: none; }
         .ProseMirror-widget:has(.docs-section-chips) { display: block; width: 100%; }
@@ -998,7 +1054,9 @@ export function RiderDocumentSurface({
               </div>
             ))}
             {editor ? (
-              <EditorContent editor={editor} className="relative z-10" />
+              <TransportReviewsContext.Provider value={transportReviewsValue}>
+                <EditorContent editor={editor} className="relative z-10" />
+              </TransportReviewsContext.Provider>
             ) : (
               <div className="relative z-10 px-24 py-24 text-slate-400">Cargando documento…</div>
             )}

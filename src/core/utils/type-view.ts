@@ -5,6 +5,7 @@ import {
   type TypeView,
   type TypeViewCounts,
 } from '@/core/constants/rider-type-tokens';
+import { collectTransportCardsFromSection } from '@/core/constants/transporte-terrestre';
 import { RiderContentNode, RiderType, SectionItem } from '@/core/types/rider.types';
 import type { ContraLine } from '@/core/types/contra-rider.types';
 
@@ -15,6 +16,8 @@ function countRequirementNodes(node: RiderContentNode | undefined): number {
 }
 
 export function countRequestsInSection(section: SectionItem): number {
+  const transportCards = collectTransportCardsFromSection(section).length;
+  if (transportCards > 0) return transportCards;
   const fromDoc = (section.contentDoc?.content || []).reduce(
     (sum, node) => sum + countRequirementNodes(node),
     0,

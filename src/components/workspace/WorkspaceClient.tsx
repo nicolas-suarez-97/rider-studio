@@ -7,6 +7,9 @@ import { Toast } from '@/components/common/Toast';
 import { Icon } from '@/components/common/Icon';
 import { SectionsNavPanel } from '@/components/workspace/SectionsNavPanel';
 import { DocumentEditorPanel } from '@/components/workspace/DocumentEditorPanel';
+import { indexTransportAnswersByCardId } from '@/core/constants/transporte-terrestre';
+import { transportStateFromAnswer, readStoredContra } from '@/lib/promotor/contra-rider';
+import type { TransportContraState } from '@/lib/promotor/transport-contra';
 import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { MasterExportModal } from '@/components/modals/MasterExportModal';
 import { StagePlotModal } from '@/components/modals/StagePlotModal';
@@ -109,6 +112,7 @@ export function WorkspaceClient({
   const [isChatExpanded, setIsChatExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [dbSyncStatus, setDbSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [transportReviews, setTransportReviews] = useState<Record<string, TransportContraState>>({});
 
   // Estado de vista activa en dispositivos móviles (< 1280px)
   const [mobileTab, setMobileTab] = useState<MobileTab>('document');
@@ -128,6 +132,48 @@ export function WorkspaceClient({
       savedSnap.current = null;
     }
   }, [initialRiderData, initialSessionId, initialMessages, initialType]);
+
+  const loadTransportReviews = useCallback(async (riderId: string) => {
+    if (!isPersistedRiderId(riderId)) return;
+    const response = await fetch(`/api/riders?id=${encodeURIComponent(riderId)}`);
+    const data = await response.json().catch(() => ({}));
+    const stored = readStoredContra(data.rider?.metadata);
+    const byCard = indexTransportAnswersByCardId(stored.answers);
+    const next: Record<string, TransportContraState> = {};
+    for (const [cardId, answer] of Object.entries(byCard)) {
+      next[cardId] = transportStateFromAnswer(answer);
+    }
+    setTransportReviews(next);
+  }, []);
+
+  useEffect(() => {
+    const riderId = rider.id || '';
+    if (isPersistedRiderId(riderId)) {
+      void loadTransportReviews(riderId);
+    }
+  }, [rider.id, loadTransportReviews]);
+
+  const handleTmDecision = useCallback(async (
+    cardId: string,
+    decision: 'aprobada' | 'rechazada' | 'requiere_ajustes' | 'reabrir',
+  ) => {
+    const riderId = riderRef.current.id || '';
+    if (!isPersistedRiderId(riderId)) {
+      setToastMessage('Guarda el rider para registrar la decisión del TM.');
+      return;
+    }
+    const response = await fetch(`/api/riders/${riderId}/transport-review`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cardId, decision }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setToastMessage(typeof data.error === 'string' ? data.error : 'No se pudo registrar la decisión');
+      return;
+    }
+    await loadTransportReviews(riderId);
+  }, [loadTransportReviews]);
 
   // Modales
   const [showExportModal, setShowExportModal] = useState(false);
@@ -1505,6 +1551,8 @@ export function WorkspaceClient({
             onAddMedia={handleAddMedia}
             onRemoveMedia={handleRemoveMedia}
             onMakeCover={handleMakeCover}
+            transportReviews={transportReviews}
+            onTmDecision={handleTmDecision}
             mediaBusy={isSaving}
             sectionComments={sectionComments}
             openCommentSectionId={openCommentSectionId}

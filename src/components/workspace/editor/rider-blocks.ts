@@ -12,6 +12,7 @@ import {
   TiersBlock,
 } from '@/components/workspace/editor/RiderBlockViews';
 import { emptyContact, normalizePeople, type ContactPerson, type NoticeTone } from '@/components/workspace/editor/rider-block-model';
+import type { TransportContraState } from '@/lib/promotor/transport-contra';
 
 export type { ContactPerson, NoticeTone };
 
@@ -22,6 +23,8 @@ export type RiderDocumentMeta = {
   riderType: RiderType;
   uploadImage: ((file: File) => Promise<string | null | undefined>) | null;
   absoluteExclusions: AbsoluteExclusion[];
+  transportReviews?: Record<string, TransportContraState>;
+  onTmDecision?: (cardId: string, decision: 'aprobada' | 'rechazada' | 'requiere_ajustes' | 'reabrir') => void;
 };
 
 declare module '@tiptap/core' {
@@ -84,6 +87,8 @@ export const RiderDocumentMetaExtension = Extension.create({
       riderType: 'tecnico' as RiderType,
       uploadImage: null,
       absoluteExclusions: [],
+      transportReviews: {},
+      onTmDecision: undefined,
     };
   },
 });

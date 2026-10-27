@@ -199,6 +199,17 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     },
   },
   {
+    id: 'transport-fleet',
+    title: 'Fichas de transporte',
+    description: 'Vehículos y runner por Party, con conductor',
+    icon: 'truck',
+    group: 'Rider',
+    keywords: ['transporte', 'van', 'suv', 'runner', 'vehiculo', 'transfers'],
+    run: (editor, range) => {
+      deleteThen(editor, range).insertTransportFleet().run();
+    },
+  },
+  {
     id: 'bullet-list',
     title: 'Lista con viñetas',
     description: 'Crea una lista simple',

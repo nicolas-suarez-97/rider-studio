@@ -15,7 +15,7 @@ function isRangeEmpty(doc: PmNode, from: number, to: number) {
   let empty = true;
   doc.nodesBetween(from, Math.max(from, to), (node) => {
     if (!empty) return false;
-    if (node.type.name === 'image' || node.type.name === 'inputList' || node.type.name === 'workAreas' || node.type.name === 'table') {
+    if (node.type.name === 'image' || node.type.name === 'inputList' || node.type.name === 'workAreas' || node.type.name === 'transportFleet' || node.type.name === 'table') {
       empty = false;
       return false;
     }

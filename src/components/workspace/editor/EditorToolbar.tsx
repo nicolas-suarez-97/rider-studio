@@ -19,6 +19,7 @@ const RIDER_INSERTS: Array<{ id: string; label: string; icon: string }> = [
   { id: 'columns', label: 'Columnas', icon: 'columns' },
   { id: 'input-list', label: 'Input List', icon: 'list' },
   { id: 'work-areas', label: 'Áreas de trabajo', icon: 'door' },
+  { id: 'transport-fleet', label: 'Transporte', icon: 'truck' },
 ];
 
 function insertRiderBlock(editor: Editor, id: string) {
@@ -34,6 +35,7 @@ function insertRiderBlock(editor: Editor, id: string) {
   else if (id === 'columns') chain.insertColumns().run();
   else if (id === 'input-list') chain.insertInputList(cloneInputListRows()).run();
   else if (id === 'work-areas') chain.insertWorkAreas().run();
+  else if (id === 'transport-fleet') chain.insertTransportFleet().run();
 }
 
 const ALIGN_OPTIONS: Array<{ id: string; label: string; icon: string }> = [

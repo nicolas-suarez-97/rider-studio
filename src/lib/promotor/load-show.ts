@@ -5,6 +5,7 @@ import {
   answersFromLines,
   applyAnswerExceptions,
   buildContraLines,
+  mergeTransportAnswers,
   readContraReview,
   readStoredContra,
   sanitizeAnswers,
@@ -80,10 +81,16 @@ export async function persistContraRider(
   const rider = Rider.fromDatabase(row);
   const previous = readStoredContra(row.metadata);
   const allowedIds = new Set(buildContraLines(rider, {}).map((line) => line.id));
-  const answers = applyAnswerExceptions(
-    sanitizeAnswers(answersInput, allowedIds),
+  const sanitized = sanitizeAnswers(answersInput, allowedIds);
+  const withExceptions = applyAnswerExceptions(
+    sanitized,
     previous.answers,
-    Object.fromEntries(buildContraLines(rider, {}).map((line) => [line.id, line.negotiability]))
+    Object.fromEntries(buildContraLines(rider, {}).map((line) => [line.id, line.negotiability || 'sin_definir']))
+  );
+  const answers = mergeTransportAnswers(
+    withExceptions,
+    previous.answers,
+    intent === 'send',
   );
   const lines = buildContraLines(rider, answers);
 

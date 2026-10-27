@@ -476,28 +476,25 @@ export const SECTION_FIELD_CONFIGS: Record<string, SectionConfig> = {
     ]
   },
   'hosp-transporte': {
-    sectionTitleHint: 'Transporte Local & Logística de Carga',
+    sectionTitleHint: 'Transporte terrestre',
     fields: [
       {
-        key: 'vehiculos',
-        label: 'Flota Vehicular para Personas',
-        placeholder: 'ej. 2 Camionetas ejecutivas tipo Van (Mercedes Sprinter) con A/C y vidrios polarizados',
-        prefix: 'Flota vehicular',
-        chips: ['2x Camionetas Vans ejecutivas (Mercedes Sprinter)', '1x SUV ejecutiva blindada para artista']
+        key: 'fichas',
+        label: 'Fichas de vehículo por Party',
+        placeholder: 'Añade fichas por categoría. Sin marcas ni cantidades prellenadas.',
+        prefix: 'Fichas de vehículo',
       },
       {
-        key: 'carga',
-        label: 'Vehículo de Carga de Equipajes',
-        placeholder: 'ej. 1 Camioneta cerrada o van con espacio amplio para instrumentos personales y maletas',
-        prefix: 'Camioneta de carga auxiliar',
-        chips: ['Van de carga cerrada para equipajes/instrumentos', 'Capacidad para 20 maletas grandes']
+        key: 'modalidad',
+        label: 'Modalidad de servicio',
+        placeholder: 'Por trayectos · 12 horas · disponibilidad completa a solicitud',
+        prefix: 'Modalidad',
       },
       {
-        key: 'itinerario',
-        label: 'Itinerario de Rutas & Disponibilidad',
-        placeholder: 'ej. Choferes profesionales a disposición: Aeropuerto ↔ Hotel ↔ Recinto ↔ Aeropuerto',
-        prefix: 'Itinerario completo',
-        chips: ['Disponibilidad exclusiva 24/7 con chofer bilingüe', 'Aeropuerto ↔ Hotel ↔ Recinto ↔ Aeropuerto']
+        key: 'rutas',
+        label: 'Rutas y trayectos',
+        placeholder: 'Selección múltiple; horarios y ubicaciones pueden quedar por confirmar',
+        prefix: 'Rutas',
       }
     ]
   },

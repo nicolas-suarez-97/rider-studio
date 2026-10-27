@@ -1,5 +1,12 @@
 import { RiderType } from './rider.types';
 import type { ExceptionDecision, Negotiability, RequirementNegotiability } from './negociabilidad.types';
+import type {
+  TransportContraOffer,
+  TransportHistoryEntry,
+  TransportProposalStatus,
+  TransportTmDecision,
+  TransportVehicleCard,
+} from '@/core/constants/transporte-terrestre';
 
 export type ContraResponse = '' | 'cubro' | 'alternativa' | 'no_puedo' | 'pregunta';
 
@@ -23,6 +30,10 @@ export interface ContraAnswer {
   reopenAuthor?: string;
   reopenedAt?: string;
   previousDecision?: SharePreviousDecision;
+  transportOffer?: TransportContraOffer;
+  transportStatus?: TransportProposalStatus;
+  tmDecision?: TransportTmDecision | null;
+  transportHistory?: TransportHistoryEntry[];
 }
 
 export interface ContraLine extends ContraAnswer {
@@ -32,9 +43,11 @@ export interface ContraLine extends ContraAnswer {
   sectionId: string;
   sectionTitle: string;
   pedido: string;
-  negotiability: Negotiability;
-  negotiabilityNote: string;
-  requirements: RequirementNegotiability[];
+  kind?: 'section' | 'transport_card';
+  card?: TransportVehicleCard;
+  negotiability?: Negotiability;
+  negotiabilityNote?: string;
+  requirements?: RequirementNegotiability[];
 }
 
 export type FindingVerdict = 'cumple' | 'parcial' | 'no_aparece' | 'contradice';

@@ -22,6 +22,7 @@ import {
   WORK_AREAS_SECTION_ID,
   workAreasDoc,
 } from '../constants/work-areas';
+import { transportFleetDoc } from '../constants/transporte-terrestre';
 import { isDocumentIntro, isDocumentCover, DOCUMENT_COVER_ID, buildCoverContentDoc } from '../editor/content-doc';
 import { RIDER_DATA } from '../constants/rider-templates';
 import { migratePaConsolasHierarchy } from '../constants/section-hierarchy';
@@ -658,7 +659,9 @@ export class Rider {
           ? inputListDoc()
           : section.id === WORK_AREAS_SECTION_ID
             ? workAreasDoc()
-            : undefined,
+            : section.id === 'hosp-transporte'
+              ? transportFleetDoc()
+              : undefined,
         pageBreakBefore: index > 0,
         type: this.type,
       }));

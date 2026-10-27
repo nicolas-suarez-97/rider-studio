@@ -1,4 +1,11 @@
 import { RIDER_DATA } from '@/core/constants/rider-templates';
+import {
+  TRANSPORT_SECTION_ID,
+  collectTransportCardsFromSection,
+  formatTransportCardPlain,
+  normalizeTransportOffer,
+  transportLineId,
+} from '@/core/constants/transporte-terrestre';
 import { Rider } from '@/core/models/Rider';
 import {
   ContraAnswer,
@@ -20,6 +27,12 @@ import {
   mergeContraAnswer,
   readExceptionDecision,
 } from '@/core/negociabilidad/negociabilidad';
+import {
+  afterPromotorChange,
+  emptyTransportContraState,
+  transportSendBlockReason,
+  type TransportContraState,
+} from '@/lib/promotor/transport-contra';
 
 const MODULE_LABEL: Record<RiderType, string> = {
   tecnico: 'Técnico',
@@ -90,12 +103,7 @@ export function readStoredContra(metadata: Json | null | undefined): ContraRider
     for (const [id, value] of Object.entries(rawAnswers)) {
       const answer = asRecord(value);
       if (!answer) continue;
-      answers[id] = {
-        response: readResponse(answer.response),
-        offer: typeof answer.offer === 'string' ? answer.offer : '',
-        note: typeof answer.note === 'string' ? answer.note : '',
-        exceptionDecision: readExceptionDecision(answer.exceptionDecision),
-      };
+      answers[id] = readContraAnswer(answer);
     }
   }
 
@@ -108,6 +116,49 @@ export function readStoredContra(metadata: Json | null | undefined): ContraRider
     submittedFile: readContraFile(raw.submittedFile),
     review: readContraReview(raw.review),
     reviewSessionId: typeof raw.reviewSessionId === 'string' ? raw.reviewSessionId : null,
+  };
+}
+
+function readContraAnswer(answer: Record<string, unknown>): ContraAnswer {
+  const offer = normalizeTransportOffer(answer.transportOffer);
+  const history = Array.isArray(answer.transportHistory)
+    ? answer.transportHistory.flatMap((item) => {
+      if (!item || typeof item !== 'object') return [];
+      const row = item as Record<string, unknown>;
+      if (typeof row.at !== 'string' || typeof row.action !== 'string') return [];
+      return [{ at: row.at, action: row.action, note: typeof row.note === 'string' ? row.note : undefined }];
+    }).slice(-20)
+    : [];
+  return {
+    response: readResponse(answer.response),
+    offer: typeof answer.offer === 'string' ? answer.offer : '',
+    note: typeof answer.note === 'string' ? answer.note : '',
+    exceptionDecision: readExceptionDecision(answer.exceptionDecision),
+    artistResponse: typeof answer.artistResponse === 'string' ? answer.artistResponse : undefined,
+    acceptedAlternative: typeof answer.acceptedAlternative === 'boolean' ? answer.acceptedAlternative : undefined,
+    reopened: answer.reopened === true ? true : undefined,
+    reopenReason: typeof answer.reopenReason === 'string' ? answer.reopenReason : undefined,
+    reopenAuthor: typeof answer.reopenAuthor === 'string' ? answer.reopenAuthor : undefined,
+    reopenedAt: typeof answer.reopenedAt === 'string' ? answer.reopenedAt : undefined,
+    previousDecision: answer.previousDecision && typeof answer.previousDecision === 'object'
+      ? answer.previousDecision as ContraAnswer['previousDecision']
+      : undefined,
+    transportOffer: offer,
+    transportStatus: typeof answer.transportStatus === 'string' ? answer.transportStatus as ContraAnswer['transportStatus'] : undefined,
+    tmDecision: answer.tmDecision === 'aprobada' || answer.tmDecision === 'rechazada' || answer.tmDecision === 'requiere_ajustes'
+      ? answer.tmDecision
+      : null,
+    transportHistory: history,
+  };
+}
+
+export function transportStateFromAnswer(answer: ContraAnswer | undefined): TransportContraState {
+  if (!answer) return emptyTransportContraState();
+  return {
+    offer: answer.transportOffer || normalizeTransportOffer(undefined),
+    status: answer.transportStatus || 'sin_respuesta',
+    tmDecision: answer.tmDecision ?? null,
+    history: answer.transportHistory || [],
   };
 }
 
@@ -251,44 +302,90 @@ function sectionPedido(rider: Rider, module: RiderType, section: SectionItem): s
   return parts.join('\n\n') || 'Sin pedido escrito en esta sección.';
 }
 
-export function buildContraLines(rider: Rider, answers: Record<string, ContraAnswer>): ContraLine[] {
-  return readableTypes(rider).flatMap((module) => {
-    const data = moduleData(rider, module);
-    return (data.sections || []).map((section) => {
-      const id = `${module}:${section.id}`;
+function linesForSection(
+  rider: Rider,
+  module: RiderType,
+  section: SectionItem,
+  answers: Record<string, ContraAnswer>,
+): ContraLine[] {
+  const cards = section.id === TRANSPORT_SECTION_ID ? collectTransportCardsFromSection(section) : [];
+  if (cards.length > 0) {
+    return cards.map((card) => {
+      const id = transportLineId(section.id, card.id, module);
       const saved = answers[id];
-      const effective = effectiveNegotiability(section);
       return {
         id,
         module,
         moduleLabel: MODULE_LABEL[module],
         sectionId: section.id,
-        sectionTitle: section.title,
-        pedido: sectionPedido(rider, module, section),
-        negotiability: effective.negotiability,
-        negotiabilityNote: effective.note,
-        requirements: extractRequirementNegotiability(section.contentDoc),
+        sectionTitle: `${section.title} · ${card.party_name || (card.kind === 'runner' ? 'Runner' : 'Vehículo')}`,
+        pedido: formatTransportCardPlain(card),
         response: saved?.response || '',
         offer: saved?.offer || '',
         note: saved?.note || '',
-        exceptionDecision: saved?.exceptionDecision ?? null,
-        ...(saved?.reopened ? { reopened: true } : {}),
-        ...(saved?.reopenReason ? { reopenReason: saved.reopenReason } : {}),
-        ...(saved?.previousDecision ? { previousDecision: saved.previousDecision } : {}),
+        kind: 'transport_card',
+        card,
+        negotiability: card.negotiability,
+        transportOffer: saved?.transportOffer,
+        transportStatus: saved?.transportStatus,
+        tmDecision: saved?.tmDecision ?? null,
+        transportHistory: saved?.transportHistory,
       };
     });
+  }
+  const id = `${module}:${section.id}`;
+  const saved = answers[id];
+  const effective = effectiveNegotiability(section);
+  return [{
+    id,
+    module,
+    moduleLabel: MODULE_LABEL[module],
+    sectionId: section.id,
+    sectionTitle: section.title,
+    pedido: sectionPedido(rider, module, section),
+    negotiability: effective.negotiability,
+    negotiabilityNote: effective.note,
+    requirements: extractRequirementNegotiability(section.contentDoc),
+    response: saved?.response || '',
+    offer: saved?.offer || '',
+    note: saved?.note || '',
+    exceptionDecision: saved?.exceptionDecision ?? null,
+    ...(saved?.reopened ? { reopened: true } : {}),
+    ...(saved?.reopenReason ? { reopenReason: saved.reopenReason } : {}),
+    ...(saved?.previousDecision ? { previousDecision: saved.previousDecision } : {}),
+    kind: 'section',
+  }];
+}
+
+export function buildContraLines(rider: Rider, answers: Record<string, ContraAnswer>): ContraLine[] {
+  return readableTypes(rider).flatMap((module) => {
+    const data = moduleData(rider, module);
+    return (data.sections || []).flatMap((section) => linesForSection(rider, module, section, answers));
   });
 }
 
-export function sendBlockReason(lines: Pick<ContraLine, 'response' | 'offer' | 'note'>[]): string | null {
+export function sendBlockReason(lines: ContraLine[]): string | null {
   if (!lines.length || lines.some((line) => !line.response)) {
     return 'Responde todas las secciones antes de enviar.';
   }
-  if (lines.some((line) => line.response === 'alternativa' && !line.offer.trim())) {
-    return 'Cada alternativa necesita una oferta.';
-  }
-  if (lines.some((line) => line.response === 'no_puedo' && !line.note.trim())) {
-    return 'Cada “Rechazado” necesita una nota.';
+  for (const line of lines) {
+    if (line.kind === 'transport_card' && line.card) {
+      const reason = transportSendBlockReason({
+        card: line.card,
+        response: line.response,
+        offer: line.transportOffer || normalizeTransportOffer(undefined),
+        note: line.note,
+        offerText: line.offer,
+      });
+      if (reason) return reason;
+      continue;
+    }
+    if (line.response === 'alternativa' && !line.offer.trim()) {
+      return 'Cada alternativa necesita una oferta.';
+    }
+    if (line.response === 'no_puedo' && !line.note.trim()) {
+      return 'Cada “Rechazado” necesita una nota.';
+    }
   }
   return null;
 }
@@ -296,12 +393,17 @@ export function sendBlockReason(lines: Pick<ContraLine, 'response' | 'offer' | '
 export function answersFromLines(lines: ContraLine[]): Record<string, ContraAnswer> {
   const answers: Record<string, ContraAnswer> = {};
   for (const line of lines) {
-    if (!line.response && !line.offer.trim() && !line.note.trim()) continue;
+    const hasTransport = Boolean(line.transportOffer?.makeModel || line.transportOffer?.photos?.length);
+    if (!line.response && !line.offer.trim() && !line.note.trim() && !hasTransport) continue;
     answers[line.id] = {
       response: line.response,
       offer: line.offer,
       note: line.note,
       exceptionDecision: line.exceptionDecision ?? null,
+      transportOffer: line.transportOffer,
+      transportStatus: line.transportStatus,
+      tmDecision: line.tmDecision ?? null,
+      transportHistory: line.transportHistory,
     };
   }
   return answers;
@@ -319,12 +421,18 @@ export function sanitizeAnswers(
     if (!allowedIds.has(id)) continue;
     const answer = asRecord(value);
     if (!answer) continue;
-    const response = readResponse(answer.response);
-    const offer = typeof answer.offer === 'string' ? answer.offer.slice(0, 500) : '';
-    const note = typeof answer.note === 'string' ? answer.note.slice(0, 1000) : '';
-    const exceptionDecision = readExceptionDecision(answer.exceptionDecision);
-    if (!response && !offer.trim() && !note.trim() && !exceptionDecision) continue;
-    answers[id] = { response, offer, note, exceptionDecision };
+    const parsed = readContraAnswer(answer);
+    if (
+      !parsed.response
+      && !parsed.offer.trim()
+      && !parsed.note.trim()
+      && !parsed.exceptionDecision
+      && !parsed.transportOffer?.makeModel
+      && !(parsed.transportOffer?.photos?.length)
+    ) {
+      continue;
+    }
+    answers[id] = parsed;
   }
   return answers;
 }
@@ -341,6 +449,34 @@ export function applyAnswerExceptions(
       previous: previous[id],
       next: answer,
     });
+  }
+  return next;
+}
+
+export function mergeTransportAnswers(
+  incoming: Record<string, ContraAnswer>,
+  previous: Record<string, ContraAnswer>,
+  sent: boolean,
+): Record<string, ContraAnswer> {
+  const next: Record<string, ContraAnswer> = {};
+  for (const [id, answer] of Object.entries(incoming)) {
+    if (!answer.transportOffer) {
+      next[id] = answer;
+      continue;
+    }
+    const merged = afterPromotorChange(
+      transportStateFromAnswer(previous[id]),
+      answer.transportOffer,
+      sent,
+      answer.response,
+    );
+    next[id] = {
+      ...answer,
+      transportOffer: merged.offer,
+      transportStatus: merged.status,
+      tmDecision: merged.tmDecision,
+      transportHistory: merged.history,
+    };
   }
   return next;
 }

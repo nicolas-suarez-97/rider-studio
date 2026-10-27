@@ -63,8 +63,8 @@ export async function saveArtistShareAction(
   return riderRepository.saveArtistShareAction(id, guestKey, lineId, action, text, context);
 }
 
-export async function saveContraRider(id: string, contraRider: Json) {
-  return riderRepository.saveContraRider(id, contraRider);
+export async function saveContraRider(id: string, contraRider: Json, options?: { requireShare?: boolean }) {
+  return riderRepository.saveContraRider(id, contraRider, options);
 }
 
 export async function saveRider(rider: SaveRiderInput): Promise<DbRider> {
