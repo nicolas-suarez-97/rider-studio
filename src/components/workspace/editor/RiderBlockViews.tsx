@@ -5,6 +5,7 @@ import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/re
 import { Icon } from '@/components/common/Icon';
 import { PAGE_INNER } from '@/components/workspace/editor/pagination';
 import { assertRiderImage } from '@/lib/media/rider-media';
+import { ContactRoleCombobox } from '@/components/workspace/editor/ContactRoleCombobox';
 import { emptyContact, normalizePeople, type ContactPerson, type NoticeTone } from '@/components/workspace/editor/rider-block-model';
 import { NegotiabilityControl } from '@/components/common/NegotiabilityBadge';
 import { readNegotiability, readNegotiabilityNote } from '@/core/negociabilidad/negociabilidad';
@@ -389,13 +390,11 @@ export function ContactsBlock({ node, updateAttributes, deleteNode, editor, sele
         </div>
         {people.map((person) => (
           <div key={person.id} className="docs-contacts-row">
-            <input
-              aria-label="Rol"
-              placeholder="Rol"
+            <ContactRoleCombobox
               value={person.role}
               readOnly={readOnly}
               onMouseDown={stop}
-              onChange={(event) => patch(person.id, 'role', event.target.value)}
+              onChange={(role) => patch(person.id, 'role', role)}
               onKeyDown={handleKey}
             />
             <input
