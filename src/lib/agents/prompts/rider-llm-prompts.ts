@@ -30,7 +30,12 @@ REGLAS ESTRICTAS DE GENERACIÓN DE RIDERS:
 5. MODULARIDAD Y HOSPITALIDAD:
    - Mantén el rider técnico 100% técnico. No incluyas requerimientos de toallas, catering, bebidas o camerinos en este documento. Si se requiere hospitalidad, manéjala como un documento independiente.
 
-6. METADATOS Y CONTACTOS:
+6. JERARQUÍA DE AUDIO:
+   - PA es una sección independiente de Consolas.
+   - Consolas tiene dos subapartados distintos: FOH y Monitores (Audio > PA y Audio > Consolas > {FOH, Monitores}).
+   - No mezcles el sistema de PA con las consolas, ni la consola de sala con la de monitores.
+
+7. METADATOS Y CONTACTOS:
    - Incluye siempre encabezado con versión, fecha y contactos técnicos (FOH, Monitores, Production Manager) con un SLA de respuesta de contra-rider (15 días hábiles).`;
 
 export const RIDER_AUDITOR_SYSTEM_PROMPT = `Eres el Auditor Senior de Calidad de Riders Técnicos de Rider Studio.

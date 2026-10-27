@@ -7,6 +7,11 @@ import { SectionItem, RiderType } from '@/core/types/rider.types';
 import { RIDER_DATA } from '@/core/constants/rider-templates';
 import { NegotiabilityBadge } from '@/components/common/NegotiabilityBadge';
 import { effectiveNegotiability } from '@/core/negociabilidad/negociabilidad';
+import {
+  sectionHierarchyDepth,
+  sectionHierarchyLabel,
+  sectionLeafTitle,
+} from '@/core/constants/section-hierarchy';
 
 function useCoarsePointer() {
   const [coarse, setCoarse] = useState(false);
@@ -85,6 +90,15 @@ function IndexActionButton({
       </div>
     </button>
   );
+}
+
+function sectionNavCopy(section: SectionItem) {
+  const pathLabel = sectionHierarchyLabel(section);
+  return {
+    title: sectionLeafTitle(section) || section.title,
+    subtitle: pathLabel || section.subtitle,
+    depth: sectionHierarchyDepth(section),
+  };
 }
 
 function normalizeText(text: string): string {
@@ -299,6 +313,7 @@ function SortableSection({
 }) {
   const dragControls = useDragControls();
   const negotiability = effectiveNegotiability(section);
+  const nav = sectionNavCopy(section);
 
   return (
     <Reorder.Item
@@ -310,6 +325,7 @@ function SortableSection({
           ? 'bg-violet-50/70 border-violet-200 shadow-xs ring-1 ring-violet-200/60'
           : 'bg-white hover:bg-slate-50/80 border-slate-200/70'
       }`}
+      style={nav.depth ? { marginLeft: nav.depth * 12 } : undefined}
       onClick={() => onSelectSection(section.id)}
     >
       <div
@@ -331,7 +347,7 @@ function SortableSection({
             </span>
           ) : null}
           <h4 className="text-xs sm:text-xs font-bold text-slate-800 truncate">
-            {section.title}
+            {nav.title}
           </h4>
           {negotiability.negotiability !== 'sin_definir' || negotiability.note ? (
             <NegotiabilityBadge negotiability={negotiability.negotiability} note={negotiability.note} />
@@ -340,9 +356,9 @@ function SortableSection({
             <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCount}</span>
           )}
         </div>
-        {section.subtitle ? (
+        {nav.subtitle ? (
           <p className="text-[10px] text-slate-400 truncate mt-0.5">
-            {section.subtitle}
+            {nav.subtitle}
           </p>
         ) : null}
       </div>
@@ -417,6 +433,7 @@ export function SectionsNavPanel({
               const isActive = activeSectionId === section.id;
               const isRead = completedSectionIds.includes(section.id);
               const negotiability = effectiveNegotiability(section);
+              const nav = sectionNavCopy(section);
               return (
                 <div
                   key={section.id}
@@ -425,6 +442,7 @@ export function SectionsNavPanel({
                       ? 'bg-violet-50/70 border-violet-200 shadow-xs ring-1 ring-violet-200/60'
                       : 'bg-white hover:bg-slate-50/80 border-slate-200/70'
                   }`}
+                  style={nav.depth ? { marginLeft: nav.depth * 12 } : undefined}
                 >
                   <button
                     type="button"
@@ -435,7 +453,7 @@ export function SectionsNavPanel({
                       {section.num ? (
                         <span className="text-[10px] font-black text-slate-400 shrink-0">{section.num}</span>
                       ) : null}
-                      <span className="text-xs font-bold text-slate-800 truncate">{section.title}</span>
+                      <span className="text-xs font-bold text-slate-800 truncate">{nav.title}</span>
                       {negotiability.negotiability !== 'sin_definir' || negotiability.note ? (
                         <NegotiabilityBadge negotiability={negotiability.negotiability} note={negotiability.note} />
                       ) : null}
@@ -443,8 +461,8 @@ export function SectionsNavPanel({
                         <span className="text-[10px] font-bold text-violet-600 shrink-0">{commentCounts?.[section.id]}</span>
                       )}
                     </span>
-                    {section.subtitle ? (
-                      <span className="block text-[10px] text-slate-400 truncate mt-0.5">{section.subtitle}</span>
+                    {nav.subtitle ? (
+                      <span className="block text-[10px] text-slate-400 truncate mt-0.5">{nav.subtitle}</span>
                     ) : null}
                   </button>
                   <button

@@ -6,6 +6,13 @@ import { Icon } from '../common/Icon';
 import { StagePlotView } from '../workspace/StagePlotView';
 import { Rider } from '@/core/models/Rider';
 import { ExportScope, RiderType } from '@/core/types/rider.types';
+import { sectionHierarchyLabel, sectionLeafTitle } from '@/core/constants/section-hierarchy';
+
+function exportSectionTitle(sec: { id: string; title: string }) {
+  const pathLabel = sectionHierarchyLabel(sec);
+  const leaf = sectionLeafTitle(sec) || sec.title;
+  return pathLabel ? `${leaf} · ${pathLabel}` : sec.title;
+}
 
 interface MasterExportModalProps {
   isOpen: boolean;
@@ -60,7 +67,7 @@ export function MasterExportModal({
       const mod = allModules[st];
       if (mod && mod.sections) {
         mod.sections.forEach((sec) => {
-          md += `### ${sec.num}. ${sec.title} (${sec.tag})\n`;
+          md += `### ${sec.num}. ${exportSectionTitle(sec)} (${sec.tag})\n`;
           if (sec.content && sec.content.trim()) {
             md += `${sec.content.trim()}\n\n`;
           } else {
@@ -305,13 +312,13 @@ export function MasterExportModal({
                       <div key={sec.id} className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/70 space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <h3 className="text-sm font-bold text-slate-900">
-                            {sec.num}. {sec.title}
+                            {sec.num}. {exportSectionTitle(sec)}
                           </h3>
                           <span className="text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200/60">
                             {sec.tag}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 font-medium">{sec.subtitle}</p>
+                        <p className="text-xs text-slate-400 font-medium">{sectionHierarchyLabel(sec) || sec.subtitle}</p>
                         <div className="pt-2 text-xs text-slate-700 whitespace-pre-line leading-relaxed font-normal">
                           {sec.content && sec.content.trim() ? sec.content : <span className="italic text-slate-400">Especificaciones sujetas a requerimientos estándar del rider.</span>}
                         </div>
