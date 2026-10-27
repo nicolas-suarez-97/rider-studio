@@ -45,6 +45,7 @@ import { WORK_AREAS_SECTION_ID, workAreasDoc } from '@/core/constants/work-areas
 import { isPersistedRiderId, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { deleteRiderImage, uploadRiderImage } from '@/lib/media/upload-client';
 import { appendUniqueBrandModel } from '@/lib/equipment/brand-model';
+import { chatPanelWidthClass } from '@/components/workspace/chat-panel-width';
 
 type MobileTab = 'sections' | 'document' | 'assistant';
 
@@ -105,6 +106,7 @@ export function WorkspaceClient({
     (initialRiderData?.linkedSessions && initialRiderData.linkedSessions.length > 0)
   );
   const [isChatCollapsed, setIsChatCollapsed] = useState(!hasAssociatedChat);
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [dbSyncStatus, setDbSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -1470,7 +1472,7 @@ export function WorkspaceClient({
         </div>
 
         {/* Panel 3: Copilot Asistente de IA */}
-        <div className={`h-full ${mobileTab === 'assistant' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:flex-none ${isChatCollapsed ? 'xl:w-12' : 'xl:w-96'} shrink-0`}>
+        <div className={`h-full ${mobileTab === 'assistant' ? 'flex flex-1 w-full' : 'hidden'} xl:flex xl:flex-none ${chatPanelWidthClass({ collapsed: isChatCollapsed, expanded: isChatExpanded })} shrink-0`}>
           <AssistantChatPanel
             activeAgent={activeAgent}
             onSelectAgent={(role) => setActiveAgent(role)}
@@ -1479,6 +1481,8 @@ export function WorkspaceClient({
             onSendMessage={handleSendMessage}
             isCollapsed={isChatCollapsed}
             onToggleCollapse={() => setIsChatCollapsed(prev => !prev)}
+            isExpanded={isChatExpanded}
+            onToggleExpand={() => setIsChatExpanded((prev) => !prev)}
             rider={rider}
             sessionId={currentSessionId}
             sessionTitle={currentSessionTitle}
