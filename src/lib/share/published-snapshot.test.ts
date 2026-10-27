@@ -65,6 +65,7 @@ describe('published snapshot', () => {
         published: snapshot,
         shareConfirms: { ana: { name: 'Ana', answers: {} } },
         absoluteExclusions: [{ id: 'ex-live', brand: 'JBL', model: 'SRX' }],
+        showReady: true,
       } as Json,
     });
 
@@ -75,9 +76,11 @@ describe('published snapshot', () => {
       season?: string;
       shareConfirms?: unknown;
       absoluteExclusions?: unknown;
+      showReady?: boolean;
     };
     assert.equal(meta.season, '2026');
     assert.deepEqual(meta.shareConfirms, { ana: { name: 'Ana', answers: {} } });
     assert.deepEqual(meta.absoluteExclusions, [{ id: 'ex-live', brand: 'JBL', model: 'SRX' }]);
+    assert.equal(meta.showReady, true);
   });
 });

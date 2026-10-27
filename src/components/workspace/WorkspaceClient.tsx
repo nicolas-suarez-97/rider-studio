@@ -11,8 +11,14 @@ import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { MasterExportModal } from '@/components/modals/MasterExportModal';
 import { StagePlotModal } from '@/components/modals/StagePlotModal';
 import { ShareLinkModal } from '@/components/modals/ShareLinkModal';
+import { ShowReadyStatus } from '@/components/share/ShowReadyStatus';
 import { ArtistShareConfirmsPanel } from '@/components/workspace/ArtistShareConfirmsPanel';
-import type { ArtistShareItem, ArtistShareSummary } from '@/lib/share/artist-confirms';
+import {
+  artistShareSummaryFromUnknown,
+  EMPTY_ARTIST_SHARE_SUMMARY,
+  type ArtistShareItem,
+  type ArtistShareSummary,
+} from '@/lib/share/artist-confirms';
 import { writeToClipboard } from '@/lib/share/copy-link';
 import { ImportRiderModal } from '@/components/modals/ImportRiderModal';
 import { Rider } from '@/core/models/Rider';
@@ -133,7 +139,7 @@ export function WorkspaceClient({
     title: string;
     items: ArtistShareItem[];
     summary: ArtistShareSummary;
-  }>({ title: '', items: [], summary: { answeredCount: 0, needsActionCount: 0, guestNames: [] } });
+  }>({ title: '', items: [], summary: EMPTY_ARTIST_SHARE_SUMMARY });
   const [sectionComments, setSectionComments] = useState<SectionCommentItem[]>([]);
   const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
   const [agentSuggestions, setAgentSuggestions] = useState<DocumentSuggestion[]>([]);
@@ -522,11 +528,7 @@ export function WorkspaceClient({
     setShareConfirms({
       title: typeof data.title === 'string' ? data.title : riderRef.current.title,
       items: Array.isArray(data.items) ? data.items : [],
-      summary: {
-        answeredCount: Number(data.summary?.answeredCount) || 0,
-        needsActionCount: Number(data.summary?.needsActionCount) || 0,
-        guestNames: Array.isArray(data.summary?.guestNames) ? data.summary.guestNames : [],
-      },
+      summary: artistShareSummaryFromUnknown(data.summary),
     });
   }, []);
 
@@ -538,7 +540,7 @@ export function WorkspaceClient({
         setShareConfirms({
           title: riderRef.current.title,
           items: [],
-          summary: { answeredCount: 0, needsActionCount: 0, guestNames: [] },
+          summary: EMPTY_ARTIST_SHARE_SUMMARY,
         });
       }
     });
@@ -580,11 +582,7 @@ export function WorkspaceClient({
     setShareConfirms({
       title: typeof data.title === 'string' ? data.title : rider.title,
       items: Array.isArray(data.items) ? data.items : [],
-      summary: {
-        answeredCount: Number(data.summary?.answeredCount) || 0,
-        needsActionCount: Number(data.summary?.needsActionCount) || 0,
-        guestNames: Array.isArray(data.summary?.guestNames) ? data.summary.guestNames : [],
-      },
+      summary: artistShareSummaryFromUnknown(data.summary),
     });
   };
 
@@ -1346,11 +1344,19 @@ export function WorkspaceClient({
         isSharing={isSharing || isSaving}
         onOpenShareConfirms={() => void handleOpenShareConfirms()}
         shareConfirmsCount={shareConfirms.summary.answeredCount}
+        showReady={shareConfirms.summary.showReady}
+        showReadySummary={shareConfirms.summary}
         chatSessionId={currentSessionId}
         riderId={rider.id}
         documentTitle={rider.title}
         onDocumentTitleChange={(title) => setRider((prev) => new Rider({ ...prev, title }))}
       />
+
+      {shareConfirms.summary.showReady ? (
+        <div className="shrink-0 px-3 sm:px-6 py-2 bg-emerald-50 border-b border-emerald-100">
+          <ShowReadyStatus summary={shareConfirms.summary} audience="artist" />
+        </div>
+      ) : null}
 
       {/* Contenedor de Paneles: 3 columnas simultáneas en desktop (xl:), panel único en móvil/tablet */}
       <div className="flex-1 flex overflow-hidden relative">

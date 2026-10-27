@@ -3,11 +3,13 @@ import { describe, it } from 'node:test';
 import {
   applyArtistShareAction,
   clearShowReady,
+  formatShowReadyLine,
   isApprovalInForce,
   isShowReady,
   listArtistShareItems,
   needsArtistAction,
   summarizeArtistShareItems,
+  withShowReady,
 } from './artist-confirms.ts';
 import { mergeShareConfirms, readShareConfirms } from './confirm.ts';
 
@@ -89,8 +91,80 @@ describe('acciones del artista sobre shareConfirms', () => {
     assert.deepEqual(summarizeArtistShareItems(items), {
       answeredCount: 0,
       needsActionCount: 0,
+      resolvedCount: 0,
+      approvedCount: 0,
+      acceptedAlternativeCount: 0,
+      showReady: false,
       guestNames: [],
     });
+  });
+
+  it('con 0 pendientes del artista marca listo para el show y resume totales', () => {
+    const items = listArtistShareItems({
+      ana: {
+        name: 'Ana',
+        answers: {
+          'tecnico:tech-foh': { response: 'cubro', offer: '', note: '' },
+          'tecnico:tech-pa': {
+            response: 'alternativa',
+            offer: 'Q1',
+            note: '',
+            acceptedAlternative: true,
+          },
+          'tecnico:tech-iem': {
+            response: 'pregunta',
+            offer: '',
+            note: '¿Packs?',
+            artistResponse: '4 packs',
+          },
+        },
+      },
+    });
+    const summary = summarizeArtistShareItems(items);
+
+    assert.equal(isShowReady(items), true);
+    assert.equal(summary.showReady, true);
+    assert.equal(summary.answeredCount, 3);
+    assert.equal(summary.resolvedCount, 3);
+    assert.equal(summary.approvedCount, 1);
+    assert.equal(summary.acceptedAlternativeCount, 1);
+    assert.equal(summary.needsActionCount, 0);
+    assert.equal(
+      formatShowReadyLine(summary, 'artist'),
+      '3 de 3 resueltos · 1 aprobado · 1 alternativa aceptada · 0 pendientes de tu lado'
+    );
+    assert.match(formatShowReadyLine(summary, 'organizer'), /0 pendientes del artista/);
+    assert.equal(withShowReady({ season: '2026' }, {
+      ana: {
+        name: 'Ana',
+        answers: {
+          'tecnico:tech-foh': { response: 'cubro', offer: '', note: '' },
+        },
+      },
+    }).showReady, true);
+  });
+
+  it('deja de estar listo si hay pendiente del artista o un pedido reabierto', () => {
+    const pending = listArtistShareItems(base);
+    assert.equal(isShowReady(pending), false);
+    assert.equal(summarizeArtistShareItems(pending).showReady, false);
+    assert.equal(withShowReady({ showReady: true }, base).showReady, false);
+
+    const reopened = applyArtistShareAction(
+      {
+        ana: {
+          name: 'Ana',
+          answers: { 'tecnico:tech-foh': { response: 'cubro' as const, offer: '', note: '' } },
+        },
+      },
+      'ana',
+      'tecnico:tech-foh',
+      'reopen',
+      'Hay que revisar PA',
+      { author: 'artista-ana' }
+    );
+    assert.equal(isShowReady(listArtistShareItems(reopened.confirms)), false);
+    assert.equal(withShowReady({ showReady: true }, reopened.confirms).showReady, false);
   });
 
   it('reabrir exige motivo y solo aplica a aprobación o aceptación vigente', () => {

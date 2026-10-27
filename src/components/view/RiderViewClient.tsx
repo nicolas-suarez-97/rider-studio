@@ -20,15 +20,26 @@ import { useTypeView } from '@/hooks/useTypeView';
 import type { ContraLine, ContraResponse } from '@/core/types/contra-rider.types';
 import { GuestNameDialog } from '@/components/view/GuestNameDialog';
 import { ConfirmRequestsPanel } from '@/components/view/ConfirmRequestsPanel';
+import { ShowReadyStatus } from '@/components/share/ShowReadyStatus';
+import {
+  artistShareSummaryFromUnknown,
+  EMPTY_ARTIST_SHARE_SUMMARY,
+  type ArtistShareSummary,
+} from '@/lib/share/artist-confirms';
 
 type MobileTab = 'sections' | 'document' | 'assistant';
 
 interface RiderViewClientProps {
   shareToken: string;
   initialRiderData: ConstructorParameters<typeof Rider>[0];
+  initialShareSummary?: ArtistShareSummary;
 }
 
-export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClientProps) {
+export function RiderViewClient({
+  shareToken,
+  initialRiderData,
+  initialShareSummary = EMPTY_ARTIST_SHARE_SUMMARY,
+}: RiderViewClientProps) {
   const { typeView, setTypeView } = useTypeView();
   const [rider] = useState<Rider>(() => new Rider(initialRiderData));
   const [activeSectionId, setActiveSectionId] = useState<string>(
@@ -60,6 +71,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
   const guestName = enteredName || storedName || null;
   const [confirming, setConfirming] = useState(false);
   const [confirmLines, setConfirmLines] = useState<ContraLine[]>([]);
+  const [shareSummary, setShareSummary] = useState<ArtistShareSummary>(initialShareSummary);
 
   const typeViewCounts = countByType(rider.sections, rider.type);
   const visibleSections = filterSections(rider.sections, typeView, rider.type);
@@ -92,6 +104,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
       throw new Error(typeof data.error === 'string' ? data.error : 'No se pudieron leer los pedidos');
     }
     if (Array.isArray(data.lines)) setConfirmLines(data.lines);
+    if (data.summary) setShareSummary(artistShareSummaryFromUnknown(data.summary));
   };
 
   const enterAsGuest = (name: string) => {
@@ -116,9 +129,23 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
       throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo guardar la respuesta');
     }
     if (Array.isArray(data.lines)) setConfirmLines(data.lines);
+    if (data.summary) setShareSummary(artistShareSummaryFromUnknown(data.summary));
     setToastMessage('Respuesta guardada');
     window.setTimeout(() => setToastMessage(null), 2500);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/share/${shareToken}/confirm`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!cancelled && data.summary) setShareSummary(artistShareSummaryFromUnknown(data.summary));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [shareToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -235,23 +262,38 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
         completedCount={readCount}
         totalCount={outlineSections.length}
         progressPercent={readPercent}
-        onStartConfirm={guestName ? startConfirm : undefined}
+        onStartConfirm={guestName && !shareSummary.showReady ? startConfirm : undefined}
+        showReady={shareSummary.showReady}
+        showReadySummary={shareSummary}
         documentTitle={rider.title}
       />
 
       {guestName ? (
-        <div className="shrink-0 px-3 sm:px-6 py-2 bg-violet-50 border-b border-violet-100 flex items-center justify-between gap-3">
-          <p className="text-xs text-violet-900 font-medium min-w-0 truncate">
-            Hola, {guestName}. El rider está en solo lectura.
-          </p>
-          <button
-            type="button"
-            onClick={startConfirm}
-            className="shrink-0 bg-violet-600 hover:bg-violet-700 text-white h-8 px-3 rounded-full text-xs font-bold"
-          >
-            Empezar a confirmar
-          </button>
-        </div>
+        shareSummary.showReady ? (
+          <div className="shrink-0 px-3 sm:px-6 py-2 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between gap-3">
+            <ShowReadyStatus summary={shareSummary} audience="organizer" />
+            <button
+              type="button"
+              onClick={startConfirm}
+              className="shrink-0 bg-white border border-emerald-200 text-emerald-800 h-8 px-3 rounded-full text-xs font-bold"
+            >
+              Ver pedidos
+            </button>
+          </div>
+        ) : (
+          <div className="shrink-0 px-3 sm:px-6 py-2 bg-violet-50 border-b border-violet-100 flex items-center justify-between gap-3">
+            <p className="text-xs text-violet-900 font-medium min-w-0 truncate">
+              Hola, {guestName}. El rider está en solo lectura.
+            </p>
+            <button
+              type="button"
+              onClick={startConfirm}
+              className="shrink-0 bg-violet-600 hover:bg-violet-700 text-white h-8 px-3 rounded-full text-xs font-bold"
+            >
+              Empezar a confirmar
+            </button>
+          </div>
+        )
       ) : null}
 
       <div className="flex-1 flex overflow-hidden relative">
@@ -320,6 +362,7 @@ export function RiderViewClient({ shareToken, initialRiderData }: RiderViewClien
         <ConfirmRequestsPanel
           guestName={guestName}
           lines={confirmLines}
+          showReady={shareSummary.showReady}
           onClose={() => setConfirming(false)}
           onSave={saveConfirm}
         />

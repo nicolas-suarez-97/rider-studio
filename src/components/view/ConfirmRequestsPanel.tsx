@@ -20,11 +20,18 @@ const RESPONSE_LABEL: Record<Exclude<ContraResponse, ''>, string> = {
 interface ConfirmRequestsPanelProps {
   guestName: string;
   lines: ContraLine[];
+  showReady?: boolean;
   onClose: () => void;
   onSave: (lineId: string, response: Exclude<ContraResponse, ''>, text: string) => Promise<void>;
 }
 
-export function ConfirmRequestsPanel({ guestName, lines, onClose, onSave }: ConfirmRequestsPanelProps) {
+export function ConfirmRequestsPanel({
+  guestName,
+  lines,
+  showReady = false,
+  onClose,
+  onSave,
+}: ConfirmRequestsPanelProps) {
   const [drafts, setDrafts] = useState<Record<string, { response: ContraResponse; text: string }>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -68,9 +75,13 @@ export function ConfirmRequestsPanel({ guestName, lines, onClose, onSave }: Conf
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="confirm-requests-title" className="font-extrabold text-base text-slate-900">Confirmar pedidos</h2>
+            <h2 id="confirm-requests-title" className="font-extrabold text-base text-slate-900">
+              {showReady ? 'Pedidos del rider' : 'Confirmar pedidos'}
+            </h2>
             <p className="text-xs text-slate-500 mt-1">
-              {guestName}, responde al menos un pedido. Alternativa, Rechazado y Pregunta piden un texto.
+              {showReady
+                ? `${guestName}, el artista no tiene pendientes. Puedes revisar lo confirmado.`
+                : `${guestName}, responde al menos un pedido. Alternativa, Rechazado y Pregunta piden un texto.`}
             </p>
           </div>
           <button

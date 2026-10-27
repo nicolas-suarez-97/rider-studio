@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { Rider } from '@/core/models/Rider';
 import { buildContraLines, lineHasPedido } from '@/lib/promotor/contra-rider';
+import { listArtistShareItems, summarizeArtistShareItems } from '@/lib/share/artist-confirms';
 import { readGuestAnswers, readShareConfirms, validateGuestName, validateShareConfirm } from '@/lib/share/confirm';
 import { absoluteExclusionConflict, readAbsoluteExclusions } from '@/lib/share/exclusions';
 import { isShareToken } from '@/lib/share/token';
@@ -25,6 +26,11 @@ function confirmLines(row: NonNullable<Awaited<ReturnType<typeof getRiderByShare
   return buildContraLines(rider, answers).filter((line) => lineHasPedido(line.pedido));
 }
 
+function confirmStatus(row: NonNullable<Awaited<ReturnType<typeof getRiderByShareToken>>>) {
+  const summary = summarizeArtistShareItems(listArtistShareItems(readShareConfirms(row.metadata)));
+  return { summary, showReady: summary.showReady };
+}
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ token: string }> }
@@ -45,6 +51,7 @@ export async function GET(
     return NextResponse.json({
       guestName: guestName || null,
       lines: confirmLines(row, guestName),
+      ...confirmStatus(row),
     });
   } catch (error: unknown) {
     console.error('[API Share Confirm GET]', error);
@@ -109,6 +116,7 @@ export async function POST(
     return NextResponse.json({
       guestName: parsed.data.guestName.trim(),
       lines: confirmLines(updatedRow, parsed.data.guestName),
+      ...confirmStatus(updatedRow),
     });
   } catch (error: unknown) {
     console.error('[API Share Confirm POST]', error);
