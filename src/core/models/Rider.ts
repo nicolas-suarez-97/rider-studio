@@ -17,6 +17,11 @@ import { RIDER_TYPE_ORDER } from '../constants/rider-type-tokens';
 import { flattenTypedSections, sectionType } from '../utils/type-view';
 import { coverMedia, parseRiderMedia, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { inputListDoc } from '../constants/input-list';
+import {
+  insertWorkAreasSection,
+  WORK_AREAS_SECTION_ID,
+  workAreasDoc,
+} from '../constants/work-areas';
 import { isDocumentIntro, isDocumentCover, DOCUMENT_COVER_ID, buildCoverContentDoc } from '../editor/content-doc';
 import { RIDER_DATA } from '../constants/rider-templates';
 import { migratePaConsolasHierarchy } from '../constants/section-hierarchy';
@@ -105,8 +110,10 @@ export class Rider {
         : JSON.parse(JSON.stringify(DEFAULT_STAGE_PLOT)));
 
     this.unifyDocument();
+    this.sections = insertWorkAreasSection(this.sections);
     this.renumberSections();
     this.renumberChannels();
+    this.syncCurrentModule();
   }
 
   /**
@@ -647,7 +654,11 @@ export class Rider {
       .map((section, index) => ({
         ...section,
         content: '',
-        contentDoc: section.id === 'tech-inputlist' ? inputListDoc() : undefined,
+        contentDoc: section.id === 'tech-inputlist'
+          ? inputListDoc()
+          : section.id === WORK_AREAS_SECTION_ID
+            ? workAreasDoc()
+            : undefined,
         pageBreakBefore: index > 0,
         type: this.type,
       }));

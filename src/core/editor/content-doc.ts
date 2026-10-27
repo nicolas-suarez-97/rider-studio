@@ -1,5 +1,7 @@
 import { formatInputListPlainText, type InputListColumn, type InputListRow } from '@/core/constants/input-list';
+import { formatWorkAreasPlainText, normalizeWorkAreas } from '@/core/constants/work-areas';
 import { SECTION_FIELD_CONFIGS, findSectionConfig } from '@/core/constants/section-fields';
+import { isWorkAreasSectionId } from '@/core/constants/work-areas';
 import { formatRiderDate, riderKicker } from '@/core/constants/document-themes';
 import { readNegotiability, readNegotiabilityNote } from '@/core/negociabilidad/negociabilidad';
 import { RiderContentDoc, RiderContentNode, RiderType, SectionItem } from '@/core/types/rider.types';
@@ -155,6 +157,11 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
       const rows = Array.isArray(node.attrs?.rows) ? (node.attrs.rows as InputListRow[]) : [];
       const columns = Array.isArray(node.attrs?.columns) ? (node.attrs.columns as InputListColumn[]) : undefined;
       const text = formatInputListPlainText(rows, columns);
+      if (text) lines.push(text);
+      return;
+    }
+    if (node.type === 'workAreas') {
+      const text = formatWorkAreasPlainText(normalizeWorkAreas(node.attrs?.areas));
       if (text) lines.push(text);
       return;
     }
@@ -469,7 +476,7 @@ export function buildGapSuggestions(
   const config = findSectionConfig(section.id, section.title);
   const suggestions: DocumentSuggestion[] = [];
 
-  if (isDocumentIntro(section.id) || isDocumentCover(section.id)) return suggestions;
+  if (isDocumentIntro(section.id) || isDocumentCover(section.id) || isWorkAreasSectionId(section.id)) return suggestions;
   if (!text.trim()) {
     const id = `gap:${section.id}:empty`;
     if (dismissed.has(id)) return suggestions;

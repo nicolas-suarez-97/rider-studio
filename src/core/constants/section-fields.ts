@@ -209,6 +209,32 @@ export const SECTION_FIELD_CONFIGS: Record<string, SectionConfig> = {
       }
     ]
   },
+  'tech-areas-trabajo': {
+    sectionTitleHint: 'Áreas de trabajo',
+    fields: [
+      {
+        key: 'nombre',
+        label: 'Nombre del área',
+        placeholder: 'ej. FOH, Backstage, Wing SL',
+        prefix: 'Nombre',
+        chips: ['FOH', 'Backstage', 'Lateral SL', 'Oficina de producción']
+      },
+      {
+        key: 'ubicacion',
+        label: 'Ubicación / tipo',
+        placeholder: 'FOH, backstage, lateral, oficina u otro',
+        prefix: 'Ubicación / tipo',
+        chips: ['FOH', 'Backstage', 'Lateral', 'Oficina', 'Otro']
+      },
+      {
+        key: 'notas',
+        label: 'Notas del área',
+        placeholder: 'ej. Acceso restringido, mesa de 2 m, tierra aislada',
+        prefix: 'Notas',
+        chips: ['Acceso restringido', 'Tierra aislada', 'Sin público']
+      }
+    ]
+  },
   'tech-iluminacion': {
     sectionTitleHint: 'Iluminación, Pantallas LED & Visuales',
     fields: [
@@ -668,6 +694,7 @@ const KEYWORD_MAP: Array<{ id: string; keywords: string[] }> = [
   { id: 'tech-backline', keywords: ['backline', 'bateria', 'bajo', 'guitarra', 'teclado', 'amplificador', 'voltaje'] },
   { id: 'tech-inputlist', keywords: ['input list', 'patch', 'canales', 'microfonia', 'directas', 'phantom'] },
   { id: 'tech-stageplot', keywords: ['stage plot', 'tarima', 'escenario', 'risers', 'tierra aislada', 'acometida'] },
+  { id: 'tech-areas-trabajo', keywords: ['areas de trabajo', 'area de trabajo', 'foh', 'backstage', 'laterales', 'oficina tecnica'] },
   { id: 'tech-iluminacion', keywords: ['iluminacion', 'pantallas led', 'led', 'visuales', 'luces', 'luminarias', 'dmx', 'niebla'] },
   { id: 'tech-rigging', keywords: ['rigging', 'motores', 'truss', 'cuelgue', 'cargas estaticas', 'puntos de cuelgue'] },
   { id: 'tech-terminos', keywords: ['terminos', 'aprobaciones', 'hospitalidad tecnica', 'condiciones generales'] },

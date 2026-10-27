@@ -1,4 +1,5 @@
 import { RiderType, RiderDefinition } from '../types/rider.types';
+import { workAreasTemplateSection } from './work-areas';
 
 export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
   tecnico: {
@@ -97,9 +98,10 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
         iconName: 'map',
         content: '• Dimensiones mínimas de tarima: Ancho x profundidad x altura libre de obstáculos.\n• Risers: Tarimas elevadas con freno y alfombra negra (ej: 2.40m x 2.40m x 0.40m para batería).\n• Distribución espacial: Posiciones físicas de músicos en escenario (Stage Left, Center, Stage Right).\n• Puntos de corriente (AC Drops): Puntos regulados 20A con TIERRA FÍSICA AISLADA DEDICADA EXCLUSIVAMENTE PARA AUDIO (no compartida con luces).'
       },
+      workAreasTemplateSection(),
       {
         id: 'tech-iluminacion',
-        num: '09',
+        num: '10',
         title: 'Iluminación, Pantallas LED & Visuales',
         subtitle: 'Patch DMX, luminarias, pantalla LED y niebla',
         tag: 'Visuales',
@@ -109,7 +111,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
       },
       {
         id: 'tech-rigging',
-        num: '10',
+        num: '11',
         title: 'Rigging, Cargas & Puntos de Cuelgue',
         subtitle: 'Motores, truss, cargas estáticas y dinámicas',
         tag: 'Estructuras',
@@ -119,7 +121,7 @@ export const RIDER_DATA: Record<RiderType, RiderDefinition> = {
       },
       {
         id: 'tech-terminos',
-        num: '11',
+        num: '12',
         title: 'Condiciones Contractuales & SLA Contra-Rider',
         subtitle: 'Aprobación de sustituciones y plazos de entrega',
         tag: 'Términos',

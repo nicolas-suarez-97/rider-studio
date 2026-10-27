@@ -41,6 +41,7 @@ import { DocumentSuggestion, EditorContextPayload } from '@/core/types/suggestio
 import { EditorBridge, scrollSectionIntoCanvas } from '@/components/workspace/editor/RiderDocumentSurface';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 import { RIDER_DATA } from '@/core/constants/rider-templates';
+import { WORK_AREAS_SECTION_ID, workAreasDoc } from '@/core/constants/work-areas';
 import { isPersistedRiderId, MAX_GALLERY_IMAGES } from '@/lib/media/rider-media';
 import { deleteRiderImage, uploadRiderImage } from '@/lib/media/upload-client';
 
@@ -685,6 +686,7 @@ export function WorkspaceClient({
       tagColor: baseMatch?.tagColor || 'bg-zinc-100 text-zinc-600 border border-zinc-200/60',
       iconName: baseMatch?.iconName || 'fileText',
       content: '',
+      contentDoc: baseMatch?.id === WORK_AREAS_SECTION_ID ? workAreasDoc() : undefined,
       type: sectionType,
     }, activeSectionId);
     setRider(updated);

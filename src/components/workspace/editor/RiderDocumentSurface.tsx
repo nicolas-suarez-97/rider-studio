@@ -20,7 +20,9 @@ import { Pagination, PAGE_GAP, PAGE_HEIGHT, PAGE_PADDING, PAGE_WIDTH, pageCountF
 import { SectionChips } from '@/components/workspace/editor/section-chips';
 import { SectionNegotiability } from '@/components/workspace/editor/section-negotiability';
 import { InputList } from '@/components/workspace/editor/input-list-node';
+import { WorkAreas } from '@/components/workspace/editor/work-areas-node';
 import { cloneInputListRows } from '@/core/constants/input-list';
+import { isWorkAreasTitle, workAreasNode } from '@/core/constants/work-areas';
 import { TextAlignExtension, FontSizeExtension, TextColorExtension, HighlightMark } from '@/components/workspace/editor/editor-formatting';
 import {
   Columns,
@@ -491,6 +493,7 @@ export function RiderDocumentSurface({
         table: { resizable: false, renderWrapper: true },
       }),
       InputList,
+      WorkAreas,
       RiderCover,
       Requirement,
       Notice,
@@ -729,15 +732,13 @@ export function RiderDocumentSurface({
     }
 
     const isInputList = trimmed.toLowerCase().includes('input list');
+    const isWorkAreas = suggestedId === 'tech-areas-trabajo' || isWorkAreasTitle(trimmed);
     let hasExistingInputList = false;
-    if (isInputList) {
-      editor.state.doc.descendants((node) => {
-        if (node.type.name === 'inputList') {
-          hasExistingInputList = true;
-          return false;
-        }
-      });
-    }
+    let hasExistingWorkAreas = false;
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === 'inputList') hasExistingInputList = true;
+      if (node.type.name === 'workAreas') hasExistingWorkAreas = true;
+    });
 
     const nodes: any[] = [
       {
@@ -752,6 +753,8 @@ export function RiderDocumentSurface({
         type: 'inputList',
         attrs: { rows: cloneInputListRows() },
       });
+    } else if (isWorkAreas && !hasExistingWorkAreas) {
+      nodes.push(workAreasNode());
     } else {
       nodes.push({
         type: 'paragraph',

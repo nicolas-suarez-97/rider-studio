@@ -188,6 +188,17 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     },
   },
   {
+    id: 'work-areas',
+    title: 'Áreas de trabajo',
+    description: 'FOH, backstage, laterales y oficinas',
+    icon: 'door',
+    group: 'Rider',
+    keywords: ['areas', 'trabajo', 'foh', 'backstage', 'oficina', 'lateral'],
+    run: (editor, range) => {
+      deleteThen(editor, range).insertWorkAreas().run();
+    },
+  },
+  {
     id: 'bullet-list',
     title: 'Lista con viñetas',
     description: 'Crea una lista simple',
