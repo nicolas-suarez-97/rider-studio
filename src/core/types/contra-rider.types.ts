@@ -8,6 +8,8 @@ export interface ContraAnswer {
   offer: string;
   note: string;
   exceptionDecision?: ExceptionDecision | null;
+  artistResponse?: string;
+  acceptedAlternative?: boolean;
 }
 
 export interface ContraLine extends ContraAnswer {

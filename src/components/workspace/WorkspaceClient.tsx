@@ -11,6 +11,8 @@ import { AssistantChatPanel } from '@/components/workspace/AssistantChatPanel';
 import { MasterExportModal } from '@/components/modals/MasterExportModal';
 import { StagePlotModal } from '@/components/modals/StagePlotModal';
 import { ShareLinkModal } from '@/components/modals/ShareLinkModal';
+import { ArtistShareConfirmsPanel } from '@/components/workspace/ArtistShareConfirmsPanel';
+import type { ArtistShareItem, ArtistShareSummary } from '@/lib/share/artist-confirms';
 import { writeToClipboard } from '@/lib/share/copy-link';
 import { ImportRiderModal } from '@/components/modals/ImportRiderModal';
 import { Rider } from '@/core/models/Rider';
@@ -124,6 +126,13 @@ export function WorkspaceClient({
   const [isSharing, setIsSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [showShareConfirms, setShowShareConfirms] = useState(false);
+  const [shareConfirmsLoading, setShareConfirmsLoading] = useState(false);
+  const [shareConfirms, setShareConfirms] = useState<{
+    title: string;
+    items: ArtistShareItem[];
+    summary: ArtistShareSummary;
+  }>({ title: '', items: [], summary: { answeredCount: 0, needsActionCount: 0, guestNames: [] } });
   const [sectionComments, setSectionComments] = useState<SectionCommentItem[]>([]);
   const [openCommentSectionId, setOpenCommentSectionId] = useState<string | null>(null);
   const [agentSuggestions, setAgentSuggestions] = useState<DocumentSuggestion[]>([]);
@@ -501,6 +510,81 @@ export function WorkspaceClient({
     setRider(updated);
     await handleSaveRider(updated, { silent: true });
     if (pathname) void deleteRiderImage(pathname);
+  };
+
+  const loadShareConfirms = useCallback(async (riderId: string) => {
+    const response = await fetch(`/api/riders/${riderId}/share-confirms`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(typeof data.error === 'string' ? data.error : 'No se pudieron leer las respuestas');
+    }
+    setShareConfirms({
+      title: typeof data.title === 'string' ? data.title : riderRef.current.title,
+      items: Array.isArray(data.items) ? data.items : [],
+      summary: {
+        answeredCount: Number(data.summary?.answeredCount) || 0,
+        needsActionCount: Number(data.summary?.needsActionCount) || 0,
+        guestNames: Array.isArray(data.summary?.guestNames) ? data.summary.guestNames : [],
+      },
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isPersistedRiderId(rider.id)) return;
+    let cancelled = false;
+    loadShareConfirms(rider.id).catch(() => {
+      if (!cancelled) {
+        setShareConfirms({
+          title: riderRef.current.title,
+          items: [],
+          summary: { answeredCount: 0, needsActionCount: 0, guestNames: [] },
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rider.id, loadShareConfirms]);
+
+  const handleOpenShareConfirms = async () => {
+    setShowShareConfirms(true);
+    if (!isPersistedRiderId(rider.id)) return;
+    setShareConfirmsLoading(true);
+    try {
+      await loadShareConfirms(rider.id);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'No se pudieron leer las respuestas');
+    } finally {
+      setShareConfirmsLoading(false);
+    }
+  };
+
+  const handleShareConfirmAction = async (
+    item: ArtistShareItem,
+    action: 'accept_alternative' | 'reply' | 'propose',
+    text: string
+  ) => {
+    if (!isPersistedRiderId(rider.id)) {
+      throw new Error('Guarda el rider antes de responder');
+    }
+    const response = await fetch(`/api/riders/${rider.id}/share-confirms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guestKey: item.guestKey, lineId: item.lineId, action, text }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(typeof data.error === 'string' ? data.error : 'No se pudo guardar la acción');
+    }
+    setShareConfirms({
+      title: typeof data.title === 'string' ? data.title : rider.title,
+      items: Array.isArray(data.items) ? data.items : [],
+      summary: {
+        answeredCount: Number(data.summary?.answeredCount) || 0,
+        needsActionCount: Number(data.summary?.needsActionCount) || 0,
+        guestNames: Array.isArray(data.summary?.guestNames) ? data.summary.guestNames : [],
+      },
+    });
   };
 
   const handleShare = async () => {
@@ -1239,6 +1323,8 @@ export function WorkspaceClient({
         onOpenStagePlot={handleOpenStagePlot}
         onShare={handleShare}
         isSharing={isSharing || isSaving}
+        onOpenShareConfirms={() => void handleOpenShareConfirms()}
+        shareConfirmsCount={shareConfirms.summary.answeredCount}
         chatSessionId={currentSessionId}
         riderId={rider.id}
         documentTitle={rider.title}
@@ -1456,6 +1542,17 @@ export function WorkspaceClient({
         onUploadReferenceImage={handleUploadPlotPhoto}
         onRemoveReferenceImage={handleRemovePlotPhoto}
       />
+
+      {showShareConfirms ? (
+        <ArtistShareConfirmsPanel
+          title={shareConfirms.title || rider.title}
+          items={shareConfirms.items}
+          summary={shareConfirms.summary}
+          loading={shareConfirmsLoading}
+          onClose={() => setShowShareConfirms(false)}
+          onAction={handleShareConfirmAction}
+        />
+      ) : null}
 
       <ShareLinkModal
         key={shareUrl ?? 'closed'}

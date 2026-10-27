@@ -77,10 +77,13 @@ export function readShareConfirms(metadata: Json | undefined): Record<string, Sh
           ? (answer.response as Exclude<ContraResponse, ''>)
           : '';
         if (!response) continue;
+        const artistResponse = typeof answer.artistResponse === 'string' ? answer.artistResponse : '';
         answers[lineId] = {
           response,
           offer: typeof answer.offer === 'string' ? answer.offer : '',
           note: typeof answer.note === 'string' ? answer.note : '',
+          ...(artistResponse ? { artistResponse } : {}),
+          ...(answer.acceptedAlternative === true ? { acceptedAlternative: true } : {}),
         };
       }
     }

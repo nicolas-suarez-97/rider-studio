@@ -3,6 +3,7 @@ import { Database, Json } from '@/lib/supabase/database.types';
 import { createShareToken } from '@/lib/share/token';
 import { applyPublishedSnapshot, capturePublishedSnapshot } from '@/lib/share/published-snapshot';
 import { confirmsToJson, guestKey, mergeShareConfirms, readShareConfirms, type ShareGuestRecord } from '@/lib/share/confirm';
+import { applyArtistShareAction, type ArtistShareActionType } from '@/lib/share/artist-confirms';
 import type { ContraAnswer } from '@/core/types/contra-rider.types';
 import { deleteStoredImages } from '@/lib/media/image-store';
 import { mediaPathnames } from '@/lib/media/rider-media';
@@ -48,6 +49,13 @@ export interface IRiderRepository {
   publishShare(id: string): Promise<ShareLink | null>;
   saveContraRider(id: string, contraRider: Json): Promise<DbRider | null>;
   saveShareConfirm(token: string, guestName: string, lineId: string, answer: ContraAnswer): Promise<ShareGuestRecord | null>;
+  saveArtistShareAction(
+    id: string,
+    guestKey: string,
+    lineId: string,
+    action: ArtistShareActionType,
+    text: string
+  ): Promise<{ error: string | null } | null>;
   save(rider: SaveRiderInput): Promise<DbRider>;
   delete(id: string): Promise<boolean>;
 }
@@ -377,6 +385,49 @@ export class RiderRepository implements IRiderRepository {
     // Persist in memory when the live row was only visible via Supabase read
     memoryRiders.unshift(next);
     return guest;
+  }
+
+  public async saveArtistShareAction(
+    id: string,
+    guestKey: string,
+    lineId: string,
+    action: ArtistShareActionType,
+    text: string
+  ): Promise<{ error: string | null } | null> {
+    const rider = await this.getById(id);
+    if (!rider) return null;
+
+    const applied = applyArtistShareAction(readShareConfirms(rider.metadata), guestKey, lineId, action, text);
+    if (applied.error) return { error: applied.error };
+
+    const now = new Date().toISOString();
+    const base = asMetadataRecord(rider.metadata) ?? {};
+    const metadata: Json = { ...base, shareConfirms: confirmsToJson(applied.confirms) };
+    const next: DbRider = { ...rider, metadata, updated_at: now };
+
+    if (isSupabaseServerConfigured()) {
+      const supabase = await createServerSupabaseClient();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('riders')
+          .update({ metadata, updated_at: now })
+          .eq('id', id)
+          .select('*')
+          .maybeSingle();
+
+        if (!error && data) {
+          const existingIdx = memoryRiders.findIndex((row) => row.id === id);
+          if (existingIdx >= 0) memoryRiders[existingIdx] = data as DbRider;
+          return { error: null };
+        }
+        if (error) console.warn('[Supabase saveArtistShareAction]', error);
+      }
+    }
+
+    const existingIdx = memoryRiders.findIndex((row) => row.id === id);
+    if (existingIdx >= 0) memoryRiders[existingIdx] = next;
+    else memoryRiders.unshift(next);
+    return { error: null };
   }
 
   private async getLiveByShareToken(token: string): Promise<DbRider | null> {

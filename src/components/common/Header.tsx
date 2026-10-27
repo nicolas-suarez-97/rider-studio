@@ -30,6 +30,8 @@ interface HeaderProps {
   onOpenStagePlot?: () => void;
   onShare?: () => void;
   isSharing?: boolean;
+  onOpenShareConfirms?: () => void;
+  shareConfirmsCount?: number;
   onStartConfirm?: () => void;
   contraRiderHref?: string;
   chatSessionId?: string | null;
@@ -93,6 +95,8 @@ export function Header({
   onOpenExportModal,
   onShare,
   isSharing = false,
+  onOpenShareConfirms,
+  shareConfirmsCount = 0,
   onStartConfirm,
   contraRiderHref,
   documentTitle,
@@ -314,6 +318,22 @@ export function Header({
             </button>
             )}
 
+            {pageType === 'workspace' && onOpenShareConfirms && (
+              <button
+                type="button"
+                onClick={onOpenShareConfirms}
+                className="bg-white hover:bg-violet-50 text-violet-700 border border-violet-200 px-3.5 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
+                title="Ver respuestas del organizador"
+              >
+                <Icon name="fileCheck" className="w-3.5 h-3.5" />
+                <span>Respuestas</span>
+                {shareConfirmsCount > 0 ? (
+                  <span className="min-w-4 h-4 px-1 rounded-full bg-violet-100 text-[10px] leading-4 text-center">
+                    {shareConfirmsCount}
+                  </span>
+                ) : null}
+              </button>
+            )}
             {pageType === 'workspace' && onShare && (
               <button
                 type="button"
@@ -356,6 +376,17 @@ export function Header({
           >
             <Icon name="download" className="w-4 h-4" />
           </button>
+          {onOpenShareConfirms && (
+            <button
+              type="button"
+              onClick={onOpenShareConfirms}
+              className="w-11 h-11 rounded-full bg-white text-violet-700 border border-violet-200 shadow-lg flex items-center justify-center active:scale-95 cursor-pointer"
+              aria-label="Respuestas del organizador"
+              title="Respuestas del organizador"
+            >
+              <Icon name="fileCheck" className="w-4 h-4" />
+            </button>
+          )}
           {onShare && (
             <button
               type="button"
