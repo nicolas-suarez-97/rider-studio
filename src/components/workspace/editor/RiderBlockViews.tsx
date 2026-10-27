@@ -9,6 +9,7 @@ import { ContactRoleCombobox } from '@/components/workspace/editor/ContactRoleCo
 import { emptyContact, normalizePeople, type ContactPerson, type NoticeTone } from '@/components/workspace/editor/rider-block-model';
 import { NegotiabilityControl } from '@/components/common/NegotiabilityBadge';
 import { readNegotiability, readNegotiabilityNote } from '@/core/negociabilidad/negociabilidad';
+import { BrandModelFields } from '@/components/rider/BrandModelFields';
 
 const TONE_LABEL: Record<NoticeTone, string> = {
   note: 'Nota',
@@ -195,6 +196,7 @@ export function PageFrameBlock({ node }: NodeViewProps) {
 
 export function RequirementBlock({ node, updateAttributes, deleteNode, editor, selected }: NodeViewProps) {
   const readOnly = !editor.isEditable;
+  const exclusions = editor.storage.riderDocumentMeta?.absoluteExclusions || [];
   return (
     <NodeViewWrapper className={`docs-requirement ${selected ? 'is-selected' : ''}`} data-type="requirement">
       <div className="docs-requirement-label" contentEditable={false}>
@@ -227,7 +229,18 @@ export function RequirementBlock({ node, updateAttributes, deleteNode, editor, s
           </button>
         )}
       </div>
-      <NodeViewContent className="docs-requirement-body" />
+      <div className="docs-requirement-main">
+        <NodeViewContent className="docs-requirement-body" />
+        <div className="docs-requirement-gear" contentEditable={false} onMouseDown={stop}>
+          <BrandModelFields
+            brand={fieldValue(node.attrs.brand)}
+            model={fieldValue(node.attrs.model)}
+            disabled={readOnly}
+            exclusions={exclusions}
+            onChange={(next) => updateAttributes(next)}
+          />
+        </div>
+      </div>
       <div className="docs-requirement-meta" contentEditable={false}>
         <NegotiabilityControl
           negotiability={readNegotiability(node.attrs.negotiability)}

@@ -67,7 +67,7 @@ import {
   type SectionDocumentPatch,
 } from '@/core/editor/content-doc';
 import { overlayProposedOnSections } from '@/core/editor/proposed-confirmed';
-import { SectionItem, RiderType } from '@/core/types/rider.types';
+import { AbsoluteExclusion, SectionItem, RiderType } from '@/core/types/rider.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
 
 export interface EditorBridge {
@@ -229,6 +229,7 @@ interface RiderDocumentSurfaceProps {
   onAskAssistant?: (text: string, sectionId?: string) => void;
   onDraftWithSelection?: (selectedText: string, sectionId?: string, mode?: 'quote' | 'adjust' | 'analyze') => void;
   onOpenImportModal?: () => void;
+  absoluteExclusions?: AbsoluteExclusion[];
 }
 
 export function RiderDocumentSurface({
@@ -253,6 +254,7 @@ export function RiderDocumentSurface({
   onAskAssistant,
   onDraftWithSelection,
   onOpenImportModal,
+  absoluteExclusions = [],
 }: RiderDocumentSurfaceProps) {
   const theme = documentTheme || defaultDocumentTheme();
   const coverArtist = useMemo(() => {
@@ -609,7 +611,8 @@ export function RiderDocumentSurface({
     storage.version = version;
     storage.riderType = riderType;
     storage.uploadImage = onUploadDocumentImage || null;
-  }, [editor, artistName, riderTitle, version, riderType, onUploadDocumentImage]);
+    storage.absoluteExclusions = absoluteExclusions;
+  }, [editor, artistName, riderTitle, version, riderType, onUploadDocumentImage, absoluteExclusions]);
 
   const insertImages = useCallback((files: File[]) => {
     if (!editor || readOnly || files.length === 0) return;

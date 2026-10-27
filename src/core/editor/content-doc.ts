@@ -5,6 +5,7 @@ import { readNegotiability, readNegotiabilityNote } from '@/core/negociabilidad/
 import { RiderContentDoc, RiderContentNode, RiderType, SectionItem } from '@/core/types/rider.types';
 import type { Negotiability } from '@/core/types/negociabilidad.types';
 import { DocumentSuggestion } from '@/core/types/suggestion.types';
+import { formatRequirementPedido } from '@/lib/equipment/brand-model';
 
 interface JsonNode {
   type?: string;
@@ -101,13 +102,17 @@ export function docToPlainText(doc: RiderContentDoc | JsonNode): string {
       return;
     }
     if (node.type === 'requirement') {
-      const label = typeof node.attrs?.label === 'string' ? node.attrs.label.trim() : 'Requisito';
-      const body = inlineText(node).trim();
+      const pedido = formatRequirementPedido({
+        label: typeof node.attrs?.label === 'string' ? node.attrs.label : 'Requisito',
+        brand: typeof node.attrs?.brand === 'string' ? node.attrs.brand : '',
+        model: typeof node.attrs?.model === 'string' ? node.attrs.model : '',
+        body: inlineText(node),
+      });
       const state = readNegotiability(node.attrs?.negotiability);
       const note = readNegotiabilityNote(node.attrs?.negotiabilityNote);
       const mark = state === 'sin_definir' ? '' : ` [${state === 'negociable' ? 'Negociable' : 'No negociable'}]`;
       const extra = note ? ` — ${note}` : '';
-      lines.push(`${body ? `${label}: ${body}` : label}${mark}${extra}`);
+      lines.push(`${pedido}${mark}${extra}`);
       return;
     }
     if (node.type === 'notice') {
