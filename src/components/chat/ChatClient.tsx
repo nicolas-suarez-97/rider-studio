@@ -13,6 +13,19 @@ import { composeChatContent } from '@/core/utils/chat-attachments';
 import { AGENT_PROFILES } from '@/core/constants/agent-profiles';
 import { Rider } from '@/core/models/Rider';
 import { RiderType } from '@/core/types/rider.types';
+import {
+  completeContext,
+  defaultContextDraft,
+  gateReplyMessage,
+  resolveRiderGenerationGate,
+  seedRiderFromContext,
+  summarizeContext,
+  type RiderGenerationDraft,
+} from '@/core/chat/rider-generation-context';
+import {
+  RiderGenerationContextPanel,
+  type ContextPanelMode,
+} from '@/components/chat/RiderGenerationContextPanel';
 
 interface ChatClientProps {
   initialSessions: ChatSessionSummary[];
@@ -40,6 +53,12 @@ export function ChatClient({
   const [activeAgent, setActiveAgent] = useState<AgentRole>('master');
   const [messages, setMessages] = useState<ChatMessageItem[]>(initialMessages);
   const [isThinking, setIsAgentThinking] = useState(false);
+  const [contextMode, setContextMode] = useState<ContextPanelMode | null>(null);
+  const [contextDraft, setContextDraft] = useState<RiderGenerationDraft>(defaultContextDraft);
+  const [linkExistingId, setLinkExistingId] = useState<string | null>(null);
+  const [contextError, setContextError] = useState<string | null>(null);
+  const [contextSubmitting, setContextSubmitting] = useState(false);
+  const [linkedRiderForReuse, setLinkedRiderForReuse] = useState<string | null>(null);
 
   const [prevInitialSessions, setPrevInitialSessions] = useState(initialSessions);
   if (initialSessions !== prevInitialSessions) {
@@ -103,6 +122,42 @@ export function ChatClient({
     };
   }, []);
 
+  const currentRiderId = useCallback(() => {
+    const activeSession = sessions.find((session) => session.id === currentSessionId);
+    return activeSession?.riderId || initialRiderId || null;
+  }, [sessions, currentSessionId, initialRiderId]);
+
+  const persistChatTurn = useCallback(async (text: string, attachments?: ChatAttachment[]) => {
+    const activeSession = sessions.find((session) => session.id === currentSessionId);
+    const data = await chatService.sendMessage({
+      messages: [...messages, {
+        sender: 'user',
+        text,
+        attachments,
+      }].map((item) => ({
+        role: item.sender === 'user' ? 'user' : 'assistant',
+        content: item.attachments?.length ? composeChatContent(item.text, item.attachments) : item.text
+      })),
+      riderType: activeSession?.riderInfo?.riderType || 'tecnico',
+      activeAgent,
+      sessionId: currentSessionId || undefined,
+      riderId: activeSession?.riderId || initialRiderId || undefined
+    });
+    if (data.sessionId && data.sessionId !== currentSessionId) {
+      setCurrentSessionId(data.sessionId);
+      router.replace(`/artista/chat?session=${data.sessionId}`);
+    }
+    const refreshed = await chatService.getSessions();
+    setSessions(refreshed);
+    return data;
+  }, [activeAgent, currentSessionId, initialRiderId, messages, router, sessions]);
+
+  const openWorkspace = useCallback((riderId: string, sessionId?: string) => {
+    const params = new URLSearchParams({ id: riderId });
+    if (sessionId) params.set('session', sessionId);
+    router.push(`/artista/workspace?${params.toString()}`);
+  }, [router]);
+
   const handleSendMessage = useCallback(async (text: string, attachments?: ChatAttachment[]) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg: ChatMessageItem = {
@@ -111,7 +166,43 @@ export function ChatClient({
       time: now,
       attachments: attachments?.length ? attachments : undefined
     };
-    
+
+    const gate = resolveRiderGenerationGate({
+      riderId: currentRiderId(),
+      userText: text,
+    });
+
+    if (gate.action !== 'none') {
+      const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const aiMsg: ChatMessageItem = {
+        sender: 'ai',
+        text: gateReplyMessage(gate) || '',
+        time: replyTime,
+        role: activeAgent,
+        roleName: AGENT_PROFILES[activeAgent].name,
+        roleAvatar: AGENT_PROFILES[activeAgent] ? (activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠') : '🧠',
+      };
+      setMessages((prev) => [...prev, userMsg, aiMsg]);
+      setContextError(null);
+      setLinkExistingId(null);
+      setContextDraft(defaultContextDraft());
+      try {
+        await persistChatTurn(text, attachments);
+      } catch (err) {
+        console.warn('[ChatClient] No se pudo persistir el pedido de contexto', err);
+      }
+      if (gate.action === 'request_context') setContextMode('collect');
+      if (gate.action === 'reuse_linked_rider') {
+        setLinkedRiderForReuse(gate.riderId);
+        setContextMode('reuse');
+      }
+      if (gate.action === 'ask_before_new_rider') {
+        setLinkedRiderForReuse(gate.riderId);
+        setContextMode('ask_new');
+      }
+      return;
+    }
+
     setMessages(prev => [...prev, userMsg]);
     setIsAgentThinking(true);
 
@@ -169,7 +260,98 @@ export function ChatClient({
     } finally {
       setIsAgentThinking(false);
     }
-  }, [activeAgent, currentSessionId, initialRiderId, messages, router, sessions]);
+  }, [activeAgent, currentRiderId, currentSessionId, initialRiderId, messages, persistChatTurn, router, sessions]);
+
+  const handleCancelContext = () => {
+    setContextMode(null);
+    setContextError(null);
+    setLinkExistingId(null);
+    setContextSubmitting(false);
+    showToast('Contexto cancelado. No se creó rider ni se asignó rider_id.');
+  };
+
+  const ensureSessionId = async (): Promise<string> => {
+    if (currentSessionId) return currentSessionId;
+    const created = await chatService.createSession({
+      title: 'Nueva Consulta',
+      activeAgent,
+    });
+    setCurrentSessionId(created.id);
+    router.replace(`/artista/chat?session=${created.id}`);
+    return created.id;
+  };
+
+  const handleConfirmCreateRider = async () => {
+    const completed = completeContext(contextDraft);
+    if (!completed) {
+      setContextError('Completa gira o fecha, formato y la escala que tú eliges.');
+      return;
+    }
+
+    setContextSubmitting(true);
+    setContextError(null);
+    try {
+      const sessionId = await ensureSessionId();
+      const blank = Rider.createBlank('tecnico');
+      seedRiderFromContext(blank, completed);
+      blank.title = `Rider Técnico · ${completed.format}`;
+
+      const saved = await riderService.save(blank);
+      if (!saved?.id) throw new Error('No se pudo crear el rider');
+
+      const linked = await chatService.linkRider(sessionId, saved.id);
+      if (!linked) throw new Error('Se creó el rider pero no se pudo vincular al chat');
+
+      const list = await riderService.getAll();
+      setAvailableRiders(list.map((item) => ({
+        id: item.id,
+        title: item.title,
+        artist: item.artistName,
+        type: item.type,
+      })));
+      await loadSessionsList();
+
+      const summary = summarizeContext(completed);
+      const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `Rider creado y vinculado a este chat.\n\n${summary}\n\nLa plantilla inicial sigue el formato elegido. Puedes cambiar todo en el editor.`,
+          time: replyTime,
+          role: activeAgent,
+          roleName: AGENT_PROFILES[activeAgent].name,
+          roleAvatar: '🧠',
+        },
+      ]);
+      setContextMode(null);
+      openWorkspace(saved.id, sessionId);
+    } catch (err) {
+      console.error(err);
+      setContextError(err instanceof Error ? err.message : 'No se pudo crear el rider. Tus respuestas se mantienen para reintentar.');
+    } finally {
+      setContextSubmitting(false);
+    }
+  };
+
+  const handleConfirmLinkExisting = async () => {
+    if (!linkExistingId) return;
+    setContextSubmitting(true);
+    setContextError(null);
+    try {
+      const sessionId = await ensureSessionId();
+      const linked = await chatService.linkRider(sessionId, linkExistingId);
+      if (!linked) throw new Error('No se pudo vincular el rider al chat');
+      await loadSessionsList();
+      setContextMode(null);
+      openWorkspace(linkExistingId, sessionId);
+    } catch (err) {
+      console.error(err);
+      setContextError(err instanceof Error ? err.message : 'No se pudo vincular. El chat sigue sin rider_id.');
+    } finally {
+      setContextSubmitting(false);
+    }
+  };
 
   // Cargar historial de la sesión solo cuando el usuario cambia de conversación en el cliente
   useEffect(() => {
@@ -351,6 +533,33 @@ export function ChatClient({
         availableRiders={availableRiders}
         onLinkRider={handleLinkRider}
         onCreateRider={handleCreateAndLinkRider}
+        contextSlot={contextMode ? (
+          <RiderGenerationContextPanel
+            mode={contextMode}
+            draft={contextDraft}
+            onDraftChange={(next) => {
+              setContextDraft(next);
+              setContextError(null);
+            }}
+            availableRiders={availableRiders}
+            linkExistingId={linkExistingId}
+            onLinkExistingId={setLinkExistingId}
+            onConfirmCreate={() => { void handleConfirmCreateRider(); }}
+            onConfirmLink={() => { void handleConfirmLinkExisting(); }}
+            onCancel={handleCancelContext}
+            onOpenLinked={() => {
+              const riderId = linkedRiderForReuse || currentRiderId();
+              if (riderId) openWorkspace(riderId, currentSessionId || undefined);
+            }}
+            onStartNew={() => {
+              setLinkExistingId(null);
+              setContextDraft(defaultContextDraft());
+              setContextMode('collect');
+            }}
+            submitting={contextSubmitting}
+            error={contextError}
+          />
+        ) : null}
       />
     </div>
   );

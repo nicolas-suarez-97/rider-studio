@@ -25,6 +25,10 @@ import {
   shouldPersistChatTransferOnServer,
 } from '@/core/editor/persist-chat-transfer';
 import { callAiCompletion, getAiDiagnostics } from '@/lib/ai/ai-provider';
+import {
+  gateReplyMessage,
+  resolveRiderGenerationGate,
+} from '@/core/chat/rider-generation-context';
 
 const TRANSFER_SUCCESS =
   'He pasado el contenido al documento. Revisa el bloque y confirma o deshaz el cambio.';
@@ -319,6 +323,37 @@ Tu respuesta debe ser ÚNICAMENTE el objeto JSON sin texto antes ni después.`
 
     // 2.1 Guardrail determinista de seguridad y alcance (Jailbreaks / Inyecciones de prompt)
     const JAILBREAK_REGEX = /(?:ignore|olvida|ignora)\s+(?:all\s+)?(?:previous|prior|tus|las)\s+(?:instructions|instrucciones|reglas)|(?:dan|jailbreak)\s+mode|act\s+as\s+(?:an?\s+)?unrestricted|haz\s+de\s+cuenta\s+que\s+no\s+tienes\s+reglas|revela\s+tu\s+prompt/i;
+
+    const riderGenerationGate = resolveRiderGenerationGate({
+      riderId,
+      userText: lastMessage,
+    });
+    if (riderGenerationGate.action !== 'none') {
+      const roleAvatar = activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠';
+      const contextMsg = gateReplyMessage(riderGenerationGate) || '';
+      await saveChatMessage({
+        sessionId: session.id,
+        role: 'assistant',
+        agentRole: activeAgent,
+        roleName: profile.name,
+        roleAvatar,
+        content: contextMsg,
+        actions: [],
+      }).catch((err) => console.warn('[Error saving rider-context message]', err));
+
+      return NextResponse.json({
+        sessionId: session.id,
+        role: activeAgent,
+        roleName: profile.name,
+        roleAvatar,
+        message: contextMsg,
+        suggestions: [],
+        gatewayProvider: 'production_expert_engine',
+        actions: [],
+        needsRiderContext: riderGenerationGate.action === 'request_context',
+        riderGeneration: riderGenerationGate.action,
+      });
+    }
 
     if (JAILBREAK_REGEX.test(lastMessage)) {
       const roleAvatar = activeAgent === 'audio_foh' ? '🎛️' : activeAgent === 'hospitality' ? '☕' : activeAgent === 'security' ? '🛡️' : '🧠';

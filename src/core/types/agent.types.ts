@@ -64,4 +64,6 @@ export interface AgentResponse {
   notice?: string;
   isError?: boolean;
   retryable?: boolean;
+  needsRiderContext?: boolean;
+  riderGeneration?: 'request_context' | 'reuse_linked_rider' | 'ask_before_new_rider';
 }
