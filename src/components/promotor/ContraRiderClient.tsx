@@ -202,7 +202,7 @@ export function ContraRiderClient({
       if (!finding) return line;
       const response = finding.suggestedResponse;
       const merged = mergeContraAnswer({
-        negotiability: line.negotiability,
+        negotiability: line.negotiability ?? 'sin_definir',
         previous: line,
         next: {
           response,
@@ -224,7 +224,7 @@ export function ContraRiderClient({
       const next = current.map((line) => {
         if (line.id !== id) return line;
         const merged = mergeContraAnswer({
-          negotiability: line.negotiability,
+          negotiability: line.negotiability ?? 'sin_definir',
           previous: line,
           next: {
             response: patch.response ?? line.response,
